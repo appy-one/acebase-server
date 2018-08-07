@@ -1,7 +1,7 @@
 {
   "name": "acebase-server",
   "version": "0.0.1",
-  "description": "AceBase JSON database server",
+  "description": "AceBase JSON database server (webserver endpoint to allow remote connections)",
   "main": "./src/index.js",
   "private": false,
   "repository": "github:appy-one/acebase-server",
@@ -18,7 +18,7 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "file:../acebase",
+    "acebase": "*",
     "express": "^4.16.3",
     "socket.io": "^2.1.1"
   }
