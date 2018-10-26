@@ -111,6 +111,28 @@ class AceBaseServer extends EventEmitter {
                 });
             });
 
+            app.get(`/reflect/${dbname}/*`, (req, res) => {
+                // Reflection API
+                const path = req.path.substr(dbname.length + 10);
+                const type = req.query.type;
+                const args = {};
+                Object.keys(req.query).forEach(key => {
+                    if (key.startsWith('arg_')) {
+                        args[key.slice(4)] = req.query[key];
+                    }
+                });
+
+                db.ref(path)
+                .reflect(type, args)
+                .then(result => {
+                    res.send(result);
+                })
+                .catch(err => {
+                    res.statusCode = 500;
+                    res.send(err);
+                });
+            });
+
             app.get(`/exists/${dbname}/*`, (req, res) => {
                 // Exists query
                 const path = req.path.substr(dbname.length + 9);
@@ -295,11 +317,14 @@ class AceBaseServer extends EventEmitter {
                 socket.on("subscribe", data => {
                     // Client wants to subscribe to events on a node
                     const subscriptionPath = data.path;
-                    const callback = (err, path, result) => {
+                    const callback = (err, path, currentValue, previousValue) => {
                         if (err) {
                             return;
                         }
-                        let val = transport.serialize(result);
+                        let val = transport.serialize({
+                            current: currentValue,
+                            previous: previousValue
+                        });
                         console.log(`Sending data event ${data.event} for path "${data.path}" to client ${socket.id}`);
                         socket.emit("data-event", {
                             subscr_path: subscriptionPath,
@@ -359,14 +384,14 @@ class AceBaseServer extends EventEmitter {
                         client.transactions[data.id] = tx;
                         console.log(`Transaction ${tx.id} starting...`);
                         const ref = db.ref(tx.path);
-                        db.api.transaction(ref, val => { //db.ref(tx.path).transaction(snap => {
+                        db.api.transaction(ref, val => {
                             console.log(`Transaction ${tx.id} started with value: `, val);
-                            //let currentValue = snap.val();
-                            let currentValue = transport.serialize(val);
-                            socket.emit("tx_started", { id: tx.id, value: currentValue });
-                            return new Promise((resolve) => {
+                            const currentValue = transport.serialize(val);
+                            const promise = new Promise((resolve) => {
                                 tx.finish = resolve;
                             });
+                            socket.emit("tx_started", { id: tx.id, value: currentValue }); // what if message is dropped? We should implement an ack/retry mechanism
+                            return promise;
                         })
                         .then(res => {
                             console.log(`Transaction ${tx.id} finished`);
@@ -377,6 +402,7 @@ class AceBaseServer extends EventEmitter {
 
                     if (data.action === "finish") {
                         // Finish transaction
+                        // TODO: check what happens if undefined is returned
                         let tx = client.transactions[data.id];
                         if (!tx) {
                             console.error(`Can't finish unknown transaction with id: ${data.id}`);
