@@ -1,4 +1,4 @@
-# AceBase database server
+# AceBase realtime database server
 
 This repository is to setup an http endpoint for a local AceBase database instance. See [AceBase](https://www.npmjs.com/package/acebase) for more information about AceBase databases and usage.
 
