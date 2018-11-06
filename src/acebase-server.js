@@ -984,7 +984,7 @@ class AceBaseServer extends EventEmitter {
                     const client = clients.get(socket.id);
 
                     if (!userHasAccess(client.user, subscriptionPath, false)) {
-                        socket.emit('subscribe-result', {
+                        socket.emit('result', {
                             success: false,
                             reason: `access_denied`,
                             req_id: data.req_id
@@ -994,7 +994,7 @@ class AceBaseServer extends EventEmitter {
 
                     const callback = (err, path, currentValue, previousValue) => {
                         if (!userHasAccess(client.user, subscriptionPath, false)) {
-                            socket.emit('subscribe-result', {
+                            socket.emit('result', {
                                 success: false,
                                 reason: `access_denied`,
                                 req_id: data.req_id
@@ -1027,7 +1027,7 @@ class AceBaseServer extends EventEmitter {
                     db.api.subscribe(db.ref(subscriptionPath), data.event, callback);
 
                     // Send acknowledgement
-                    socket.emit('subscribe-result', {
+                    socket.emit('result', {
                         success: true,
                         req_id: data.req_id
                     });
