@@ -800,8 +800,8 @@ class AceBaseServer extends EventEmitter {
             app.post(`/query/${dbname}/*`, (req, res) => {
                 // Execute query
                 const path = req.path.substr(dbname.length + 8);
-                if (!userHasAccess(req.user, path, false)) {
-                    return sendUnauthorizedError(res);
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                    return;
                 }
 
                 const data = transport.deserialize(req.body);
@@ -862,6 +862,67 @@ class AceBaseServer extends EventEmitter {
                         res.send(err);         
                     })
                 }
+            });
+
+            const _transactions = new Map();
+            app.post(`/transaction/${dbname}/start`, (req, res) => {
+                const data = req.body;
+
+                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                    return;
+                }
+
+                // Start transaction
+                const tx = {
+                    id: ID.generate(),
+                    started: Date.now(),
+                    path: data.path,
+                    finish: undefined
+                };
+                _transactions.set(tx.id, tx);
+
+                console.log(`Transaction ${tx.id} starting...`);
+                const ref = db.ref(tx.path);
+                const donePromise = db.api.transaction(ref, val => {
+                    console.log(`Transaction ${tx.id} started with value: `, val);
+                    const currentValue = transport.serialize(val);
+                    const promise = new Promise((resolve) => {
+                        tx.finish = (val) => {
+                            console.log(`Transaction ${tx.id} finishing with value: `, val);
+                            resolve(val);
+                            return donePromise;
+                        };
+                    });
+                    res.send({ id: tx.id, value: currentValue });
+                    return promise;
+                });
+            });
+
+            app.post(`/transaction/${dbname}/finish`, (req, res) => {
+                const data = req.body;
+
+                const tx = _transactions.get(data.id);
+                if (!tx) {
+                    res.statusCode = 410; // Gone
+                    res.send(`transaction not found`);
+                    return;
+                }
+                _transactions.delete(data.id);
+
+                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                    return;
+                }
+
+                // Finish transaction
+                const newValue = transport.deserialize(data.value);
+                tx.finish(newValue)
+                .then(() => {
+                    res.send('done');
+                })
+                .catch(err => {
+                    res.statusCode = 500;
+                    res.send(err.message);
+                });
             });
 
             server.listen(this.config.port, this.config.hostname, () => {
@@ -949,29 +1010,29 @@ class AceBaseServer extends EventEmitter {
                     client.user = null;
                 });
 
-                const getUserFromToken = (token) => {
-                    let userPromise = Promise.resolve(null);
-                    if (this.config.authentication.enabled) {
-                        if (!token) {
-                            userPromise = Promise.reject(new AccessDeniedError(`no_access_token`));
-                        }
-                        let user = _authCache.get(token);
-                        if (user) {
-                            userPromise = Promise.resolve(user);
-                        }
-                        else {
-                            userPromise = authRef.query().where('access_token', '==', token).get()
-                            .then(snaps => {
-                                if (snaps.length === 0 || snaps.length > 1) {
-                                    throw new AccessDeniedError(`invalid_access_token`);
-                                }
-                                let user = snaps[0].val();
-                                return user;
-                            });
-                        }
-                    } 
-                    return userPromise;
-                }
+                // const getUserFromToken = (token) => {
+                //     let userPromise = Promise.resolve(null);
+                //     if (this.config.authentication.enabled) {
+                //         if (!token) {
+                //             userPromise = Promise.reject(new AccessDeniedError(`no_access_token`));
+                //         }
+                //         let user = _authCache.get(token);
+                //         if (user) {
+                //             userPromise = Promise.resolve(user);
+                //         }
+                //         else {
+                //             userPromise = authRef.query().where('access_token', '==', token).get()
+                //             .then(snaps => {
+                //                 if (snaps.length === 0 || snaps.length > 1) {
+                //                     throw new AccessDeniedError(`invalid_access_token`);
+                //                 }
+                //                 let user = snaps[0].val();
+                //                 return user;
+                //             });
+                //         }
+                //     } 
+                //     return userPromise;
+                // }
 
                 socket.on("subscribe", data => {
                     // Client wants to subscribe to events on a node
@@ -1089,18 +1150,18 @@ class AceBaseServer extends EventEmitter {
                         client.transactions[data.id] = tx;
                         console.log(`Transaction ${tx.id} starting...`);
                         const ref = db.ref(tx.path);
-                        db.api.transaction(ref, val => {
+                        const donePromise = db.api.transaction(ref, val => {
                             console.log(`Transaction ${tx.id} started with value: `, val);
                             const currentValue = transport.serialize(val);
                             const promise = new Promise((resolve) => {
-                                tx.finish = resolve;
+                                tx.finish = (val) => {
+                                    console.log(`Transaction ${tx.id} finishing with value: `, val);
+                                    resolve(val);
+                                    return donePromise;
+                                };
                             });
                             socket.emit("tx_started", { id: tx.id, value: currentValue }); // what if message is dropped? We should implement an ack/retry mechanism
                             return promise;
-                        })
-                        .then(res => {
-                            console.log(`Transaction ${tx.id} finished`);
-                            socket.emit("tx_completed", { id: tx.id });
                         });
                     }
 
@@ -1110,26 +1171,31 @@ class AceBaseServer extends EventEmitter {
                         const tx = client.transactions[data.id];
                         delete client.transactions[data.id];
 
-                        getUserFromToken(data.access_token)
-                        .then(user => {
+                        try {
                             if (!tx) {
-                                throw new Error(`Can't finish unknown transaction with id: ${data.id}`);
+                                throw new Error('transaction_not_found'); 
                             }
-                            if (!userHasAccess(user, data.path, true)) {
-                                throw new AccessDeniedError(`access_denied`);
+                            if (!userHasAccess(client.user, data.path, true)) {
+                                throw new Error('access_denied');
                             }
-
                             const newValue = transport.deserialize(data.value);
-                            return tx.finish(newValue);
-                        })
-                        .catch(err => {
+                            tx.finish(newValue)
+                            .then(res => {
+                                console.log(`Transaction ${tx.id} finished`);
+                                socket.emit("tx_completed", { id: tx.id });
+                            })
+                            .catch(err => {
+                                socket.emit("tx_error", { id: tx.id, reason: err.message });
+                            });
+                        }
+                        catch (err) {
                             tx.finish(); // Finish with undefined, canceling the transaction
-                            socket.emit('error', {
-                                reason: err instanceof AccessDeniedError ? err.message : 'internal_error',
-                                source: 'transaction',
+                            socket.emit('tx_error', {
+                                id: data.id,
+                                reason: err.message,
                                 data
                             });
-                        });
+                        }
                     }
 
                 });
