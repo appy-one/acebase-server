@@ -37,7 +37,7 @@ class AceBaseServerHttpsSettings {
 class AceBaseServerAuthenticationSettings {
     /**
      * 
-     * @param {{enabled?: boolean, allowUserSignup?: boolean, newUserRateLimit?: number}} settings 
+     * @param {{enabled?: boolean, allowUserSignup?: boolean, defaultAccessRule?: string, defaultAdminPassword?: string}} settings 
      */
     constructor(settings) {
         if (typeof settings !== "object") { settings = {}; }
@@ -46,6 +46,7 @@ class AceBaseServerAuthenticationSettings {
         this.newUserRateLimit = typeof settings.newUserRateLimit === 'number' ? settings.newUserRateLimit : 0; // how many new users per hour per IP address. not implemented yet
         this.tokensExpire = typeof settings.tokensExpire === 'number' ? settings.tokensExpire : 0; // how many minutes before access tokens expire. 0 for no expiration. not implemented yet
         this.defaultAccessRule = settings.defaultAccessRule || AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
+        this.defaultAdminPassword = typeof settings.defaultAdminPassword === 'string' ? settings.defaultAdminPassword : undefined;
     }
 
     static get ACCESS_DEFAULT() {
@@ -61,7 +62,7 @@ class AceBaseServerSettings {
 
     /**
      * 
-     * @param {{logLevel?: string, host?: string, port?: number, path?: string, https?: AceBaseServerHttpsSettings, authentication?: AceBaseServerAuthenticationSettings }} settings 
+     * @param {{logLevel?: string, host?: string, port?: number, path?: string, https?: {keyPath:string, certPath:string}|{ pfxPath:string, passphrase:string }, authentication?: AceBaseServerAuthenticationSettings }} settings 
      */
     constructor(settings) {
         if (typeof settings !== "object") { settings = {}; }
@@ -104,25 +105,28 @@ class AceBaseServer extends EventEmitter {
         };
         this.url = this.config.url; // Is this used?
         
-        if (this.config.authentication.enabled && !this.config.https.enabled) {
+        if (options.authentication.enabled && !options.https.enabled) {
             console.error(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`);
         }
-        else if (!this.config.https.enabled) {
+        else if (!options.https.enabled) {
             console.error(`WARNING: Server is not using https, any data transmitted may be intercepted!`);
         }
-        if (!this.config.authentication.enabled) {
+        if (!options.authentication.enabled) {
             console.error(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`);
         }
 
         const dbOptions = new AceBaseSettings({
             logLevel: options.logLevel,
             storage: {
-                cluster: options.cluster,
+                // cluster: options.cluster,
                 path: options.path
             },
         });
 
         const db = new AceBase(dbname, dbOptions);
+        const authDb = options.authentication.enabled
+            ? new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: `${options.path}/${dbname}.acebase` } })
+            : null;
 
         // process.on("unhandledRejection", (reason, p) => {
         //     console.log("Unhandled Rejection at: ", reason.stack);
@@ -132,29 +136,32 @@ class AceBaseServer extends EventEmitter {
             return crypto.createHash('md5').update(password).digest('hex');
         }
 
-        db.once("ready", () => {
+        const readyPromises = [
+            db.ready(),
+            authDb ? authDb.ready() : null
+        ];
+        
+        Promise.all(readyPromises)
+        .then(() => {
             //console.log(`Database "${dbname}" is ready to use`);
 
             let accessRules = {};
-            const authRef = db.ref('__auth__');
-            if (this.config.authentication.enabled) {
+            const authRef = authDb ? authDb.ref('accounts') : null; // db.ref('__auth__');
+            if (options.authentication.enabled) {
                 // NEW: Make sure there is an administrator account in the database
-                // TODO: Add api method get '/setup' that does this and return a generated password for admin user,
-                // which would allow the admin to do this once
+                authDb.indexes.create('accounts', 'username');
+                authDb.indexes.create('accounts', 'access_token');
                 authRef.child('admin').transaction(snap => {
-
-                    // const defaultPassword = 'p@5sw0rd';
-
-                    // Generate default admin password:
-                    const generatedPassword = Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
-                        if (i > 15) { return password; }
-                        return password + chars[Math.floor(Math.random() * chars.length)];
-                    }, '');
-
-                    const passwordHash = getPasswordHash(generatedPassword);
 
                     let adminAccount = snap.val();
                     if (!snap.exists()) {
+                        // Use provided default password, or generate one:
+                        const adminPassword = options.authentication.defaultAdminPassword  || Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
+                            if (i > 15) { return password; }
+                            return password + chars[Math.floor(Math.random() * chars.length)];
+                        }, '');
+                        const passwordHash = getPasswordHash(adminPassword);
+
                         adminAccount = {
                             username: 'admin',
                             display_name: `${dbname} AceBase admin`,
@@ -170,20 +177,21 @@ class AceBaseServer extends EventEmitter {
                         console.error(`Use the following credentials to authenticate an AceBaseClient:`);
                         console.error(``);
                         console.error(`    username: admin`);
-                        console.error(`    password: ${generatedPassword}`);
+                        console.error(`    password: ${adminPassword}`);
                         console.error(``);
                         console.error(`THIS IS ONLY SHOWN ONCE!`);
                         console.error(`__________________________________________________________________`);
                         return adminAccount;
                     }
-                    // else {
-                    //     if (adminAccount.password === passwordHash) {
-                    //         console.warn(`WARNING: default password for admin user was not changed!`);
-                    //     }
-                    // }
+                    else if (options.authentication.defaultAdminPassword) {
+                        const passwordHash = getPasswordHash(options.authentication.defaultAdminPassword);
+                        if (adminAccount.password === passwordHash) {
+                            console.error(`WARNING: default password for admin user was not changed!`);
+                        }
+                    }
                 });
 
-                // TODO Check if there is a rules file, load it or generate default
+                // Check if there is a rules file, load it or generate default
                 const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
                 const defaultAccessRule = (def => {
                     switch (def) {
@@ -201,7 +209,7 @@ class AceBaseServer extends EventEmitter {
                             return false;
                         }
                     }
-                })(this.config.authentication.defaultAccessRule);
+                })(options.authentication.defaultAccessRule);
                 const defaultRules = {
                     rules: {
                         ".read": defaultAccessRule,
@@ -228,28 +236,6 @@ class AceBaseServer extends EventEmitter {
                         accessRules = defaultRules;
                     }
                 }
-
-                // accessRules = {
-                //     rules: {
-                //         // Only allow admin access to the __auth__ node
-                //         "__auth__": {
-                //             ".read": "auth.uid === 'admin'",
-                //             ".write": "auth.uid === 'admin'"
-                //         },
-                //         // Example: Only allow users read/write access to their own node
-                //         "users": {
-                //             "$uid": {
-                //                 ".read": "$uid === auth.uid",
-                //                 ".write": "$uid === auth.uid"
-                //             }
-                //         },
-                //         // Allow all other paths read access
-                //         "$other": {
-                //             ".read": true,
-                //             ".write": false
-                //         }
-                //     }
-                // };
 
                 // Convert string rules to functions that can be executed
                 const processRules = (parent, variables) => {
@@ -279,7 +265,7 @@ class AceBaseServer extends EventEmitter {
                 // Process rules, find out if signed in user is allowed to read/write
                 // Defaults to false unless a rule is found that tells us otherwise
 
-                if (!this.config.authentication.enabled) {
+                if (!options.authentication.enabled) {
                     // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
                     return true;
                 }
@@ -342,6 +328,39 @@ class AceBaseServer extends EventEmitter {
 
             /**
              * 
+             * @param {string} accessToken 
+             * @param {(err, user, details) => void} callback 
+             */
+            const checkToken = function(accessToken, callback) {
+                authRef.query().where('access_token', '==', accessToken).get()
+                .then(snaps => {
+                    if (snaps.length === 0) {
+                        return callback(null, false, { message: 'Invalid access token. Sign in again' });
+                    }
+                    else if (snaps.length > 1) {
+                        return callback(null, false, { message: `Duplicate access_token found. Sign in again` });
+                    }
+                    /** @type {DataSnapshot} */ 
+                    const snap = snaps[0];
+                    const user = snap.val();
+                    user.uid = snap.key;
+                    user.previous_signin = user.last_signin;
+                    user.last_token_signin = new Date();
+                    // Update user in db
+                    snap.ref.update({
+                        last_token_signin: user.last_token_signin
+                    });
+                    // Add to cache
+                    _authCache.set(user.access_token, user);
+                    return callback(null, user);
+                })
+                .catch(err => {
+                    return callback(err);
+                });                
+            };
+
+            /**
+             * 
              * @param {string} username 
              * @param {string} password 
              * @param {(err, user, details) => void} callback 
@@ -382,244 +401,238 @@ class AceBaseServer extends EventEmitter {
                 });
             };
 
-            app.use((req, res, next) => {
-                const authorization = req.get('Authorization');
-                if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
-                    const token = authorization.slice(7);
-
-                    // Is this token cached?
-                    const cachedUser = _authCache.get(token);
-                    if (cachedUser) {
-                        req.user = cachedUser;
-                        return next();
-                    }
-
-                    // Not cached, query database to get user for this token
-                    return authRef.query().where('access_token', '==', token).get()
-                    .then(snaps => {
-                        if (snaps.length === 0) {
-                            return sendUnauthorizedError(res, 'Invalid access_token. Sign in again');
-                        }
-                        else if (snaps.length > 1) {
-                            return sendUnauthorizedError(res, `Duplicate access_token found. Sign in again`);
-                        }
-                        /** @type {DataSnapshot} */
-                        const snap = snaps[0];
-                        const user = snap.val();
-                        user.uid = snap.key;
-                        _authCache.set(token, user); // Cache it
-                        req.user = user;
-                        return next();
-                    })
-                    .catch(err => {
-                        return sendUnauthorizedError(res, err.message);
-                    });
-                }
-                next();
-            });
 
             server.on("error", (err) => {
                 console.log(err);
             });
 
-            server.listen(this.config.port, this.config.hostname, () => {
-                console.log(`"${dbname}" database server running at ${this.config.url}`);
-                this.emit(`ready`);
-            });
-
             app.use(bodyParser.json());
 
-            app.get('/', (req, res) => {
-                res.sendFile(__dirname + '/index.html'); // TODO: create login page and data browser
-            });
+            if (options.authentication.enabled) {
+                app.use((req, res, next) => {
+                    const authorization = req.get('Authorization');
+                    if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+                        const token = authorization.slice(7);
 
-            app.get(`/auth/${dbname}/state`, (req, res) => {
-                if (req.user) {
-                    res.send({ signed_in: true, user: req.user });
-                }
-                else {
-                    res.send({ signed_in: false });
-                }
-            });
+                        // Is this token cached?
+                        const cachedUser = _authCache.get(token);
+                        if (cachedUser) {
+                            req.user = cachedUser;
+                            return next();
+                        }
 
-            app.post(`/auth/${dbname}/signin`, (req, res) => {
-                // if (!this.config.authentication.enabled) {
-                //     res.statusCode = 405;
-                //     return res.send('Disabled');
-                // }
-
-                const details = req.body;
-                checkLogin(details.username, details.password, (err, user, details) => {
-                    if (err) {
-                        res.statusCode = 500;
-                        res.send(err.message);
-                        return;
+                        // Not cached, query database to get user for this token
+                        checkToken(token, (err, user, details) => {
+                            if (err) {
+                                return sendUnauthorizedError(res, details);
+                            }
+                            req.user = user;
+                            next();
+                        });
                     }
-                    if (!user) {
-                        res.statusCode = 401;
-                        res.statusMessage = details.message;
-                        res.send(details.message);
-                        return;
-                    }
-                    res.send({ 
-                        access_token: user.access_token, 
-                        user: { 
-                            uid: user.uid, 
-                            username: user.username, 
-                            display_name: user.display_name, 
-                            created: user.created, 
-                            last_signin: user.previous_signin 
-                        } 
-                    });
-                })
-            });
-
-            app.post(`/auth/${dbname}/signout`, (req, res) => {
-                // Remove access token from cache
-                const token = req.user && req.user.access_token;
-                if (token) {
-                    _authCache.delete(token);
-                }
-
-                // Remove token from user's auth node
-                return authRef.child(token).transaction(snap => {
-                    if (!snap.exists()) { return; }
-                    let user = snap.val();
-                    user.access_token = null;
-                    user.last_signout = new Date();
-                    return user;
-                })
-                .then(() => {
-                    res.send('Bye!');
-                })
-                .catch(err => {
-                    res.statusCode = 500;
-                    res.send(`Error: ${err.message}`);
+                    next();
                 });
-            });
 
-            app.post(`/auth/${dbname}/change_password`, (req, res) => {
-                let access_token = req.user && req.user.access_token;
-                const details = req.body;
-
-                if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
-                    res.statusCode = 400; // Bad Request
-                    res.send('Bad Request');
-                    return;                    
-                }
-                if (details.new_password.length < 8 || ~details.new_password.indexOf(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
-                    err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
-                    res.statusCode = 422; // Unprocessable Entity
-                    res.send(err);
-                    return;
-                }
-
-                return authRef.child(details.uid).transaction(snap => {
-                    if (!snap.exists()) {
-                        throw new Error(`Unknown uid`);
+                app.get(`/auth/${dbname}/state`, (req, res) => {
+                    if (req.user) {
+                        res.send({ signed_in: true, user: req.user });
                     }
-                    let user = snap.val();
-                    if (user.password !== getPasswordHash(details.password)) {
-                        throw new Error(`Wrong password`);
+                    else {
+                        res.send({ signed_in: false });
                     }
-                    if (access_token && access_token !== user.access_token) {
-                        throw new Error(`Cannot change password while signed in as other user, or with an old token`);
-                    }
-                    if (access_token) {
-                        _authCache.delete(access_token);
-                    }
-                    access_token = ID.generate();
-                    user.access_token = ID.generate();
-                    user.password = getPasswordHash(details.new_password);
-                    _authCache.set(user.access_token, user);
-                    return user;
-                })
-                .then(userRef => {
-                    res.send({ access_token }); // Client must use this new access token from now on
-                })
-                .catch(err => {
-                    res.statusCode = 400; // Bad Request, do not expose real reason
-                    res.send('Bad Request');
                 });
-            });
 
-            app.post(`/auth/${dbname}/signup`, (req, res) => {
-                // if (!this.config.authentication.enabled) {
-                //     res.statusCode = 405; // Method Not Allowed
-                //     return res.send('Disabled');
-                // }
-                if (!this.config.authentication.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
-                    res.statusCode = 403; // Forbidden
-                    return res.send('Forbidden');
-                }
+                app.post(`/auth/${dbname}/signin`, (req, res) => {
+                    // if (!this.config.authentication.enabled) {
+                    //     res.statusCode = 405;
+                    //     return res.send('Disabled');
+                    // }
 
-                // Create user if it doesn't exist yet.
-                // TODO: Rate-limit nr of signups per IP to prevent abuse
-                
-                const details = req.body;
+                    const details = req.body;
 
-                // Check if sent details are ok
-                let err;
-                if (details.username === 'admin' || typeof details.username !== 'string' || details.username.length < 5) {
-                    err = 'Invalid username, must be at least 5 characters';
-                }
-                else if (typeof details.display_name !== 'string' || details.display_name.length < 5) {
-                    err = 'Invalid display_name, must be at least 5 characters';
-                }
-                else if (typeof details.password !== 'string' || details.password.length < 8 || ~details.password.indexOf(' ') || !/[0-9]/.test(details.password) || !/[a-z]/.test(details.password) || !/[A-Z]/.test(details.password)) {
-                    err = 'Invalid password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
-                }
-                if (err) {
-                    res.statusCode = 422; // Unprocessable Entity
-                    res.send(err);
-                    return;
-                }
-
-                // Check if user doesn't already exist
-                authRef.query().where('username', '==', details.username).get()
-                .then(snaps => {
-                    if (snaps.length > 0) {
-                        res.statusCode = 409; // conflict
-                        res.send(`Username "${details.username}" is taken`);
-                        return;
-                    }
-
-                    // Ok, create user
-                    let token = ID.generate();
-                    const user = {
-                        username: details.username,
-                        display_name: details.display_name,
-                        password: getPasswordHash(details.password),
-                        change_password: false,
-                        created: new Date(),
-                        access_token: token
-                    };
-
-                    return authRef.push(user)
-                    .then(ref => {
-                        const uid = ref.key;
-                        user.uid = uid;
-
-                        // Cache the user
-                        _authCache[uid] = user;
-
-                        // Return the positive news
+                    const handle = (err, user, details) => {
+                        if (err) {
+                            res.statusCode = 500;
+                            res.send(err.message);
+                            return;
+                        }
+                        if (!user) {
+                            res.statusCode = 401;
+                            res.statusMessage = details.message;
+                            res.send(details.message);
+                            return;
+                        }
                         res.send({ 
-                            access_token: token, 
+                            access_token: user.access_token, 
                             user: { 
                                 uid: user.uid, 
                                 username: user.username, 
-                                display_name: 
-                                user.display_name, 
-                                created: user.created 
+                                display_name: user.display_name, 
+                                created: user.created, 
+                                last_signin: user.previous_signin 
                             } 
                         });
-                    });
-                })
-                .catch(err => {
-                    res.statusCode = 500;
-                    res.send(err.message);
+                    };
+                    if (details.method === 'token') {
+                        checkToken(details.access_token, handle);
+                    }
+                    else {
+                        checkLogin(details.username, details.password, handle);
+                    }
                 });
+
+                app.post(`/auth/${dbname}/signout`, (req, res) => {
+                    // Remove access token from cache
+                    const token = req.user && req.user.access_token;
+                    if (token) {
+                        _authCache.delete(token);
+                    }
+
+                    // Remove token from user's auth node
+                    return authRef.child(token).transaction(snap => {
+                        if (!snap.exists()) { return; }
+                        let user = snap.val();
+                        user.access_token = null;
+                        user.last_signout = new Date();
+                        return user;
+                    })
+                    .then(() => {
+                        res.send('Bye!');
+                    })
+                    .catch(err => {
+                        res.statusCode = 500;
+                        res.send(`Error: ${err.message}`);
+                    });
+                });
+
+                app.post(`/auth/${dbname}/change_password`, (req, res) => {
+                    let access_token = req.user && req.user.access_token;
+                    const details = req.body;
+
+                    if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
+                        res.statusCode = 400; // Bad Request
+                        res.send('Bad Request');
+                        return;                    
+                    }
+                    if (details.new_password.length < 8 || ~details.new_password.indexOf(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
+                        err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
+                        res.statusCode = 422; // Unprocessable Entity
+                        res.send(err);
+                        return;
+                    }
+
+                    return authRef.child(details.uid).transaction(snap => {
+                        if (!snap.exists()) {
+                            throw new Error(`Unknown uid`);
+                        }
+                        let user = snap.val();
+                        if (user.password !== getPasswordHash(details.password)) {
+                            throw new Error(`Wrong password`);
+                        }
+                        if (access_token && access_token !== user.access_token) {
+                            throw new Error(`Cannot change password while signed in as other user, or with an old token`);
+                        }
+                        if (access_token) {
+                            _authCache.delete(access_token);
+                        }
+                        access_token = ID.generate();
+                        user.access_token = ID.generate();
+                        user.password = getPasswordHash(details.new_password);
+                        _authCache.set(user.access_token, user);
+                        return user;
+                    })
+                    .then(userRef => {
+                        res.send({ access_token }); // Client must use this new access token from now on
+                    })
+                    .catch(err => {
+                        res.statusCode = 400; // Bad Request, do not expose real reason
+                        res.send('Bad Request');
+                    });
+                });
+
+                app.post(`/auth/${dbname}/signup`, (req, res) => {
+                    // if (!this.config.authentication.enabled) {
+                    //     res.statusCode = 405; // Method Not Allowed
+                    //     return res.send('Disabled');
+                    // }
+                    if (!this.config.authentication.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
+                        res.statusCode = 403; // Forbidden
+                        return res.send('Forbidden');
+                    }
+
+                    // Create user if it doesn't exist yet.
+                    // TODO: Rate-limit nr of signups per IP to prevent abuse
+                    
+                    const details = req.body;
+
+                    // Check if sent details are ok
+                    let err;
+                    if (details.username === 'admin' || typeof details.username !== 'string' || details.username.length < 5) {
+                        err = 'Invalid username, must be at least 5 characters';
+                    }
+                    else if (typeof details.display_name !== 'string' || details.display_name.length < 5) {
+                        err = 'Invalid display_name, must be at least 5 characters';
+                    }
+                    else if (typeof details.password !== 'string' || details.password.length < 8 || ~details.password.indexOf(' ') || !/[0-9]/.test(details.password) || !/[a-z]/.test(details.password) || !/[A-Z]/.test(details.password)) {
+                        err = 'Invalid password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
+                    }
+                    if (err) {
+                        res.statusCode = 422; // Unprocessable Entity
+                        res.send(err);
+                        return;
+                    }
+
+                    // Check if user doesn't already exist
+                    authRef.query().where('username', '==', details.username).get()
+                    .then(snaps => {
+                        if (snaps.length > 0) {
+                            res.statusCode = 409; // conflict
+                            res.send(`Username "${details.username}" is taken`);
+                            return;
+                        }
+
+                        // Ok, create user
+                        let token = ID.generate();
+                        const user = {
+                            username: details.username,
+                            display_name: details.display_name,
+                            password: getPasswordHash(details.password),
+                            change_password: false,
+                            created: new Date(),
+                            access_token: token
+                        };
+
+                        return authRef.push(user)
+                        .then(ref => {
+                            const uid = ref.key;
+                            user.uid = uid;
+
+                            // Cache the user
+                            _authCache[uid] = user;
+
+                            // Return the positive news
+                            res.send({ 
+                                access_token: token, 
+                                user: { 
+                                    uid: user.uid, 
+                                    username: user.username, 
+                                    display_name: 
+                                    user.display_name, 
+                                    created: user.created 
+                                } 
+                            });
+                        });
+                    })
+                    .catch(err => {
+                        res.statusCode = 500;
+                        res.send(err.message);
+                    });
+                });
+
+            }
+
+            app.get('/', (req, res) => {
+                res.sendFile(__dirname + '/index.html'); // TODO: create login page and data browser
             });
 
             app.get("/info", (req, res) => {
@@ -633,7 +646,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/data/${dbname}/*`, (req, res) => {
                 // Request data
-                const path = req.path.substr(dbname.length + 7);
+                const path = req.path.substr(dbname.length + 7); //.replace(/^\/+/g, '').replace(/\/+$/g, '');
                 if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails))) {
                     return;
                 }
@@ -648,6 +661,18 @@ class AceBaseServer extends EventEmitter {
                 if (typeof req.query.child_objects === "boolean") {
                     options.child_objects = req.query.child_objects;
                 }
+
+                // if (path === '') {
+                //     // Prevent access to private "__auth__" node
+                //     if (options.include instanceof Array && ~options.include.indexOf('__auth__')) {
+                //         options.include.splice(options.include.indexOf('__auth__'), 1);
+                //     }
+                //     if (!(options.exclude instanceof Array)) { options.exclude = []; }
+                //     options.exclude.push('__auth__');
+                // }
+                // else if (path.startsWith('__auth__')) {
+                //     return sendUnauthorizedError(res, 'get lost!');
+                // }
 
                 db.ref(path)
                 .get(options) //.once("value")
@@ -669,15 +694,18 @@ class AceBaseServer extends EventEmitter {
             app.get(`/reflect/${dbname}/*`, (req, res) => {
                 // Reflection API
                 if (!req.user || req.user.username !== 'admin') {
-                    return sendUnauthorizedError(res, 'admin only');
+                    return sendUnauthorizedError(res, 'only admin can use reflection api');
                 }
                 const path = req.path.substr(dbname.length + 10);
                 const type = req.query.type;
                 const args = {};
                 Object.keys(req.query).forEach(key => {
-                    if (key.startsWith('arg_')) {
-                        args[key.slice(4)] = req.query[key];
-                    }
+                    // if (key.startsWith('arg_')) {
+                    //     args[key.slice(4)] = req.query[key];
+                    // }
+                    if (key !== 'type') {
+                        args[key] = req.query[key];
+                    }                    
                 });
 
                 db.ref(path)
@@ -818,8 +846,8 @@ class AceBaseServer extends EventEmitter {
 
             app.post(`/index/${dbname}`, (req, res) => {
                 // create index
-                if (!req.user || req.user.name !== 'admin') {
-                    return sendUnauthorizedError(res, 'admin only');
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'only admin can create indexes');
                 }
 
                 const data = req.body;
@@ -834,6 +862,11 @@ class AceBaseServer extends EventEmitter {
                         res.send(err);         
                     })
                 }
+            });
+
+            server.listen(this.config.port, this.config.hostname, () => {
+                console.log(`"${dbname}" database server running at ${this.config.url}`);
+                this.emit(`ready`);
             });
 
             // Websocket implementation:
@@ -951,7 +984,8 @@ class AceBaseServer extends EventEmitter {
                     const client = clients.get(socket.id);
 
                     if (!userHasAccess(client.user, subscriptionPath, false)) {
-                        socket.emit('error', {
+                        socket.emit('subscribe-result', {
+                            success: false,
                             reason: `access_denied`,
                             req_id: data.req_id
                         });
@@ -960,7 +994,8 @@ class AceBaseServer extends EventEmitter {
 
                     const callback = (err, path, currentValue, previousValue) => {
                         if (!userHasAccess(client.user, subscriptionPath, false)) {
-                            socket.emit('error', {
+                            socket.emit('subscribe-result', {
+                                success: false,
                                 reason: `access_denied`,
                                 req_id: data.req_id
                             });
@@ -992,7 +1027,8 @@ class AceBaseServer extends EventEmitter {
                     db.api.subscribe(db.ref(subscriptionPath), data.event, callback);
 
                     // Send acknowledgement
-                    socket.emit('success', {
+                    socket.emit('subscribe-result', {
+                        success: true,
                         req_id: data.req_id
                     });
                     // })
@@ -1037,21 +1073,19 @@ class AceBaseServer extends EventEmitter {
                     const client = clients.get(socket.id);
 
                     if (data.action === "start") {
+                        const tx = {
+                            id: data.id,
+                            started: Date.now(),
+                            path: data.path,
+                            finish: undefined
+                        };
 
-                        // getUserFromToken(data.access_token)
-                        // .then(user => {
                         if (!userHasAccess(client.user, data.path, true)) {
                             // throw new AccessDeniedError(`access_denied`);
                             socket.emit("tx_error", { id: tx.id, reason: 'access_denied' }); // what if message is dropped? We should implement an ack/retry mechanism
                         }
 
                         // Start a transaction
-                        let tx = {
-                            id: data.id,
-                            started: Date.now(),
-                            path: data.path,
-                            finish: undefined
-                        };
                         client.transactions[data.id] = tx;
                         console.log(`Transaction ${tx.id} starting...`);
                         const ref = db.ref(tx.path);
@@ -1068,14 +1102,6 @@ class AceBaseServer extends EventEmitter {
                             console.log(`Transaction ${tx.id} finished`);
                             socket.emit("tx_completed", { id: tx.id });
                         });
-                        // })
-                        // .catch(err => {
-                        //     socket.emit('error', {
-                        //         reason: err instanceof AccessDeniedError ? err.message : 'internal_error',
-                        //         source: 'transaction',
-                        //         data
-                        //     });
-                        // });
                     }
 
                     if (data.action === "finish") {
