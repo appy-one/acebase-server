@@ -21,6 +21,8 @@ server.on("ready", () => {
 });
 ```
 
+**NOTE**: The above code will create an admin user with a generated password, which will be displayed once in the console output. Only MD5 hashes of user passwords are stored in the auth database, so it'll become fairly hard to sign into the admin account if you don't copy/paste the password somewhere. If you don't want to use a generated password, see _Enable authentication_ below for info about how to supply a default password
+
 ### Enable SSL (https)
 
 To run the server on a secure https connection, you can simply provide details about the location of your certificate files:
@@ -31,7 +33,7 @@ const settings = {
     port: 443,
     https: {
         certPath: './mycertificate.pem',
-        keyPath: './mycertificate_key.pem'
+        keyPath: './myprivatekey.pem'
     }
 };
 const server = new AceBaseServer(dbname, settings);
@@ -50,7 +52,8 @@ const settings = {
     authentication: {
         enabled: true,
         allowUserSignup: false,
-        defaultAccessRule: 'auth'
+        defaultAccessRule: 'auth',
+        defaultAdminPassword: '75sdDSFg37w5'
     }
 }
 ```
@@ -59,6 +62,7 @@ The following ```authentication``` settings are available:
 - ```enabled```: whether to enable user authentication (default: ```true```)
 - ```allowUserSignup```: whether users can sign up for an account themselves, or if the admin has to (default: ```false```)
 - ```defaultAccessRule```: default authorization rule for read/write operations. Either ```deny```, ```allow``` or ```auth```. The first time the server is launched with authentication enabled, it will create a ```rules.json``` file that contains this access rule for any path. ```deny``` will deny all users (except admin) read/write access, ```allow``` will grant access to anyone, ```auth``` will grant access only to authenticated users (default: ```auth```)
+- ```defaultAdminPassword```: supply a default password for the admin account that will be used when it is created. If you do not supply this, a generated password will be used instead and displayed only once in the console output.
 
 ### Setup authorization rules
 
