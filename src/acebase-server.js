@@ -1,8 +1,8 @@
 
 const { EventEmitter } = require('events');
-const { AceBase, AceBaseSettings, transport, DataSnapshot } = require('acebase');
-const { getPathKeys } = require('acebase/src/utils');
-const { ID } = require('acebase/src/id');
+const { AceBase, AceBaseSettings } = require('acebase');
+const { Utils, ID, Transport, DataSnapshot } = require('acebase-core');
+const { getPathKeys } = Utils;
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -27,7 +27,7 @@ class AceBaseServerHttpsSettings {
             this.key = fs.readFileSync(settings.keyPath);
             this.cert = fs.readFileSync(settings.certPath);
         }
-        else if (settings.pfxFile) {
+        else if (settings.pfxPath) {
             this.pfx = fs.readFileSync(settings.pfxPath);
             this.passphrase = settings.passphrase;
         }
@@ -62,7 +62,16 @@ class AceBaseServerSettings {
 
     /**
      * 
-     * @param {{logLevel?: string, host?: string, port?: number, path?: string, https?: {keyPath:string, certPath:string}|{ pfxPath:string, passphrase:string }, authentication?: AceBaseServerAuthenticationSettings }} settings 
+     * @param {object} [settings] 
+     * @param {string} [settings.logLevel='log']
+     * @param {string} [settings.host='localhost']
+     * @param {number} [settings.port=3000]
+     * @param {string} [settings.path='.']
+     * @param {string} [settings.maxPayloadSize='10mb']
+     * @param {string} [settings.allowOrigin='*']
+     * @param {AceBaseServerHttpsSettings} [settings.https] { keyPath:string, certPath:string} | { pfxPath:string, passphrase:string }
+     * @param {AceBaseServerAuthenticationSettings} [settings.auth]
+     * 
      */
     constructor(settings) {
         if (typeof settings !== "object") { settings = {}; }
@@ -73,6 +82,8 @@ class AceBaseServerSettings {
         this.cluster = new AceBaseClusterSettings(settings.cluster);
         this.https = new AceBaseServerHttpsSettings(settings.https);
         this.authentication = new AceBaseServerAuthenticationSettings(settings.authentication);
+        this.maxPayloadSize = settings.maxPayloadSize || '10mb';
+        this.allowOrigin = settings.allowOrigin || '*';
     }
 }
 
@@ -115,13 +126,13 @@ class AceBaseServer extends EventEmitter {
             console.error(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`);
         }
 
-        const dbOptions = new AceBaseSettings({
+        const dbOptions = {
             logLevel: options.logLevel,
             storage: {
                 // cluster: options.cluster,
                 path: options.path
             },
-        });
+        };
 
         const db = new AceBase(dbname, dbOptions);
         const authDb = options.authentication.enabled
@@ -149,8 +160,6 @@ class AceBaseServer extends EventEmitter {
             const authRef = authDb ? authDb.ref('accounts') : null; // db.ref('__auth__');
             if (options.authentication.enabled) {
                 // NEW: Make sure there is an administrator account in the database
-                authDb.indexes.create('accounts', 'username');
-                authDb.indexes.create('accounts', 'access_token');
                 authRef.child('admin').transaction(snap => {
 
                     let adminAccount = snap.val();
@@ -189,6 +198,10 @@ class AceBaseServer extends EventEmitter {
                             console.error(`WARNING: default password for admin user was not changed!`);
                         }
                     }
+                })
+                .then(() => {
+                    authDb.indexes.create('accounts', 'username');
+                    authDb.indexes.create('accounts', 'access_token');
                 });
 
                 // Check if there is a rules file, load it or generate default
@@ -406,7 +419,14 @@ class AceBaseServer extends EventEmitter {
                 console.log(err);
             });
 
-            app.use(bodyParser.json());
+            app.use(bodyParser.json({ limit: options.maxPayloadSize, extended: true }));
+
+            app.use((req, res, next) => {
+                res.set('Access-Control-Allow-Origin', options.allowOrigin);
+                res.set('Access-Control-Allow-Methods', '*');
+                res.set('Access-Control-Allow-Headers', '*');
+                next();
+            });
 
             if (options.authentication.enabled) {
                 app.use((req, res, next) => {
@@ -677,7 +697,7 @@ class AceBaseServer extends EventEmitter {
                 db.ref(path)
                 .get(options) //.once("value")
                 .then(snap => {
-                    const ser = transport.serialize(snap.val());
+                    const ser = Transport.serialize(snap.val());
                     const data = {
                         exists: snap.exists(),
                         val: ser.val,
@@ -757,7 +777,7 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const data = req.body;
-                const val = transport.deserialize(data);
+                const val = Transport.deserialize(data);
 
                 db.ref(path)
                 .update(val)
@@ -781,7 +801,7 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const data = req.body;
-                const val = transport.deserialize(data);
+                const val = Transport.deserialize(data);
 
                 db.ref(path)
                 .set(val)
@@ -804,7 +824,7 @@ class AceBaseServer extends EventEmitter {
                     return;
                 }
 
-                const data = transport.deserialize(req.body);
+                const data = Transport.deserialize(req.body);
                 //const ref = db.ref(path);
                 const query = db.query(path);
                 data.query.filters.forEach(filter => {
@@ -832,13 +852,13 @@ class AceBaseServer extends EventEmitter {
                             response.list.push(result.path);
                         }
                     });
-                    res.send(transport.serialize(response));
+                    res.send(Transport.serialize(response));
                 });
             });
 
             app.get(`/index/${dbname}`, (req, res) => {
                 // Get all indexes
-                db.indexes.list()
+                db.indexes.get()
                 .then(indexes => {
                     res.send(indexes);
                 });
@@ -852,7 +872,7 @@ class AceBaseServer extends EventEmitter {
 
                 const data = req.body;
                 if (data.action === "create") {
-                    db.indexes.create(data.path, data.key)
+                    db.indexes.create(data.path, data.key, data.options)
                     .then(() => {
                         res.send({ success: true });
                     })
@@ -882,10 +902,10 @@ class AceBaseServer extends EventEmitter {
                 _transactions.set(tx.id, tx);
 
                 console.log(`Transaction ${tx.id} starting...`);
-                const ref = db.ref(tx.path);
-                const donePromise = db.api.transaction(ref, val => {
+                // const ref = db.ref(tx.path);
+                const donePromise = db.api.transaction(tx.path, val => {
                     console.log(`Transaction ${tx.id} started with value: `, val);
-                    const currentValue = transport.serialize(val);
+                    const currentValue = Transport.serialize(val);
                     const promise = new Promise((resolve) => {
                         tx.finish = (val) => {
                             console.log(`Transaction ${tx.id} finishing with value: `, val);
@@ -914,7 +934,7 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 // Finish transaction
-                const newValue = transport.deserialize(data.value);
+                const newValue = Transport.deserialize(data.value);
                 tx.finish(newValue)
                 .then(() => {
                     res.send('done');
@@ -1065,7 +1085,7 @@ class AceBaseServer extends EventEmitter {
                         if (err) {
                             return;
                         }
-                        let val = transport.serialize({
+                        let val = Transport.serialize({
                             current: currentValue,
                             previous: previousValue
                         });
@@ -1085,7 +1105,7 @@ class AceBaseServer extends EventEmitter {
                     let subscr = { path: subscriptionPath, event: data.event, callback };
                     pathSubs.push(subscr);
 
-                    db.api.subscribe(db.ref(subscriptionPath), data.event, callback);
+                    db.api.subscribe(subscriptionPath, data.event, callback);
 
                     // Send acknowledgement
                     socket.emit('result', {
@@ -1120,7 +1140,7 @@ class AceBaseServer extends EventEmitter {
                     remove.forEach(subscr => {
                         // Unsubscribe them at db level and remove from our list
                         //console.log(`   - unsubscribing from event ${subscr.event} with${subscr.callback ? "" : "out"} callback on path "${data.path}"`);
-                        db.api.unsubscribe(db.ref(data.path), subscr.event, subscr.callback);
+                        db.api.unsubscribe(data.path, subscr.event, subscr.callback);
                         pathSubs.splice(pathSubs.indexOf(subscr), 1);
                     });
                     if (pathSubs.length === 0) {
@@ -1149,10 +1169,10 @@ class AceBaseServer extends EventEmitter {
                         // Start a transaction
                         client.transactions[data.id] = tx;
                         console.log(`Transaction ${tx.id} starting...`);
-                        const ref = db.ref(tx.path);
-                        const donePromise = db.api.transaction(ref, val => {
+                        // const ref = db.ref(tx.path);
+                        const donePromise = db.api.transaction(tx.path, val => {
                             console.log(`Transaction ${tx.id} started with value: `, val);
-                            const currentValue = transport.serialize(val);
+                            const currentValue = Transport.serialize(val);
                             const promise = new Promise((resolve) => {
                                 tx.finish = (val) => {
                                     console.log(`Transaction ${tx.id} finishing with value: `, val);
@@ -1178,7 +1198,7 @@ class AceBaseServer extends EventEmitter {
                             if (!userHasAccess(client.user, data.path, true)) {
                                 throw new Error('access_denied');
                             }
-                            const newValue = transport.deserialize(data.value);
+                            const newValue = Transport.deserialize(data.value);
                             tx.finish(newValue)
                             .then(res => {
                                 console.log(`Transaction ${tx.id} finished`);
