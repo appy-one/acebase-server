@@ -1,8 +1,7 @@
 
 const { EventEmitter } = require('events');
 const { AceBase, AceBaseSettings } = require('acebase');
-const { Utils, ID, Transport, DataSnapshot } = require('acebase-core');
-const { getPathKeys } = Utils;
+const { ID, Transport, DataSnapshot, PathInfo } = require('acebase-core');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -288,7 +287,7 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const env = { now: Date.now(), auth: user || null };
-                const pathKeys = getPathKeys(path);
+                const pathKeys = PathInfo.getPathKeys(path);
                 let rule = accessRules.rules;
                 let rulePath = [];
                 while(true) {
