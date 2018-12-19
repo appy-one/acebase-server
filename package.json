@@ -1,6 +1,6 @@
 {
   "name": "acebase-server",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
   "main": "./src/index.js",
   "private": false,
