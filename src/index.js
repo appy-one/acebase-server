@@ -1,2 +1,2 @@
-const { AceBaseServer, AceBaseServerSettings } = require('./acebase-server');
-module.exports = { AceBaseServer, AceBaseServerSettings };
+const { AceBaseServer, AceBaseServerSettings, AceBaseServerHttpsSettings, AceBaseServerAuthenticationSettings } = require('./acebase-server');
+module.exports = { AceBaseServer, AceBaseServerSettings, AceBaseServerHttpsSettings, AceBaseServerAuthenticationSettings };
