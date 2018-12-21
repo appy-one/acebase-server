@@ -20,7 +20,7 @@ class AceBaseServerHttpsSettings {
      * @param {{keyPath:string, certPath:string}|{ pfxPath:string, passphrase:string }} settings 
      */
     constructor(settings) {
-        this.enabled = typeof settings === "object";
+        this.enabled = typeof settings === "object" && settings.enabled !== false;
         if (!this.enabled) { return; }
         if (settings.keyPath) {
             this.key = fs.readFileSync(settings.keyPath);
@@ -292,14 +292,14 @@ class AceBaseServer extends EventEmitter {
                 let rulePath = [];
                 while(true) {
                     if (!rule) { 
-                        denyDetailsCallback && denyDetailsCallback({ reason: 'no_rule', details: 'No rules set for requested path, defaulting to false' });
+                        denyDetailsCallback && denyDetailsCallback({ reason: 'no_rule', message: 'No rules set for requested path, defaulting to false' });
                         return false; 
                     }
                     let checkRule = write ? rule['.write'] : rule['.read'];
                     if (typeof checkRule === 'boolean') { 
                         const allow = checkRule; 
                         if (!allow) {
-                            denyDetailsCallback && denyDetailsCallback({ reason: 'rule', rule: checkRule, rulePath: rulePath.join('/') });
+                            denyDetailsCallback && denyDetailsCallback({ reason: 'rule', message: 'Acces denied by set rule', rule: checkRule, rulePath: rulePath.join('/') });
                         }
                         return allow;
                     }
@@ -308,17 +308,19 @@ class AceBaseServer extends EventEmitter {
                             // Execute rule function
                             let allow = checkRule(env);
                             if (!allow) {
-                                denyDetailsCallback && denyDetailsCallback({ reason: 'rule', rule: checkRule.getText(), rulePath: rulePath.join('/') });
+                                denyDetailsCallback && denyDetailsCallback({ reason: 'rule', message: 'Acces denied by set rule', rule: checkRule.getText(), rulePath: rulePath.join('/') });
                             }
                             return allow;
                         }
                         catch(err) {
                             // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                            denyDetailsCallback && denyDetailsCallback({ reason: 'exception', rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
+                            denyDetailsCallback && denyDetailsCallback({ reason: 'exception', message: 'Acces denied by set rule', rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
                             return false; 
                         }
                     }
                     let nextKey = pathKeys.shift();
+                    // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
+                    // need to change things here for usage of wildcard paths in subscriptions
                     if (typeof rule[nextKey] === 'undefined') {
                         // Check if current rule has a wildcard child
                         const wildcardKey = Object.keys(rule).find(key => key[0] === '$');
@@ -666,7 +668,7 @@ class AceBaseServer extends EventEmitter {
             app.get(`/data/${dbname}/*`, (req, res) => {
                 // Request data
                 const path = req.path.substr(dbname.length + 7); //.replace(/^\/+/g, '').replace(/\/+$/g, '');
-                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -741,7 +743,7 @@ class AceBaseServer extends EventEmitter {
             app.get(`/exists/${dbname}/*`, (req, res) => {
                 // Exists query
                 const path = req.path.substr(dbname.length + 9);
-                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -771,7 +773,7 @@ class AceBaseServer extends EventEmitter {
             app.post(`/data/${dbname}/*`, (req, res) => {
                 // update data                
                 const path = req.path.substr(dbname.length + 7);
-                if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -795,7 +797,7 @@ class AceBaseServer extends EventEmitter {
             app.put(`/data/${dbname}/*`, (req, res) => {
                 // Set data
                 const path = req.path.substr(dbname.length + 7);
-                if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -819,7 +821,7 @@ class AceBaseServer extends EventEmitter {
             app.post(`/query/${dbname}/*`, (req, res) => {
                 // Execute query
                 const path = req.path.substr(dbname.length + 8);
-                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -887,7 +889,7 @@ class AceBaseServer extends EventEmitter {
             app.post(`/transaction/${dbname}/start`, (req, res) => {
                 const data = req.body;
 
-                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -928,7 +930,7 @@ class AceBaseServer extends EventEmitter {
                 }
                 _transactions.delete(data.id);
 
-                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails))) {
+                if (!userHasAccess(req.user, data.path, true, denyDetails => sendUnauthorizedError(res, denyDetails.message))) {
                     return;
                 }
 
@@ -946,6 +948,7 @@ class AceBaseServer extends EventEmitter {
 
             server.listen(this.config.port, this.config.hostname, () => {
                 console.log(`"${dbname}" database server running at ${this.config.url}`);
+                this._ready === true;
                 this.emit(`ready`);
             });
 
@@ -1073,12 +1076,14 @@ class AceBaseServer extends EventEmitter {
                     }
 
                     const callback = (err, path, currentValue, previousValue) => {
-                        if (!userHasAccess(client.user, subscriptionPath, false)) {
-                            socket.emit('result', {
-                                success: false,
-                                reason: `access_denied`,
-                                req_id: data.req_id
-                            });
+                        if (!userHasAccess(client.user, path, false)) {
+                            if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
+                                socket.emit('result', {
+                                    success: false,
+                                    reason: `access_denied`,
+                                    req_id: data.req_id
+                                });
+                            }
                             return;
                         }
                         if (err) {
@@ -1088,7 +1093,7 @@ class AceBaseServer extends EventEmitter {
                             current: currentValue,
                             previous: previousValue
                         });
-                        console.log(`Sending data event "${data.event}" for path "/${data.path}" to client ${socket.id}`);
+                        console.log(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`);
                         socket.emit("data-event", {
                             subscr_path: subscriptionPath,
                             path,
@@ -1221,6 +1226,29 @@ class AceBaseServer extends EventEmitter {
 
             });
         });
+    }
+
+    /**
+     * 
+     * @param {()=>void} [callback] (optional) callback function that is called when ready. You can also use the returned promise
+     * @returns {Promise<void>} returns a promise that resolves when ready
+     */
+    ready(callback = undefined) {
+        if (this._ready === true) { 
+            // ready event was emitted before
+            callback && callback();
+            return Promise.resolve();
+        }
+        else {
+            // Wait for ready event
+            let resolve;
+            const promise = new Promise(res => resolve = res);
+            this.on("ready", () => {
+                resolve();
+                callback && callback(); 
+            });
+            return promise;
+        }
     }
 }
 
