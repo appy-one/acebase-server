@@ -88,6 +88,88 @@ class AceBaseServerSettings {
 
 class AccessDeniedError extends Error { }
 
+class ClientSubscription {
+    constructor(obj) {
+        this.callback = obj.callback;
+        this.disconnectedCallback = null;
+        this.missedEvents = [];
+    }
+}
+class MissedClientEvent {
+    constructor(obj) {
+        this.time = Date.now();
+        this.event = obj.event;
+        this.subscriptionPath = obj.subscriptionPath;
+        this.path = obj.path;
+    }
+}
+class Client {
+    constructor(obj) {
+        // Object.assign(this, obj);
+        /** @type {SocketIO.Socket} */
+        this.socket = obj.socket;
+        /** @type {string} */
+        this.id = this.socket.id;
+        /** @type {DbUserAccountDetails} */
+        this.user = obj.user;
+        /** @type {{ [path: string]: ClientSubscription }} */
+        this.subscriptions = {};
+        /** @type {MissedClientEvent[]} */
+        this.missedEvents = [];
+    }
+
+    subscribe(requestId, event, subscriptionPath) {
+        // Check if user has access
+        if (!userHasAccess(this.user, subscriptionPath, false)) {
+            authDb.ref('log').push({ action: `access_denied`, uid: this.user ? this.user.uid : '-', path: subscriptionPath });
+            this.socket.emit('result', {
+                success: false,
+                reason: `access_denied`,
+                req_id: requestId
+            });
+            return;
+        }
+
+        const callback = (err, path, currentValue, previousValue) => {
+            if (err) {
+                return;
+            }
+            if (!this.socket) {
+                // Client is currently disconnected. Keep track of missed events in case
+                // the client comes back again. 
+                // TODO: Move from memory to eventsDb after a while
+                this.missedEvents.push(new MissedClientEvent({ event, subscriptionPath, path, currentValue, previousValue }));
+                return;
+            }
+            if (!userHasAccess(this.user, path, false)) {
+                if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
+                    // Could potentially be very many callbacks, so
+                    // DISABLED: authDb.ref('log').push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+                    // Only log when user subscribes again
+                    this.socket.emit('result', {
+                        success: false,
+                        reason: `access_denied`,
+                        req_id: requestId
+                    });
+                }
+                return;
+            }
+            let val = Transport.serialize({
+                current: currentValue,
+                previous: previousValue
+            });
+            console.log(`Sending data event "${event}" for path "/${path}" to client ${this.id}`);
+            this.socket.emit("data-event", {
+                subscr_path: subscriptionPath,
+                path,
+                event,
+                val
+            });
+        };
+
+    }
+}
+
 /**
  * @typedef {object} DbUserAccountDetails
  * @property {string} [uid] uid, not stored in database object (uid is the node's key)
@@ -210,14 +292,17 @@ class AceBaseServer extends EventEmitter {
         const dbOptions = {
             logLevel: options.logLevel,
             storage: {
-                // cluster: options.cluster,
+                cluster: options.cluster,
                 path: options.path
             },
         };
 
         const db = new AceBase(dbname, dbOptions);
+        const otherDbsPath = `${options.path}/${dbname}.acebase`;
+        // const eventsDb = new AceBase('events', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
+        // const logsDb = new AceBase('logs', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         const authDb = options.authentication.enabled
-            ? new AceBase('auth', { logLevel: dbOptions.logLevel,  storage: { path: `${options.path}/${dbname}.acebase`, removeVoidProperties: true } })
+            ? new AceBase('auth', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
             : null;
 
         // process.on("unhandledRejection", (reason, p) => {
@@ -368,10 +453,10 @@ class AceBaseServer extends EventEmitter {
                 const processRules = (parent, variables) => {
                     Object.keys(parent).forEach(key => {
                         let rule = parent[key];
-                        if (~['.read', '.write', '.validate'].indexOf(key) && typeof rule === 'string') {
+                        if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
                             // Convert to function
                             const text = rule;
-                            rule = eval(`(env => { const { now, root, NewData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
+                            rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
                             rule.getText = () => {
                                 return text;
                             }
@@ -381,7 +466,7 @@ class AceBaseServer extends EventEmitter {
                             variables.push(key);
                         }
                         if (typeof rule === 'object') {
-                            processRules(rule, variables);
+                            processRules(rule, variables.slice());
                         }
                     });
                 };
@@ -879,7 +964,7 @@ class AceBaseServer extends EventEmitter {
                         const user = {
                             username: details.username,
                             email: details.email,
-                            display_name: details.display_name,
+                            display_name: details.displayName,
                             password: pwd.hash,
                             password_salt: pwd.salt,
                             created: new Date(),
@@ -1043,6 +1128,9 @@ class AceBaseServer extends EventEmitter {
                     process: process.pid,
                     dbname: dbname
                 }
+                // for (let i = 0; i < 1000000000; i++) {
+                //     let j = Math.pow(i, 2);
+                // }
                 res.send(obj);
             });
 
@@ -1366,6 +1454,9 @@ class AceBaseServer extends EventEmitter {
                 }
             };
 
+            /** @type {Map<string, Client} */
+            const clientsNew = new Map();
+
             io.sockets.on("connection", socket => {
                 clients.add(socket.id);
                 console.log(`New client connected, total: ${clients.list.length}`);
@@ -1375,6 +1466,16 @@ class AceBaseServer extends EventEmitter {
                     // We lost one
                     const client = clients.get(socket.id);
                     if (client.subscriptions.length > 0) {
+                        // TODO: Substitute the original callbacks to cache them
+                        // if the client then reconnects within a certain time,
+                        // we can send the missed notifications
+                        //
+                        // Object.keys(client.subscriptions).forEach(path => {
+                        //     client.subscriptions[path].forEach(subscr => {
+                        //         subscr.callback
+                        //     })
+                        // });
+
                         let remove = [];
                         Object.keys(client.subscriptions).forEach(path => {
                             remove.push(...client.subscriptions[path]);
@@ -1388,6 +1489,11 @@ class AceBaseServer extends EventEmitter {
                     clients.remove(client);
                     console.log(`Socket disconnected, total: ${clients.list.length}`);
                 });
+
+                socket.on("reconnect", data => {
+                    let prevSocketId = data.id;
+                    // TODO: implement cached notification sending
+                })
 
                 socket.on("signin", accessToken => {
                     const client = clients.get(socket.id);
