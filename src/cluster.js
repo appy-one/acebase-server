@@ -1,10 +1,12 @@
-const JasonDB = require('./jasondb');
-const JasonServer = require('./acebase-server');
+const { AceBase } = require('acebase');
+const { AceBaseServer } = require('./acebase-server');
 const cluster = require('cluster');
-const numCPUs = 2; // require('os').cpus().length;
+const numCPUs = 2; //require('os').cpus().length;
 
 let dbname = "default";
 let options = { /* default options */ }; // Load from cluster.config.js!
+options.authentication = { enabled: false };
+options.https = { enabled: false };
 
 if (cluster.isMaster) {
     // Startup master
@@ -20,6 +22,7 @@ if (cluster.isMaster) {
         let worker = cluster.fork();
         worker.on("disconnect", (worker, code, signal) => {
             console.error(`worker ${worker.process.pid} disconnected`);
+            // TODO: restart!
         });
         options.cluster.workers.push(worker);
     }
@@ -29,7 +32,7 @@ if (cluster.isMaster) {
     });
 
     console.log(`Starting database server with ${options.cluster.workers.length} workers`);
-    const master = new JasonDB(dbname, options);
+    const master = new AceBase(dbname, options);
     master.once("ready", () => {
         console.log(`Master database server started on process ${process.pid}`);
     });
@@ -50,8 +53,8 @@ else {
         console.log("Unhandled Rejection in worker ", process.pid, " at: ", reason.stack);
     });
 
-    const workerServer = new JasonServer(dbname, options);
-    workerServer.once("ready", () => {
+    const workerServer = new AceBaseServer(dbname, options);
+    workerServer.ready(() => {
         console.log(`Worker database server started on process ${process.pid}`);
     });
 
