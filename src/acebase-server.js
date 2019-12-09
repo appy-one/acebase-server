@@ -1209,6 +1209,35 @@ class AceBaseServer extends EventEmitter {
                 });
             });
 
+            app.get(`/export/${dbname}/*`, (req, res) => {
+                // Export API
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can use export api');
+                }
+                const path = req.path.substr(dbname.length + 9);
+                const format = req.query.format || 'json';
+
+                const stream = {
+                    write(chunk) {
+                        return new Promise((resolve, reject) => {
+                            res.write(chunk, err => {
+                                if (err) { reject(err); }
+                                else { resolve(); }
+                            });
+                        });
+                    }
+                };
+                db.ref(path)
+                .export(stream, { format })
+                .then(() => {
+                    res.end();
+                })
+                .catch(err => {
+                    res.statusCode = 500;
+                    res.send(err);
+                });                
+            });
+
             app.get(`/exists/${dbname}/*`, (req, res) => {
                 // Exists query
                 const path = req.path.substr(dbname.length + 9);
