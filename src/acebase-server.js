@@ -1118,8 +1118,38 @@ class AceBaseServer extends EventEmitter {
                 });
             }
 
+            const webManagerDir = `/webmanager/`;
             app.get('/', (req, res) => {
-                res.sendFile(__dirname + '/index.html'); // TODO: create login page and data browser
+                res.redirect(webManagerDir);
+            });
+
+            app.get(`${webManagerDir}*`, (req, res) => {
+                const filePath = req.path.slice(webManagerDir.length);
+                if (filePath.length === 0) {
+                    // Send default file
+                    res.sendFile(__dirname + '/webmanager/index.html');
+                }
+                // else if (filePath === 'TEST') {
+                //     // apply test
+                //     let test;
+                //     if (req.query.type === 'update') {
+                //         let val = req.query.val;
+                //         if (val[0] === '{') { val = JSON.parse(val); }
+                //         test = db.ref(req.query.path || '').update(val);
+                //     }
+                //     else {
+                //         res.send('');
+                //     }
+                //     return test && test.then(() => {
+                //         res.send('ok');
+                //     })
+                //     .catch(err => { 
+                //         res.send('fail: ' + err.message);
+                //     });
+                // }
+                else {
+                    res.sendFile(__dirname + '/webmanager/' + filePath);
+                }
             });
 
             app.get("/info", (req, res) => {
@@ -1494,24 +1524,27 @@ class AceBaseServer extends EventEmitter {
                 socket.on("disconnect", data => {
                     // We lost one
                     const client = clients.get(socket.id);
-                    if (client.subscriptions.length > 0) {
+                    if (!client) { return; } // Disconnected a client we did not know? Don't crash, just ignore.
+                    const subscribedPaths = Object.keys(client.subscriptions);
+                    if (subscribedPaths.length > 0) {
                         // TODO: Substitute the original callbacks to cache them
                         // if the client then reconnects within a certain time,
                         // we can send the missed notifications
                         //
-                        // Object.keys(client.subscriptions).forEach(path => {
+                        // subscribedPaths.forEach(path => {
                         //     client.subscriptions[path].forEach(subscr => {
                         //         subscr.callback
                         //     })
                         // });
 
                         let remove = [];
-                        Object.keys(client.subscriptions).forEach(path => {
+                        subscribedPaths.forEach(path => {
                             remove.push(...client.subscriptions[path]);
-                        })
+                        });
                         remove.forEach(subscr => {
                             // Unsubscribe them at db level and remove from our list
-                            db.ref(data.path).off(subscr.event, subscr.callback);
+                            db.api.unsubscribe(subscr.path, subscr.event, subscr.callback); //db.ref(subscr.path).off(subscr.event, subscr.callback);
+                            let pathSubs = client.subscriptions[subscr.path];
                             pathSubs.splice(pathSubs.indexOf(subscr), 1);
                         });
                     }
@@ -1593,6 +1626,7 @@ class AceBaseServer extends EventEmitter {
 
                     let pathSubs = client.subscriptions[subscriptionPath];
                     if (!pathSubs) { pathSubs = client.subscriptions[subscriptionPath] = []; }
+
                     let subscr = { path: subscriptionPath, event: data.event, callback };
                     pathSubs.push(subscr);
 
@@ -1631,7 +1665,7 @@ class AceBaseServer extends EventEmitter {
                     remove.forEach(subscr => {
                         // Unsubscribe them at db level and remove from our list
                         //console.log(`   - unsubscribing from event ${subscr.event} with${subscr.callback ? "" : "out"} callback on path "${data.path}"`);
-                        db.api.unsubscribe(data.path, subscr.event, subscr.callback);
+                        db.api.unsubscribe(subscr.path, subscr.event, subscr.callback); //db.api.unsubscribe(data.path, subscr.event, subscr.callback);
                         pathSubs.splice(pathSubs.indexOf(subscr), 1);
                     });
                     if (pathSubs.length === 0) {
