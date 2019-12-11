@@ -1,0 +1,378 @@
+<html>
+    <head>
+        <title>AceBase Web Manager</title>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.2/dist/browser.min.js"></script>
+        <!-- <script src="/socket.io/socket.io.js"></script> -->
+        <!-- <style>
+        body {
+            background-color: black;
+            color: white;
+            font-size: 16pt;
+            text-align: center;
+            font-family: sans-serif;
+            padding-top: 2em;
+        }
+        </style> -->
+
+        <!-- Materialize CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+        <!-- Material icons-->
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        
+        <!-- Custom css -->
+        <style type="text/css">
+        form#signin .row {
+            margin-bottom: 0;
+        }
+        .connected_user, .connected_db {
+            font-weight: bold;
+        }
+        .browse_breadcrumb_node {
+            color: blueviolet;
+            font-weight: bold;
+            padding-left: 20px;
+            position: relative;
+        }
+        .browse_breadcrumb_node::before {
+            left: 4px;
+            position: absolute;
+            display: inline-block;
+            content: '>';
+            color: black;
+        }
+        #browse_container {
+            margin-top: 10px;
+        }
+        #browse_container .db_node {
+            padding-left: 20px;
+            position: relative;
+        }
+        #browse_container .db_node .db_node_name {
+            font-weight: bold;
+        }
+        #browse_container .db_node.db_node_expand::before {
+            position: absolute;
+            display: inline-block;
+            left: 0;
+            content: '+';
+            font-weight: bold;
+        }
+        #browse_container .db_node .db_node_inlinevalue {
+            position: relative;
+            padding-left: 10px;
+        }
+        #browse_container .db_node .db_node_inlinevalue::before {
+            position: absolute;
+            left: 2px;
+            content: ':';
+        }
+        #browse_container .db_node .db_node_type {
+            padding-left: 10px;
+        }
+        #browse_container .db_node .db_node_type::before {
+            content: '(';
+        }
+        #browse_container .db_node .db_node_type::after {
+            content: ')';
+        }
+        </style>
+    </head>
+    <body>
+        <nav class="nav-extended purple darken-4">
+            <div class="nav-wrapper">
+                <a href="#" class="brand-logo">&nbsp;AceBase&nbsp;server</a>
+                <ul id="nav-mobile" class="right hide-on-med-and-down">
+                <li><a href="https://www.npmjs.com/package/acebase">npm</a></li>
+                <li><a href="https://github.com/appy-one/acebase">github</a></li>
+                </ul>
+            </div>
+            <div class="nav-content">
+                <ul class="tabs tabs-transparent" id="main_tabs">
+                    <li class="tab"><a class="active" href="#connect">Connect</a></li>
+                    <li class="tab"><a href="#browse">Browse</a></li>
+                    <li class="tab"><a href="#config">Configure</a></li>
+                    <li class="tab"><a href="#stats">Stats</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div id="connect" class="container">
+            <h5>Connect to your database</h5>
+            <div class="divider"></div>
+            <p>
+                To connect to your database, please fill out the name of the database, your username and password
+            </p>
+    
+            <div class="row">
+            <form id="signin" class="col s12">
+                <div class="row"><div class="input-field col s12 l6">
+                    <input id="dbname" type="text" class="validate" value="server">
+                    <label for="dbname">Database name</label>
+                </div></div>
+                <div class="row"><div class="input-field col s12 l6">
+                    <input id="username" type="text" class="validate" value="admin">
+                    <label for="username">Username</label>
+                </div></div>
+                <div class="row"><div class="input-field col s12 l6">
+                    <input id="password" type="password" class="validate" value="p@5sw0rd">
+                    <label for="password">Password</label>
+                </div></div>
+                <a id="connect_button" class="waves-effect waves-light btn purple darken-4"><i class="material-icons left">account_circle</i>Connect</a>
+                <div id="connect_success" class="green-text hide">Connected!</div>
+                <div id="connect_fail" class="red-text hide">Error connecting! <span id="fail_reason"></span></div>
+            </form>
+            </div>
+        </div>
+
+        <div id="browse" class="container">
+            <h5>Browse database</h5>
+            <div class="divider"></div>
+            <p>
+                This is what your database looks like when signed in as <span class="connected_user">anonymous</span>
+            </p>
+            <div id="browse_breadcrumb">
+                <span class="connected_db">not connected</span>
+                <span id="browse_breadcrumb_root" class="browse_breadcrumb_node">root</span>
+                <span id="browse_breadcrumb_container"></span>
+            </div>
+            <div id="browse_container"></div>
+        </div>
+
+        <div id="config" class="container">
+            <h5>Browse database</h5>
+            <div class="divider"></div>
+            <p>
+                TODO: implement config of database indexes, edit rules.json file content etc
+            </p>
+        </div>
+
+        <div id="stats" class="container">
+            <h5>Database statistics</h5>
+            <div class="divider"></div>
+            <p>
+                TODO: show database/server statistics (disk size, indexes disk size, number of CPU's etc)
+            </p>
+        </div>
+            
+    </body>
+</html>
+<!-- Materialize js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script type="text/javascript">
+M.AutoInit();
+</script>
+
+<!-- AceBase client js -->
+<script type="text/javascript">
+var connection = {
+    dbname: 'none',
+    username: 'anonymous',
+    db: null,
+    user: null
+};
+
+function connect(dbname, username, password) {
+    let createNew = connection.db === null || connection.dbname !== dbname;
+    if (createNew) {
+        // connection.db && connection.db.disconnect(); // TODO: implement!
+        connection.db = new AceBaseClient(location.hostname, location.port, dbname, location.protocol === 'https');
+    }
+    return connection.db.ready()
+    .then(() => {
+        if (username) {
+            // Only sign in when credentials are passed
+            return connection.db.auth.signIn(username, password);
+        }
+        else {
+            return null;
+        }
+    })
+    .then(signInDetails => {
+        connection.dbname = dbname;
+        connection.user = signInDetails.user;
+        connection.username = (signInDetails && signInDetails.user.displayName) || username;
+    });
+}
+
+function getChildPath (path, childKey) {
+    const isIndex = typeof childKey === 'number';
+    const trailPath = isIndex ? '[' + childKey + ']' : '/' + childKey;
+    const childPath = path ? path + trailPath : childKey;
+    return childPath;
+}
+
+function getPathKeys(path) {
+    if (typeof path === 'undefined' || path.length === 0) { return []; }
+    let keys = path.replace(/\[/g, "/[").split("/");
+    keys.forEach((key, index) => {
+        if (key.startsWith("[")) { 
+            keys[index] = parseInt(key.substr(1, key.length - 2)); 
+        }
+    });
+    return keys;
+}
+
+let currentPath = null;
+let currentPathSubscription = null;
+function updateBrowsePath(path) {
+
+    if (currentPath !== path) {
+        if (currentPathSubscription) {
+            // unsubscribe from previous subscription
+            currentPathSubscription.stop();
+        }
+        currentPathSubscription = connection.db.ref(path || '')
+        .on('notify_child_changed')
+        .subscribe(ref => {
+            console.log(`Got notification!`);
+            M.toast({ html: `Child "${ref.key}" changed` });
+            updateBrowsePath(path);
+        });
+    }
+    currentPath = path;
+
+    const container = document.getElementById('browse_container');
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    const breadcrumbContainer = document.getElementById('browse_breadcrumb_container');
+    while (breadcrumbContainer.firstChild) {
+        breadcrumbContainer.removeChild(breadcrumbContainer.firstChild);
+    }
+
+    const pathKeys = getPathKeys(path);
+    let parentPath = '';
+    pathKeys.forEach(key => {
+        const breadcrumbNode = document.createElement('span');
+        breadcrumbNode.className = 'browse_breadcrumb_node';
+        breadcrumbNode.textContent = key;
+        let childPath = getChildPath(parentPath, key);
+        breadcrumbNode.addEventListener('click', updateBrowsePath.bind(this, childPath))
+        breadcrumbContainer.appendChild(breadcrumbNode);
+        parentPath = childPath;
+    });
+
+    function addNode(nodeInfo) {
+        const childElem = document.createElement('div');
+        childElem.classList.add('db_node');
+        const isObjectOrArray = ['object', 'array'].includes(nodeInfo.type);
+        const hasInlineValue = typeof nodeInfo.value !== 'undefined';
+        if (isObjectOrArray && !hasInlineValue) {
+            childElem.classList.add('db_node_expand');
+            // add_box
+            // indeterminate_check_box?
+            const childPath = getChildPath(path, nodeInfo.key);
+            childElem.addEventListener('click', updateBrowsePath.bind(this, childPath));
+        }
+        
+        const nodeNameElem = document.createElement('span');
+        nodeNameElem.className = 'db_node_name';
+        nodeNameElem.textContent = nodeInfo.key;
+        childElem.appendChild(nodeNameElem);
+
+        if (hasInlineValue) {
+            const nodeValueElem = document.createElement('span');
+            nodeValueElem.className = 'db_node_inlinevalue';
+            let displayValue = nodeInfo.value;
+            if (nodeInfo.type === 'string') {
+                displayValue = `"${displayValue}"`;
+            }
+            else if (nodeInfo.type === 'reference') {
+                displayValue = `(ref to:) "${displayValue.path}"`;
+            }            
+            else if (nodeInfo.type === 'date') {
+                displayValue = new Date(displayValue).toString();
+            }
+            else if (nodeInfo.type === 'object') {
+                displayValue = '{}';
+            }
+            else if (nodeInfo.type === 'array') {
+                displayValue = '[]';
+            }
+            else if (nodeInfo.type === 'binary') {
+                nodeValueElem.className = 'db_node_type';
+                displayValue = nodeInfo.type; //'(binary value)';
+            }
+            nodeValueElem.textContent = displayValue;
+            childElem.appendChild(nodeValueElem);
+        }
+        else if (!isObjectOrArray) {
+            const nodeTypeElem = document.createElement('span');
+            nodeTypeElem.className = 'db_node_type';
+            nodeTypeElem.textContent = nodeInfo.type;
+            childElem.appendChild(nodeTypeElem);
+        }
+
+        container.appendChild(childElem);
+    }
+
+    // Load path children with reflect API
+    let ref = path ? connection.db.ref(path) : connection.db.root;
+    ref.reflect('children', { limit: 100 })
+    .then(children => {
+        const more = children.more === true;
+        children.list.forEach(childInfo => {
+            addNode(childInfo);
+        });
+    })
+    .catch(err => {
+        // Node path doesn't exist? Or has no children?
+        const errorElem = document.createElement('div');
+        errorElem.className = 'error';
+        errorElem.textContent = 'Error: ' + err.message;
+        container.appendChild(errorElem);
+    });
+}
+
+function connectionChanged() {
+    function setSpans(className, value) {
+        const elems = document.getElementsByClassName(className);
+        for (let i = 0; i < elems.length; i++) {
+            elems.item(i).textContent = value;
+        }
+    }
+    setSpans('connected_user', connection.username);
+    setSpans('connected_db', connection.dbname);
+
+    let tabs = M.Tabs.getInstance(document.getElementById('main_tabs'));
+    tabs.select('browse');
+
+    updateBrowsePath();
+}
+
+document.getElementById('connect_button').addEventListener('click', () => {
+    const successLabel = document.getElementById('connect_success');
+    const failLabel = document.getElementById('connect_fail');
+    const failReasonLabel = document.getElementById('fail_reason');
+    successLabel.classList.add('hide');
+    failLabel.classList.add('hide');
+    
+    const dbname = document.getElementById('dbname').value;
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (username !== 'admin') {
+        M.toast({html: 'Sorry! Only the admin user can currently use this interface'});
+        return;
+    }
+
+    connect(dbname, username, password)
+    .then(() => {
+        successLabel.classList.remove('hide');
+        connectionChanged();
+    })
+    .catch(err => {
+        failLabel.classList.remove('hide');
+        failReasonLabel.textContent = err.message;
+        connectionChanged();
+    });
+});
+
+document.getElementById('browse_breadcrumb_root').addEventListener('click', () => {
+    updateBrowsePath('');
+})
+
+</script>
