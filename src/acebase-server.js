@@ -698,7 +698,7 @@ class AceBaseServer extends EventEmitter {
                         }
 
                         // Not cached, query database to get user for this token
-                        signIn(req, 'access_token', token, null, (err, user, details) => {
+                        return signIn(req, 'access_token', token, null, (err, user, details) => {
                             if (err) {
                                 return sendNotAuthenticatedError(res, details.code, details.message);
                             }
