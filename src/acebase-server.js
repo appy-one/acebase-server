@@ -525,6 +525,9 @@ class AceBaseServer extends EventEmitter {
                             return false; 
                         }
                     }
+                    if (pathKeys.length === 0) {
+                        return false;
+                    }
                     let nextKey = pathKeys.shift();
                     // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
                     // need to change things here for usage of wildcard paths in subscriptions
@@ -1217,20 +1220,53 @@ class AceBaseServer extends EventEmitter {
                     return sendUnauthorizedError(res, 'admin_only', 'only admin can use reflection api');
                 }
                 const path = req.path.substr(dbname.length + 10);
+                const impersonatedAccess = {
+                    uid: req.query.impersonate,
+                    read: {
+                        allow: false,
+                        error: null
+                    },
+                    write: {
+                        allow: false,
+                        error: null
+                    }
+                }
+                const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
+                if (impersonatedAccess.uid) {
+                    impersonatedAccess.read.allow = userHasAccess(impersonatedUser, path, false, denyDetails => { 
+                        impersonatedAccess.read.error = { code: denyDetails.code, message: denyDetails.message };
+                    });
+                    impersonatedAccess.write.allow = userHasAccess(impersonatedUser, path, true, denyDetails => { 
+                        impersonatedAccess.write.error = { code: denyDetails.code, message: denyDetails.message };
+                    });
+                }
                 const type = req.query.type;
                 const args = {};
                 Object.keys(req.query).forEach(key => {
-                    // if (key.startsWith('arg_')) {
-                    //     args[key.slice(4)] = req.query[key];
-                    // }
-                    if (key !== 'type') {
+                    if (!['type','impersonate'].includes(key)) {
                         args[key] = req.query[key];
-                    }                    
+                    }
                 });
 
                 db.ref(path)
                 .reflect(type, args)
                 .then(result => {
+                    if (impersonatedAccess.uid) {
+                        result.impersonation = impersonatedAccess;
+                        let list;
+                        if (type === 'children') {
+                            list = result.list;
+                        }
+                        else if (type === 'info') {
+                            list = typeof result.children === 'object' ? result.children.list : [];
+                        }
+                        list && list.forEach(childInfo => {
+                            childInfo.access = {
+                                read: userHasAccess(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), false),
+                                write: userHasAccess(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), true)
+                            };
+                        });
+                    }
                     res.send(result);
                 })
                 .catch(err => {
