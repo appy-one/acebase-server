@@ -1,18 +1,8 @@
 <html>
     <head>
         <title>AceBase Web Manager</title>
-        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.2/dist/browser.min.js"></script>
+
         <!-- <script src="/socket.io/socket.io.js"></script> -->
-        <!-- <style>
-        body {
-            background-color: black;
-            color: white;
-            font-size: 16pt;
-            text-align: center;
-            font-family: sans-serif;
-            padding-top: 2em;
-        }
-        </style> -->
 
         <!-- Materialize CSS -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
@@ -30,11 +20,18 @@
         .connected_user, .connected_db {
             font-weight: bold;
         }
+
+        #browse {
+            padding-bottom: 20px;
+        }
+
+        #impersonate_enabled {
+            display: none;
+        }
         .browse_breadcrumb_node {
-            color: blueviolet;
-            font-weight: bold;
             padding-left: 20px;
             position: relative;
+            cursor: pointer;
         }
         .browse_breadcrumb_node::before {
             left: 4px;
@@ -43,6 +40,32 @@
             content: '>';
             color: black;
         }
+        #browse_impersonate_access {
+            margin-left: 5px;
+        }
+        #browse_impersonate_access.access_allow_read_write::after {
+            color: green;
+            content: '(read/write)';
+        }
+        #browse_impersonate_access.access_deny::after {
+            color: red;
+            content: '(no access)';
+        }
+        #browse_impersonate_access.access_allow_read::after {
+            color: darkorange;
+            content: '(read-only)';
+        }
+        #browse_impersonate_access.access_allow_write::after {
+            color: darkorange;
+            content: '(write-only)';
+        }
+
+        #allow_read, #allow_write {
+            color: green;
+        }
+        #deny_read, #deny_write {
+            color: red;
+        }
         #browse_container {
             margin-top: 10px;
         }
@@ -50,16 +73,44 @@
             padding-left: 20px;
             position: relative;
         }
-        #browse_container .db_node .db_node_name {
-            font-weight: bold;
-        }
-        #browse_container .db_node.db_node_expand::before {
+
+        #browse_container .db_node::before {
+            font-family: monospace;
             position: absolute;
             display: inline-block;
             left: 0;
-            content: '+';
+            content: '-';
             font-weight: bold;
+        }        
+        #browse_container .db_node.db_node_expand::before {
+            content: '+';
         }
+        #browse_container .db_node.db_node_expand {
+            cursor: pointer;
+        }
+
+        /* #browse_container .db_node .db_node_name {
+            font-family: monospace;
+        } */
+        #browse_container .db_node .db_node_name.allow_read.allow_write {
+            color: green;
+        }
+        #browse_container .db_node .db_node_name.deny_read.deny_write {
+            color: red;
+        }
+        #browse_container .db_node .db_node_name.allow_read.deny_write, #browse_container .db_node.deny_read.allow_write {
+            color: darkorange;
+        }
+        #browse_container .db_node .db_node_name.allow_read.deny_write::after {
+            font-family: inherit;
+            margin-left: 3px;
+            content: '[read]';
+        }
+        #browse_container .db_node .db_node_name.deny_read.allow_write::after {
+            margin-left: 3px;
+            content: '[write]';
+        }
+
         #browse_container .db_node .db_node_inlinevalue {
             position: relative;
             padding-left: 10px;
@@ -78,6 +129,16 @@
         #browse_container .db_node .db_node_type::after {
             content: ')';
         }
+
+        #more_children {
+            display: none;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        #more_children.visible {
+            display: block;
+        }
+
         </style>
     </head>
     <body>
@@ -103,7 +164,7 @@
             <h5>Connect to your database</h5>
             <div class="divider"></div>
             <p>
-                To connect to your database, please fill out the name of the database, your username and password
+                To connect to your database, please fill out the name of the database and admin password
             </p>
     
             <div class="row">
@@ -112,13 +173,13 @@
                     <input id="dbname" type="text" class="validate">
                     <label for="dbname">Database name</label>
                 </div></div>
-                <div class="row"><div class="input-field col s12 l6">
+                <!-- <div class="row"><div class="input-field col s12 l6">
                     <input id="username" type="text" class="validate">
                     <label for="username">Username</label>
-                </div></div>
+                </div></div> -->
                 <div class="row"><div class="input-field col s12 l6">
                     <input id="password" type="password" class="validate">
-                    <label for="password">Password</label>
+                    <label for="password">Admin password</label>
                 </div></div>
                 <a id="connect_button" class="waves-effect waves-light btn purple darken-4"><i class="material-icons left">account_circle</i>Connect</a>
                 <div id="connect_success" class="green-text hide">Connected!</div>
@@ -131,14 +192,21 @@
             <h5>Browse database</h5>
             <div class="divider"></div>
             <p>
-                This is what your database looks like when signed in as <span class="connected_user">anonymous</span>
+                Welcome <span class="connected_user">anonymous</span>. The admin user has full access to the database.
+                <input type="hidden" id="impersonate_uid" value="" />
+                <span id="impersonate_disabled">To view access as a different user, you can <a href="javascript:impersonateUser()">impersonate a user</a> to check defined access rules.</span>
+                <span id="impersonate_enabled">Impersonating database access as user <a href="javascript:impersonateUser()"><span class="impersonate_uid_label">uid</span></a></span>
             </p>
             <div id="browse_breadcrumb">
                 <span class="connected_db">not connected</span>
-                <span id="browse_breadcrumb_root" class="browse_breadcrumb_node">root</span>
+                <a id="browse_breadcrumb_root" class="browse_breadcrumb_node">root</a>
                 <span id="browse_breadcrumb_container"></span>
+                <span id="browse_impersonate_access"></span>
             </div>
             <div id="browse_container"></div>
+            <div id="more_children">
+                There's more! If you want to browse a specific key, <a href="javascript:specifyChildKey()">enter it here</a>
+            </div>
         </div>
 
         <div id="config" class="container">
@@ -166,6 +234,9 @@ M.AutoInit();
 </script>
 
 <!-- AceBase client js -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.2/dist/browser.min.js"></script>
+
+<!-- AceBase Webmanager js -->
 <script type="text/javascript">
 var connection = {
     dbname: 'none',
@@ -233,6 +304,7 @@ function updateBrowsePath(path) {
         });
     }
     currentPath = path;
+    const impersonatedUid = document.getElementById('impersonate_uid').value;
 
     const container = document.getElementById('browse_container');
     while (container.firstChild) {
@@ -246,7 +318,7 @@ function updateBrowsePath(path) {
     const pathKeys = getPathKeys(path);
     let parentPath = '';
     pathKeys.forEach(key => {
-        const breadcrumbNode = document.createElement('span');
+        const breadcrumbNode = document.createElement('a');
         breadcrumbNode.className = 'browse_breadcrumb_node';
         breadcrumbNode.textContent = key;
         let childPath = getChildPath(parentPath, key);
@@ -267,10 +339,15 @@ function updateBrowsePath(path) {
             const childPath = getChildPath(path, nodeInfo.key);
             childElem.addEventListener('click', updateBrowsePath.bind(this, childPath));
         }
-        
+
         const nodeNameElem = document.createElement('span');
         nodeNameElem.className = 'db_node_name';
         nodeNameElem.textContent = nodeInfo.key;
+        if (typeof nodeInfo.access === 'object') {
+            nodeNameElem.classList.add('access_mode');
+            nodeNameElem.classList.add(nodeInfo.access.read ? 'allow_read' : 'deny_read');
+            nodeNameElem.classList.add(nodeInfo.access.write ? 'allow_write' : 'deny_write');
+        }
         childElem.appendChild(nodeNameElem);
 
         if (hasInlineValue) {
@@ -282,7 +359,7 @@ function updateBrowsePath(path) {
             }
             else if (nodeInfo.type === 'reference') {
                 displayValue = `(ref to:) "${displayValue.path}"`;
-            }            
+            }
             else if (nodeInfo.type === 'date') {
                 displayValue = new Date(displayValue).toString();
             }
@@ -309,31 +386,69 @@ function updateBrowsePath(path) {
         container.appendChild(childElem);
     }
 
-    // Load path children with reflect API
-    let ref = path ? connection.db.ref(path) : connection.db.root;
-    ref.reflect('children', { limit: 100 })
-    .then(children => {
-        const more = children.more === true;
-        children.list.forEach(childInfo => {
-            addNode(childInfo);
-        });
-    })
-    .catch(err => {
-        // Node path doesn't exist? Or has no children?
+    function showError(message) {
         const errorElem = document.createElement('div');
         errorElem.className = 'error';
-        errorElem.textContent = 'Error: ' + err.message;
+        errorElem.textContent = message;
         container.appendChild(errorElem);
+        document.getElementById('browse_impersonate_access').className = '';
+        document.getElementById('more_children').className = '';
+    }
+
+    // Load path children with reflect API
+    let ref = path ? connection.db.ref(path) : connection.db.root;
+    ref.reflect('info', { child_limit: 100, impersonate: impersonatedUid })
+    .then(info => {
+
+        if (info.impersonation) {
+            const elem = document.getElementById('browse_impersonate_access');
+            if (info.impersonation.read.allow && info.impersonation.write.allow) {
+                elem.className = 'access_allow_read_write';
+            }
+            else if (info.impersonation.read.allow) {
+                elem.className = 'access_allow_read';
+            }
+            else if (info.impersonation.write.allow) {
+                elem.className = 'access_allow_write';
+            }
+            else {
+                elem.className = 'access_deny';
+            }
+        }
+        else {
+            document.getElementById('browse_impersonate_access').className = '';
+        }
+
+        if (!info.exists) {
+            return showError('node does not exist');
+        }
+        else if (info.children.list.length === 0) {
+            return showError('node has no children');
+        }
+
+        // Add children
+        info.children.list.forEach(childInfo => {
+            addNode(childInfo);
+        });
+
+        // More?
+        const moreElem = document.getElementById('more_children');
+        moreElem.className = info.children.more ? 'visible' : '';
+    })
+    .catch(err => {
+        // Server error?
+        showError('Error: ' + err.message);
     });
 }
 
-function connectionChanged() {
-    function setSpans(className, value) {
-        const elems = document.getElementsByClassName(className);
-        for (let i = 0; i < elems.length; i++) {
-            elems.item(i).textContent = value;
-        }
+function setSpans(className, value) {
+    const elems = document.getElementsByClassName(className);
+    for (let i = 0; i < elems.length; i++) {
+        elems.item(i).textContent = value;
     }
+}
+
+function connectionChanged() {
     setSpans('connected_user', connection.username);
     setSpans('connected_db', connection.dbname);
 
@@ -341,6 +456,32 @@ function connectionChanged() {
     tabs.select('browse');
 
     updateBrowsePath();
+}
+
+function impersonateUser() {
+    const impersonateElem = document.getElementById('impersonate_uid');
+    let uid = window.prompt('Enter the user id (uid) to impersonate:', impersonateElem.value);
+    let impersonating = false;
+    if (uid === '') { uid = 'anonymous'; }
+    if (uid) {
+        impersonating = true;
+    }
+    impersonateElem.value = uid || '';
+    document.getElementById('impersonate_disabled').style.display = impersonating ? 'none' : 'inline';
+    document.getElementById('impersonate_enabled').style.display = impersonating ? 'inline' : 'none';
+    setSpans('impersonate_uid_label', impersonateElem.value);
+    updateBrowsePath(currentPath);
+}
+
+function specifyChildKey() {
+    let key = window.prompt('Enter the child key to browse to:', '');
+    if (typeof key !== 'string') { return; }
+    if (/^[0-9]+$/.test(key)) {
+        // index
+        key = parseInt(key);
+    }
+    const targetPath = getChildPath(currentPath, key);
+    updateBrowsePath(targetPath);
 }
 
 document.getElementById('connect_button').addEventListener('click', () => {
@@ -351,7 +492,7 @@ document.getElementById('connect_button').addEventListener('click', () => {
     failLabel.classList.add('hide');
     
     const dbname = document.getElementById('dbname').value;
-    const username = document.getElementById('username').value;
+    const username = 'admin'; //document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
     if (username !== 'admin') {
