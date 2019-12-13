@@ -675,7 +675,17 @@ class AceBaseServer extends EventEmitter {
 
             if (options.authentication.enabled) {
                 app.use((req, res, next) => {
-                    const authorization = req.get('Authorization');
+                    let authorization = req.get('Authorization');
+                    if (typeof authorization !== 'string' && 'auth_token' in req.query) {
+                        // Enables browser calls to be authenticated                        
+                        if (req.path.startsWith('/export/')) {
+                            // For now, only allow this if the intention is to call '/export' api call
+                            // In the future, use these prerequisites:
+                            // - user must be currently authenticated (in cache)
+                            // - ip address must match the token
+                            authorization = 'Bearer ' + req.query.auth_token;
+                        }
+                    }
                     if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
                         const token = authorization.slice(7);
                         let tokenDetails;
@@ -1293,8 +1303,11 @@ class AceBaseServer extends EventEmitter {
                         });
                     }
                 };
-                db.ref(path)
-                .export(stream, { format })
+
+                const ref = db.ref(path);
+                res.setHeader('Content-Disposition', `attachment; filename=${ref.key || 'export'}.json`); // Will be treated as a download in browser
+                
+                ref.export(stream, { format })
                 .then(() => {
                     res.end();
                 })

@@ -79,7 +79,7 @@
             position: absolute;
             display: inline-block;
             left: 0;
-            content: '-';
+            content: '|';
             font-weight: bold;
         }        
         #browse_container .db_node.db_node_expand::before {
@@ -133,12 +133,18 @@
         #more_children {
             display: none;
             margin-top: 10px;
-            margin-bottom: 10px;
         }
         #more_children.visible {
             display: block;
         }
+        #export_node {
+            margin-top: 10px;
+        }
 
+        .clickable {
+            /* general class to get pointer */
+            cursor: pointer;
+        }
         </style>
     </head>
     <body>
@@ -170,7 +176,7 @@
             <div class="row">
             <form id="signin" class="col s12">
                 <div class="row"><div class="input-field col s12 l6">
-                    <input id="dbname" type="text" class="validate">
+                    <input id="dbname" type="text" class="validate" value="server">
                     <label for="dbname">Database name</label>
                 </div></div>
                 <!-- <div class="row"><div class="input-field col s12 l6">
@@ -178,7 +184,7 @@
                     <label for="username">Username</label>
                 </div></div> -->
                 <div class="row"><div class="input-field col s12 l6">
-                    <input id="password" type="password" class="validate">
+                    <input id="password" type="password" class="validate" value="p@5sw0rd">
                     <label for="password">Admin password</label>
                 </div></div>
                 <a id="connect_button" class="waves-effect waves-light btn purple darken-4"><i class="material-icons left">account_circle</i>Connect</a>
@@ -205,7 +211,10 @@
             </div>
             <div id="browse_container"></div>
             <div id="more_children">
-                There's more! If you want to browse a specific key, <a href="javascript:specifyChildKey()">enter it here</a>
+                There's <a id="load_more_children" class="clickable">more</a>! If you want to browse a specific key, <a href="javascript:specifyChildKey()">enter it here</a>
+            </div>
+            <div id="export_node" class="hide">
+                You can export the value of this node to <a id="export_json" class="clickable">json</a>
             </div>
         </div>
 
@@ -242,7 +251,8 @@ var connection = {
     dbname: 'none',
     username: 'anonymous',
     db: null,
-    user: null
+    user: null,
+    auth_token: ''
 };
 
 function connect(dbname, username, password) {
@@ -264,6 +274,7 @@ function connect(dbname, username, password) {
     .then(signInDetails => {
         connection.dbname = dbname;
         connection.user = signInDetails.user;
+        connection.auth_token = signInDetails.accessToken;
         connection.username = (signInDetails && signInDetails.user.displayName) || username;
     });
 }
@@ -288,6 +299,7 @@ function getPathKeys(path) {
 
 let currentPath = null;
 let currentPathSubscription = null;
+let lastMoreClickListener;
 function updateBrowsePath(path) {
 
     if (currentPath !== path) {
@@ -377,9 +389,28 @@ function updateBrowsePath(path) {
             childElem.appendChild(nodeValueElem);
         }
         else if (!isObjectOrArray) {
-            const nodeTypeElem = document.createElement('span');
+            const canLoadValue = ['string','reference'].includes(nodeInfo.type)
+            const nodeTypeElem = document.createElement(canLoadValue ? 'a' : 'span');
             nodeTypeElem.className = 'db_node_type';
+            if (canLoadValue) { nodeTypeElem.classList.add('clickable'); }
             nodeTypeElem.textContent = nodeInfo.type;
+            canLoadValue && nodeTypeElem.addEventListener('click', () => {
+                // load and display value
+                const childPath = getChildPath(path, nodeInfo.key);
+                connection.db.ref(childPath).get(snap => {
+                    let val = snap.val();
+                    if (val === null) { val = 'null'; }
+                    else if (nodeInfo.type === 'string') { val = `"${val}"`; }
+                    else if (nodeInfo.type === 'reference') { val = `${val.path}`; }
+
+                    const nodeValueElem = document.createElement('span');
+                    nodeValueElem.className = 'db_node_inlinevalue';
+                    nodeValueElem.textContent = val;
+
+                    // replace node
+                    nodeTypeElem.parentElement.replaceChild(nodeValueElem, nodeTypeElem);
+                });
+            })
             childElem.appendChild(nodeTypeElem);
         }
 
@@ -395,50 +426,66 @@ function updateBrowsePath(path) {
         document.getElementById('more_children').className = '';
     }
 
-    // Load path children with reflect API
     let ref = path ? connection.db.ref(path) : connection.db.root;
-    ref.reflect('info', { child_limit: 100, impersonate: impersonatedUid })
-    .then(info => {
+    const limit = 100; 
+    function getChildren(skip = 0) {        
+        // Load path children with reflect API
+        ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
+        .then(info => {
 
-        if (info.impersonation) {
-            const elem = document.getElementById('browse_impersonate_access');
-            if (info.impersonation.read.allow && info.impersonation.write.allow) {
-                elem.className = 'access_allow_read_write';
-            }
-            else if (info.impersonation.read.allow) {
-                elem.className = 'access_allow_read';
-            }
-            else if (info.impersonation.write.allow) {
-                elem.className = 'access_allow_write';
+            if (info.impersonation) {
+                const elem = document.getElementById('browse_impersonate_access');
+                if (info.impersonation.read.allow && info.impersonation.write.allow) {
+                    elem.className = 'access_allow_read_write';
+                }
+                else if (info.impersonation.read.allow) {
+                    elem.className = 'access_allow_read';
+                }
+                else if (info.impersonation.write.allow) {
+                    elem.className = 'access_allow_write';
+                }
+                else {
+                    elem.className = 'access_deny';
+                }
             }
             else {
-                elem.className = 'access_deny';
+                document.getElementById('browse_impersonate_access').className = '';
             }
-        }
-        else {
-            document.getElementById('browse_impersonate_access').className = '';
-        }
 
-        if (!info.exists) {
-            return showError('node does not exist');
-        }
-        else if (info.children.list.length === 0) {
-            return showError('node has no children');
-        }
+            if (!info.exists) {
+                return showError('node does not exist');
+            }
+            else if (info.children.list.length === 0) {
+                return showError('node has no children');
+            }
 
-        // Add children
-        info.children.list.forEach(childInfo => {
-            addNode(childInfo);
+            // Add children
+            info.children.list.forEach(childInfo => {
+                addNode(childInfo);
+            });
+
+            // Is there more data?
+            const moreElem = document.getElementById('more_children');
+            moreElem.className = info.children.more ? 'visible' : '';
+            const loadMoreElem = document.getElementById('load_more_children');
+            lastMoreClickListener && loadMoreElem.removeEventListener('click', lastMoreClickListener);
+            lastMoreClickListener = () => {
+                getChildren(skip + limit);
+            };
+            loadMoreElem.addEventListener('click', lastMoreClickListener);
+
+            // Enable export?
+            const exportAvailable = ['object','array'].includes(info.type);
+            const exportNode = document.getElementById('export_node');
+            if (exportAvailable) { exportNode.classList.remove('hide'); }
+            else { exportNode.classList.add('hide'); }
+        })
+        .catch(err => {
+            // Server error?
+            showError('Error: ' + err.message);
         });
-
-        // More?
-        const moreElem = document.getElementById('more_children');
-        moreElem.className = info.children.more ? 'visible' : '';
-    })
-    .catch(err => {
-        // Server error?
-        showError('Error: ' + err.message);
-    });
+    }
+    getChildren(0);
 }
 
 function setSpans(className, value) {
@@ -448,7 +495,10 @@ function setSpans(className, value) {
     }
 }
 
-function connectionChanged() {
+function connectionChanged(success) {
+    if (!success) {
+        return;
+    }
     setSpans('connected_user', connection.username);
     setSpans('connected_db', connection.dbname);
 
@@ -503,17 +553,32 @@ document.getElementById('connect_button').addEventListener('click', () => {
     connect(dbname, username, password)
     .then(() => {
         successLabel.classList.remove('hide');
-        connectionChanged();
+        connectionChanged(true);
     })
     .catch(err => {
         failLabel.classList.remove('hide');
         failReasonLabel.textContent = err.message;
-        connectionChanged();
+        connectionChanged(false);
     });
 });
 
 document.getElementById('browse_breadcrumb_root').addEventListener('click', () => {
     updateBrowsePath('');
-})
+});
+
+document.getElementById('export_json').addEventListener('click', () => {
+    // Will initiate a download:
+    const url = `/export/${connection.dbname}/${currentPath}?format=json&auth_token=${connection.auth_token}`;
+    window.location.href = url;
+});
+
+// TODO: create a stand-alone PWA (Ionic?) that has more functionality, such as:
+// - connecting to multiple servers
+// - edit data
+// - create (and store) queries on data
+// - monitoring
+// - editing rules
+// - managing users
+// - etc!
 
 </script>
