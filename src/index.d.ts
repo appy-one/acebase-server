@@ -6,7 +6,7 @@ declare namespace acebaseserver {
     }
 
     interface AceBaseServerSettings {
-        logLevel?: string
+        logLevel?: 'verbose'|'log'|'warn'|'error'
         host?: string
         port?: number
         path?: string
