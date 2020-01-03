@@ -1,9 +1,10 @@
 
 const { EventEmitter } = require('events');
 const { AceBase, AceBaseSettings } = require('acebase');
-const { ID, Transport, DataSnapshot, PathInfo, Utils } = require('acebase-core');
+const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger } = require('acebase-core');
 const fs = require('fs');
 const crypto = require('crypto');
+require('colors'); // Make sure we can use colors for log output
 
 class AceBaseClusterSettings {
     constructor(settings) {
@@ -104,14 +105,19 @@ class MissedClientEvent {
     }
 }
 class Client {
+    /**
+     * Not used - yet
+     * @param {object} obj 
+     * @param {AceBaseServer} obj.server
+     * @param {SocketIO.Socket} obj.socket
+     * @param {DbUserAccountDetails} obj.user
+     */
     constructor(obj) {
-        // Object.assign(this, obj);
-        /** @type {SocketIO.Socket} */
+        this.server = obj.server;
         this.socket = obj.socket;
-        /** @type {string} */
         this.id = this.socket.id;
-        /** @type {DbUserAccountDetails} */
         this.user = obj.user;
+
         /** @type {{ [path: string]: ClientSubscription }} */
         this.subscriptions = {};
         /** @type {MissedClientEvent[]} */
@@ -120,7 +126,7 @@ class Client {
 
     subscribe(requestId, event, subscriptionPath) {
         // Check if user has access
-        if (!userHasAccess(this.user, subscriptionPath, false)) {
+        if (!this.server.userHasAccess(this.user, subscriptionPath, false)) {
             authDb.ref('log').push({ action: `access_denied`, uid: this.user ? this.user.uid : '-', path: subscriptionPath });
             this.socket.emit('result', {
                 success: false,
@@ -141,7 +147,7 @@ class Client {
                 this.missedEvents.push(new MissedClientEvent({ event, subscriptionPath, path, currentValue, previousValue }));
                 return;
             }
-            if (!userHasAccess(this.user, path, false)) {
+            if (!this.server.userHasAccess(this.user, path, false)) {
                 if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
                     // Could potentially be very many callbacks, so
                     // DISABLED: authDb.ref('log').push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
@@ -158,7 +164,7 @@ class Client {
                 current: currentValue,
                 previous: previousValue
             });
-            console.log(`Sending data event "${event}" for path "/${path}" to client ${this.id}`);
+            this.server.verbose(`Sending data event "${event}" for path "/${path}" to client ${this.id}`);
             this.socket.emit("data-event", {
                 subscr_path: subscriptionPath,
                 path,
@@ -278,35 +284,39 @@ class AceBaseServer extends EventEmitter {
             authentication: options.authentication
         };
         this.url = this.config.url; // Is this used?
+        this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.green); //`« ${dbname} »`
         
-        if (options.authentication.enabled && !options.https.enabled) {
-            console.error(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`);
-        }
-        else if (!options.https.enabled) {
-            console.error(`WARNING: Server is not using https, any data transmitted may be intercepted!`);
-        }
-        if (!options.authentication.enabled) {
-            console.error(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`);
-        }
-
         const dbOptions = {
             logLevel: options.logLevel,
             storage: {
                 cluster: options.cluster,
-                path: options.path
-            },
+                path: options.path,
+                info: 'realtime database server'
+            }
         };
 
         const db = new AceBase(dbname, dbOptions);
+
+        if (options.authentication.enabled && !options.https.enabled) {
+            this.debug.warn(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`.red);
+        }
+        else if (!options.https.enabled) {
+            this.debug.warn(`WARNING: Server is not using https, any data transmitted may be intercepted!`.red);
+        }
+        if (!options.authentication.enabled) {
+            this.debug.warn(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`.red);
+        }
+
         const otherDbsPath = `${options.path}/${dbname}.acebase`;
         // const eventsDb = new AceBase('events', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         // const logsDb = new AceBase('logs', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         const authDb = options.authentication.enabled
-            ? new AceBase('auth', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
+            ? new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } })
             : null;
 
+        // To handle unhandled promise rejections so process will not die in future versions of node:
         // process.on("unhandledRejection", (reason, p) => {
-        //     console.log("Unhandled Rejection at: ", reason.stack);
+        //     this.debug.error("Unhandled promise rejection at: ", reason.stack);
         // });
 
         const createPasswordHash = (password) => {
@@ -317,15 +327,15 @@ class AceBaseServer extends EventEmitter {
                 salt,
                 hash
             }
-        }
+        };
         const getOldPasswordHash = (password) => {
             // Backward compatibility with old saltless md5 passwords. 
             // Becomes obsolete once all passwords have been updated
             return crypto.createHash('md5').update(password).digest('hex');
-        }
+        };
         const getPasswordHash = (password, salt) => {
             return crypto.createHmac('sha512', salt).update(password).digest('hex');
-        }
+        };
 
         const readyPromises = [
             db.ready(),
@@ -334,7 +344,7 @@ class AceBaseServer extends EventEmitter {
         
         Promise.all(readyPromises)
         .then(() => {
-            //console.log(`Database "${dbname}" is ready to use`);
+            //this.debug.log(`Database "${dbname}" is ready to use`);
 
             let accessRules = {};
             const authRef = authDb ? authDb.ref('accounts') : null; // db.ref('__auth__');
@@ -362,17 +372,17 @@ class AceBaseServer extends EventEmitter {
                             created: new Date(),
                             access_token: null, // Will be set upon login, so bearer authentication strategy can find user with this token
                         };
-                        console.error(`__________________________________________________________________`);
-                        console.error(``);
-                        console.error(`IMPORTANT: Admin account created`);
-                        console.error(`You need the admin account to remotely administer the database`);
-                        console.error(`Use the following credentials to authenticate an AceBaseClient:`);
-                        console.error(``);
-                        console.error(`    username: admin`);
-                        console.error(`    password: ${adminPassword}`);
-                        console.error(``);
-                        console.error(`THIS IS ONLY SHOWN ONCE!`);
-                        console.error(`__________________________________________________________________`);
+                        this.debug.warn(`__________________________________________________________________`.red);
+                        this.debug.warn(``.red);
+                        this.debug.warn(`IMPORTANT: Admin account created`.red);
+                        this.debug.warn(`You need the admin account to remotely administer the database`.red);
+                        this.debug.warn(`Use the following credentials to authenticate an AceBaseClient:`.red);
+                        this.debug.warn(``);
+                        this.debug.warn(`    username: admin`.red);
+                        this.debug.warn(`    password: ${adminPassword}`.red);
+                        this.debug.warn(``);
+                        this.debug.warn(`THIS IS ONLY SHOWN ONCE!`.red);
+                        this.debug.warn(`__________________________________________________________________`.red);
                         return adminAccount; // Save it
                     }
                     else if (options.authentication.defaultAdminPassword) {
@@ -385,7 +395,7 @@ class AceBaseServer extends EventEmitter {
                             passwordHash = getPasswordHash(options.authentication.defaultAdminPassword, adminAccount.password_salt);
                         }
                         if (adminAccount.password === passwordHash) {
-                            console.error(`WARNING: default password for admin user was not changed!`);
+                            this.debug.warn(`WARNING: default password for admin user was not changed!`.red);
 
                             if (!adminAccount.password_salt) {
                                 // Create new password hash
@@ -403,76 +413,88 @@ class AceBaseServer extends EventEmitter {
                     authDb.indexes.create('accounts', 'access_token');
                 });
 
-                // Check if there is a rules file, load it or generate default
-                const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
-                const defaultAccessRule = (def => {
-                    switch (def) {
-                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED: {
-                            return 'auth !== null';
-                        }
-                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_ALL: {
-                            return true;
-                        }
-                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.DENY_ALL: {
-                            return false;
-                        }
-                        default: {
-                            console.error(`Unknown defaultAccessRule "${def}"`);
-                            return false;
-                        }
-                    }
-                })(options.authentication.defaultAccessRule);
-                const defaultRules = {
-                    rules: {
-                        ".read": defaultAccessRule,
-                        ".write": defaultAccessRule
-                    }
-                };
-                if (!fs.existsSync(rulesFilePath)) {
-                    // Default: deny access
-                    accessRules = defaultRules;
-                    // Write defaults
-                    fs.writeFileSync(rulesFilePath, JSON.stringify(accessRules, null, 4));
-                }
-                else {
-                    try {
-                        const json = fs.readFileSync(rulesFilePath);
-                        const obj = JSON.parse(json);
-                        if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
-                            throw new Error(`malformed rules object`);
-                        }
-                        accessRules = obj;
-                    }
-                    catch (err) {
-                        console.error(`Failed to read rules from "${rulesFilePath}": ${err.message}`);
-                        accessRules = defaultRules;
-                    }
-                }
+                const setupRules = () => {
+                    // Check if there is a rules file, load it or generate default
+                    const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
 
-                // Convert string rules to functions that can be executed
-                const processRules = (parent, variables) => {
-                    Object.keys(parent).forEach(key => {
-                        let rule = parent[key];
-                        if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
-                            // Convert to function
-                            const text = rule;
-                            rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
-                            rule.getText = () => {
-                                return text;
+                    fs.unwatchFile(rulesFilePath); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
+
+                    const defaultAccessRule = (def => {
+                        switch (def) {
+                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED: {
+                                return 'auth !== null';
                             }
-                            parent[key] = rule;
+                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_ALL: {
+                                return true;
+                            }
+                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.DENY_ALL: {
+                                return false;
+                            }
+                            default: {
+                                this.debug.error(`Unknown defaultAccessRule "${def}"`);
+                                return false;
+                            }
                         }
-                        else if (key.startsWith('$')) {
-                            variables.push(key);
+                    })(options.authentication.defaultAccessRule);
+                    const defaultRules = {
+                        rules: {
+                            ".read": defaultAccessRule,
+                            ".write": defaultAccessRule
                         }
-                        if (typeof rule === 'object') {
-                            processRules(rule, variables.slice());
+                    };
+                    if (!fs.existsSync(rulesFilePath)) {
+                        // Default: deny access
+                        accessRules = defaultRules;
+                        // Write defaults
+                        fs.writeFileSync(rulesFilePath, JSON.stringify(accessRules, null, 4));
+                    }
+                    else {
+                        try {
+                            const json = fs.readFileSync(rulesFilePath);
+                            const obj = JSON.parse(json);
+                            if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
+                                throw new Error(`malformed rules object`);
+                            }
+                            accessRules = obj;
                         }
-                    });
-                };
-                processRules(accessRules.rules, []);                
+                        catch (err) {
+                            this.debug.error(`Failed to read rules from "${rulesFilePath}": ${err.message}`);
+                            accessRules = defaultRules;
+                        }
+                    }
+
+                    // Convert string rules to functions that can be executed
+                    const processRules = (parent, variables) => {
+                        Object.keys(parent).forEach(key => {
+                            let rule = parent[key];
+                            if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
+                                // Convert to function
+                                const text = rule;
+                                rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
+                                rule.getText = () => {
+                                    return text;
+                                }
+                                parent[key] = rule;
+                            }
+                            else if (key.startsWith('$')) {
+                                variables.push(key);
+                            }
+                            if (typeof rule === 'object') {
+                                processRules(rule, variables.slice());
+                            }
+                        });
+                    };
+                    processRules(accessRules.rules, []);
+
+                    // Watch file for changes
+                    fs.watchFile(rulesFilePath, (currStats, prevStats) => {
+                        // rules.json file changed, setup rules again
+                        setupRules();
+                    })
+                }
+                setupRules();
             }
-            
+
             /**
              * 
              * @param {DbUserAccountDetails} user 
@@ -499,14 +521,14 @@ class AceBaseServer extends EventEmitter {
                 let rulePath = [];
                 while(true) {
                     if (!rule) { 
-                        denyDetailsCallback && denyDetailsCallback({ code: 'no_rule', message: 'No rules set for requested path, defaulting to false' });
-                        return false; 
+                        denyDetailsCallback && denyDetailsCallback({ code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` });
+                        return false;
                     }
                     let checkRule = write ? rule['.write'] : rule['.read'];
                     if (typeof checkRule === 'boolean') { 
                         const allow = checkRule; 
                         if (!allow) {
-                            denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: 'Acces denied by set rule', rule: checkRule, rulePath: rulePath.join('/') });
+                            denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Acces denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') });
                         }
                         return allow;
                     }
@@ -515,13 +537,13 @@ class AceBaseServer extends EventEmitter {
                             // Execute rule function
                             let allow = checkRule(env);
                             if (!allow) {
-                                denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: 'Acces denied by set rule', rule: checkRule.getText(), rulePath: rulePath.join('/') });
+                                denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Acces denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/') });
                             }
                             return allow;
                         }
                         catch(err) {
                             // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                            denyDetailsCallback && denyDetailsCallback({ code: 'exception', message: 'Acces denied by set rule', rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
+                            denyDetailsCallback && denyDetailsCallback({ code: 'exception', message: `Acces denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
                             return false; 
                         }
                     }
@@ -661,7 +683,7 @@ class AceBaseServer extends EventEmitter {
             };
 
             server.on("error", (err) => {
-                console.log(err);
+                this.debug.log(err);
             });
 
             app.use(bodyParser.json({ limit: options.maxPayloadSize, extended: true }));
@@ -1365,7 +1387,7 @@ class AceBaseServer extends EventEmitter {
                     });
                 })
                 .catch(err => {
-                    console.error(err);
+                    this.debug.error(`failed to update "${path}":`, err);
                     res.statusCode = 500;
                     res.send(err);
                 });
@@ -1389,7 +1411,7 @@ class AceBaseServer extends EventEmitter {
                     });
                 })
                 .catch(err => {
-                    console.error(err);
+                    this.debug.error(`failed to set "${path}":`, err);
                     res.statusCode = 500;
                     res.send(err);
                 });
@@ -1455,7 +1477,7 @@ class AceBaseServer extends EventEmitter {
                         res.send({ success: true });
                     })
                     .catch(err => {
-                        console.error(err);
+                        this.debug.error(`failed to query "${path}":`, err);
                         res.statusCode = 500;
                         res.send(err);         
                     })
@@ -1479,14 +1501,14 @@ class AceBaseServer extends EventEmitter {
                 };
                 _transactions.set(tx.id, tx);
 
-                console.log(`Transaction ${tx.id} starting...`);
+                this.debug.verbose(`Transaction ${tx.id} starting...`);
                 // const ref = db.ref(tx.path);
                 const donePromise = db.api.transaction(tx.path, val => {
-                    console.log(`Transaction ${tx.id} started with value: `, val);
+                    this.debug.verbose(`Transaction ${tx.id} started with value: `, val);
                     const currentValue = Transport.serialize(val);
                     const promise = new Promise((resolve) => {
                         tx.finish = (val) => {
-                            console.log(`Transaction ${tx.id} finishing with value: `, val);
+                            this.debug.verbose(`Transaction ${tx.id} finishing with value: `, val);
                             resolve(val);
                             return donePromise;
                         };
@@ -1524,7 +1546,7 @@ class AceBaseServer extends EventEmitter {
             });
 
             server.listen(this.config.port, this.config.hostname, () => {
-                console.log(`"${dbname}" database server running at ${this.config.url}`);
+                this.debug.log(`"${dbname}" database server running at ${this.config.url}`);
                 this._ready === true;
                 this.emit(`ready`);
             });
@@ -1562,12 +1584,12 @@ class AceBaseServer extends EventEmitter {
                 }
             };
 
-            /** @type {Map<string, Client} */
-            const clientsNew = new Map();
+            /** @type {Map<string, Client>} */
+            // const clientsNew = new Map();
 
             io.sockets.on("connection", socket => {
                 clients.add(socket.id);
-                console.log(`New client connected, total: ${clients.list.length}`);
+                this.debug.verbose(`New client connected, total: ${clients.list.length}`);
                 //socket.emit("welcome");
 
                 socket.on("disconnect", data => {
@@ -1598,7 +1620,7 @@ class AceBaseServer extends EventEmitter {
                         });
                     }
                     clients.remove(client);
-                    console.log(`Socket disconnected, total: ${clients.list.length}`);
+                    this.debug.verbose(`Socket disconnected, total: ${clients.list.length}`);
                 });
 
                 socket.on("reconnect", data => {
@@ -1615,7 +1637,7 @@ class AceBaseServer extends EventEmitter {
                     }
                     catch(err) {
                         // no way to bind the user
-                        console.error(`websocket: invalid access token passed to signin: ${accessToken}`);
+                        this.debug.error(`websocket: invalid access token passed to signin: ${accessToken}`);
                     }
                 });
 
@@ -1662,7 +1684,7 @@ class AceBaseServer extends EventEmitter {
                             current: currentValue,
                             previous: previousValue
                         });
-                        console.log(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`);
+                        this.debug.verbose(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`);
                         socket.emit("data-event", {
                             subscr_path: subscriptionPath,
                             path,
@@ -1670,7 +1692,7 @@ class AceBaseServer extends EventEmitter {
                             val
                         });
                     };
-                    console.log(`Client ${socket.id} subscribes to event "${data.event}" on path "/${data.path}"`);
+                    this.debug.verbose(`Client ${socket.id} subscribes to event "${data.event}" on path "/${data.path}"`);
                     // const client = clients.get(socket.id);
 
                     let pathSubs = client.subscriptions[subscriptionPath];
@@ -1699,7 +1721,7 @@ class AceBaseServer extends EventEmitter {
 
                 socket.on("unsubscribe", data => {
                     // Client unsubscribes from events on a node
-                    console.log(`Client ${socket.id} is unsubscribing from event "${data.event || '(any)'}" on path "/${data.path}"`);
+                    this.debug.verbose(`Client ${socket.id} is unsubscribing from event "${data.event || '(any)'}" on path "/${data.path}"`);
                     
                     const client = clients.get(socket.id);
                     let pathSubs = client.subscriptions[data.path];
@@ -1713,7 +1735,7 @@ class AceBaseServer extends EventEmitter {
                     }
                     remove.forEach(subscr => {
                         // Unsubscribe them at db level and remove from our list
-                        //console.log(`   - unsubscribing from event ${subscr.event} with${subscr.callback ? "" : "out"} callback on path "${data.path}"`);
+                        //this.debug.verbose(`   - unsubscribing from event ${subscr.event} with${subscr.callback ? "" : "out"} callback on path "${data.path}"`);
                         db.api.unsubscribe(subscr.path, subscr.event, subscr.callback); //db.api.unsubscribe(data.path, subscr.event, subscr.callback);
                         pathSubs.splice(pathSubs.indexOf(subscr), 1);
                     });
@@ -1724,7 +1746,7 @@ class AceBaseServer extends EventEmitter {
                 });
 
                 socket.on("transaction", data => {
-                    console.log(`Client ${socket.id} is sending ${data.action} transaction request on path "${data.path}"`);
+                    this.debug.verbose(`Client ${socket.id} is sending ${data.action} transaction request on path "${data.path}"`);
                     const client = clients.get(socket.id);
 
                     if (data.action === "start") {
@@ -1742,14 +1764,14 @@ class AceBaseServer extends EventEmitter {
 
                         // Start a transaction
                         client.transactions[data.id] = tx;
-                        console.log(`Transaction ${tx.id} starting...`);
+                        this.debug.verbose(`Transaction ${tx.id} starting...`);
                         // const ref = db.ref(tx.path);
                         const donePromise = db.api.transaction(tx.path, val => {
-                            console.log(`Transaction ${tx.id} started with value: `, val);
+                            this.debug.verbose(`Transaction ${tx.id} started with value: `, val);
                             const currentValue = Transport.serialize(val);
                             const promise = new Promise((resolve) => {
                                 tx.finish = (val) => {
-                                    console.log(`Transaction ${tx.id} finishing with value: `, val);
+                                    this.debug.verbose(`Transaction ${tx.id} finishing with value: `, val);
                                     resolve(val);
                                     return donePromise;
                                 };
@@ -1775,7 +1797,7 @@ class AceBaseServer extends EventEmitter {
                             const newValue = Transport.deserialize(data.value);
                             tx.finish(newValue)
                             .then(res => {
-                                console.log(`Transaction ${tx.id} finished`);
+                                this.debug.verbose(`Transaction ${tx.id} finished`);
                                 socket.emit("tx_completed", { id: tx.id });
                             })
                             .catch(err => {
@@ -1828,7 +1850,7 @@ if (__filename.replace(/\\/g,"/").endsWith("/acebase-server.js") && process.argv
     const options = { host: process.argv[4], port: process.argv[5] };
     const server = new AceBaseServer(dbname, options);
     server.once("ready", () => {
-        console.log(`AceBase server running`);
+        server.debug.log(`AceBase server running`);
     });
 }
 
