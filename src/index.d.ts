@@ -30,6 +30,7 @@ declare namespace acebaseserver {
         /** 'allow', 'deny' or 'auth' */
         defaultAccessRule?: string
         defaultAdminPassword?: string
+        seperateDb?: boolean
     }
 
     // enum AccessDefault {
