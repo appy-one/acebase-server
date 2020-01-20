@@ -176,16 +176,16 @@
             <div class="row">
             <form id="signin" class="col s12">
                 <div class="row"><div class="input-field col s12 l6">
-                    <input id="dbname" type="text" class="validate">
+                    <input id="dbname" type="text" class="validate" value="default">
                     <label for="dbname">Database name</label>
                 </div></div>
-                <!-- <div class="row"><div class="input-field col s12 l6">
+                <div class="row"><div class="input-field col s12 l6">
                     <input id="username" type="text" class="validate">
                     <label for="username">Username</label>
-                </div></div> -->
+                </div></div>
                 <div class="row"><div class="input-field col s12 l6">
                     <input id="password" type="password" class="validate">
-                    <label for="password">Admin password</label>
+                    <label for="password">Password</label>
                 </div></div>
                 <a id="connect_button" class="waves-effect waves-light btn purple darken-4"><i class="material-icons left">account_circle</i>Connect</a>
                 <div id="connect_success" class="green-text hide">Connected!</div>
@@ -243,7 +243,7 @@ M.AutoInit();
 </script>
 
 <!-- AceBase client js -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.3/dist/browser.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.4/dist/browser.min.js"></script>
 <!-- <script type="text/javascript" src="./acebase-client-browser.min.js"></script> -->
 
 <!-- AceBase Webmanager js -->
@@ -463,6 +463,11 @@ function updateBrowsePath(path) {
                 return showError('node has no children');
             }
 
+            if (skip === 0 && !info.children.more) {
+                // we've got all children, sort the list
+                info.children.list.sort((a,b) => a.key < b.key ? -1 : 1);
+            }
+
             // Add children
             info.children.list.forEach(childInfo => {
                 addNode(childInfo);
@@ -546,7 +551,7 @@ document.getElementById('connect_button').addEventListener('click', () => {
     failLabel.classList.add('hide');
     
     const dbname = document.getElementById('dbname').value;
-    const username = 'admin'; //document.getElementById('username').value;
+    const username = document.getElementById('username').value; //'admin'
     const password = document.getElementById('password').value;
 
     if (username !== 'admin') {
