@@ -37,16 +37,24 @@ class AceBaseServerHttpsSettings {
 class AceBaseServerAuthenticationSettings {
     /**
      * 
-     * @param {{enabled?: boolean, allowUserSignup?: boolean, defaultAccessRule?: string, defaultAdminPassword?: string}} settings 
+     * @param {object} settings 
+     * @param {boolean} [settings.enabled=true] if authorization is enabled, without authorization the entire db can be read and written to by anyone
+     * @param {boolean} [settings.allowUserSignup=false] If new users creation is allowed for anyone, or just the admin
+     * @param {number} [settings.newUserRateLimit=0] how many new users per hour per IP address. not implemented yet
+     * @param {number} [settings.tokensExpire=0] how many minutes before access tokens expire. 0 for no expiration. not implemented yet
+     * @param {string} [settings.defaultAccessRule='auth'] when the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
+     * @param {boolean} [settings.defaultAdminPassword] when the server runs for the first time, what password to use for the admin user. If not supplied, a generated password will be used and shown ONCE in the console output.
+     * @param {boolean} [settings.seperateDb=false] whether to use a seperate database for auth and logging
      */
     constructor(settings) {
         if (typeof settings !== "object") { settings = {}; }
-        this.enabled = typeof settings.enabled === 'boolean' ? settings.enabled : true; // if authorization is enabled, without authorization anyone can do anything
-        this.allowUserSignup = typeof settings.allowUserSignup === 'boolean' ? settings.allowUserSignup : false; // If new users creation is allowed for anyone, or just the admin
-        this.newUserRateLimit = typeof settings.newUserRateLimit === 'number' ? settings.newUserRateLimit : 0; // how many new users per hour per IP address. not implemented yet
-        this.tokensExpire = typeof settings.tokensExpire === 'number' ? settings.tokensExpire : 0; // how many minutes before access tokens expire. 0 for no expiration. not implemented yet
+        this.enabled = typeof settings.enabled === 'boolean' ? settings.enabled : true;
+        this.allowUserSignup = typeof settings.allowUserSignup === 'boolean' ? settings.allowUserSignup : false;
+        this.newUserRateLimit = typeof settings.newUserRateLimit === 'number' ? settings.newUserRateLimit : 0;
+        this.tokensExpire = typeof settings.tokensExpire === 'number' ? settings.tokensExpire : 0;
         this.defaultAccessRule = settings.defaultAccessRule || AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
         this.defaultAdminPassword = typeof settings.defaultAdminPassword === 'string' ? settings.defaultAdminPassword : undefined;
+        this.seperateDb = typeof settings.seperateDb === 'boolean' ? settings.seperateDb : false;
     }
 
     static get ACCESS_DEFAULT() {
@@ -127,7 +135,7 @@ class Client {
     subscribe(requestId, event, subscriptionPath) {
         // Check if user has access
         if (!this.server.userHasAccess(this.user, subscriptionPath, false)) {
-            authDb.ref('log').push({ action: `access_denied`, uid: this.user ? this.user.uid : '-', path: subscriptionPath });
+            logRef.push({ action: `subscribe`, success: false, code: `access_denied`, uid: this.user ? this.user.uid : '-', path: subscriptionPath });
             this.socket.emit('result', {
                 success: false,
                 reason: `access_denied`,
@@ -150,7 +158,7 @@ class Client {
             if (!this.server.userHasAccess(this.user, path, false)) {
                 if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
                     // Could potentially be very many callbacks, so
-                    // DISABLED: authDb.ref('log').push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+                    // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
                     // Only log when user subscribes again
                     this.socket.emit('result', {
                         success: false,
@@ -291,7 +299,8 @@ class AceBaseServer extends EventEmitter {
             storage: {
                 cluster: options.cluster,
                 path: options.path,
-                info: 'realtime database server'
+                info: 'realtime database server',
+                removeVoidProperties: true
             }
         };
 
@@ -311,7 +320,10 @@ class AceBaseServer extends EventEmitter {
         // const eventsDb = new AceBase('events', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         // const logsDb = new AceBase('logs', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         const authDb = options.authentication.enabled
-            ? new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } })
+            ? 
+                options.authentication.seperateDb === true // NEW
+                    ? new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } })
+                    : db
             : null;
 
         // To handle unhandled promise rejections so process will not die in future versions of node:
@@ -339,7 +351,7 @@ class AceBaseServer extends EventEmitter {
 
         const readyPromises = [
             db.ready(),
-            authDb ? authDb.ready() : null
+            authDb && authDb !== db ? authDb.ready() : null
         ];
         
         Promise.all(readyPromises)
@@ -347,9 +359,12 @@ class AceBaseServer extends EventEmitter {
             //this.debug.log(`Database "${dbname}" is ready to use`);
 
             let accessRules = {};
-            const authRef = authDb ? authDb.ref('accounts') : null; // db.ref('__auth__');
+            const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
+            const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
+
             if (options.authentication.enabled) {
                 // NEW: Make sure there is an administrator account in the database
+                // NOTE: the admin account is the only account with a non-generated uid: 'admin'
                 authRef.child('admin').transaction(snap => {
 
                     /** @type {DbUserAccountDetails} */
@@ -408,9 +423,9 @@ class AceBaseServer extends EventEmitter {
                     }
                 })
                 .then(() => {
-                    authDb.indexes.create('accounts', 'username');
-                    authDb.indexes.create('accounts', 'email');
-                    authDb.indexes.create('accounts', 'access_token');
+                    authDb.indexes.create(authRef.path, 'username');
+                    authDb.indexes.create(authRef.path, 'email');
+                    authDb.indexes.create(authRef.path, 'access_token');
                 });
 
                 const setupRules = () => {
@@ -512,7 +527,14 @@ class AceBaseServer extends EventEmitter {
                 }
                 else if (user && user.uid === 'admin') {
                     // Always allow admin access
+                    // TODO: implement user.is_admin, so the default admin account can be disabled
                     return true;
+                }
+                else if (path.startsWith('__')) {
+                    // NEW: with the auth database is now integrated into the main database, 
+                    // deny access to private resources starting with '__' for non-admins
+                    denyDetailsCallback && denyDetailsCallback({ code: 'private', message: `Access to private resource "${path}" not allowed` });
+                    return false;
                 }
 
                 const env = { now: Date.now(), auth: user || null };
@@ -592,7 +614,7 @@ class AceBaseServer extends EventEmitter {
                     tokenDetails = decodePublicAccessToken(username);
                     if (!tokenDetails.access_token) {
                         const code = 'invalid_token';
-                        authDb.ref('log').push({ action: `signin`, type, username, success: false, code, ip: req.ip, date: new Date() });
+                        logRef.push({ action: `signin`, type, [type]: username, success: false, code, ip: req.ip, date: new Date() });
                         return callback(null, false, { code, message: `Incorrect ${type}` });
                     }
                     username = tokenDetails.access_token;
@@ -603,12 +625,12 @@ class AceBaseServer extends EventEmitter {
                 .then(snaps => {
                     if (snaps.length === 0) {
                         const code = 'not_found';
-                        authDb.ref('log').push({ action: `signin`, type, username, success: false, code, ip: req.ip, date: new Date() });
+                        logRef.push({ action: `signin`, type, [type]: username, success: false, code, ip: req.ip, date: new Date() });
                         return callback(null, false, { code, message: `Incorrect ${type}` });
                     }
                     else if (snaps.length > 1) {
                         const code = 'duplicate';
-                        authDb.ref('log').push({ action: `signin`, type, username, success: false, code, count: snaps.length, ip: req.ip, date: new Date() });
+                        logRef.push({ action: `signin`, type, [type]: username, success: false, code, count: snaps.length, ip: req.ip, date: new Date() });
                         return callback(null, false, { code, message: `${snaps.length} users found with the same ${type}. Contact your database administrator` });
                     }
 
@@ -623,14 +645,14 @@ class AceBaseServer extends EventEmitter {
                     }
                     if (type === 'access_token' && tokenDetails.uid !== user.uid) {
                         const code = 'token_mismatch';
-                        authDb.ref('log').push({ action: `signin`, type, username, ip: req.ip, date: new Date(), success: false, reason: code });
+                        logRef.push({ action: `signin`, type, [type]: username, ip: req.ip, date: new Date(), success: false, reason: code });
                         return callback(null, false, { code, message: 'Sign in again' });
                     }
                     if (type !== 'access_token') {
                         let hash = user.password_salt ? getPasswordHash(password, user.password_salt) : getOldPasswordHash(password);
                         if (user.password !== hash) {
                             const code = 'wrong_password';
-                            authDb.ref('log').push({ action: `signin`, type, username, ip: req.ip, date: new Date(), success: false, reason: code });
+                            logRef.push({ action: `signin`, type, [type]: username, ip: req.ip, date: new Date(), success: false, reason: code });
                             return callback(null, false, { code, message: 'Incorrect password' });
                         }
                     }
@@ -665,7 +687,7 @@ class AceBaseServer extends EventEmitter {
                     .then(() => {
 
                         // Log history item
-                        authDb.ref('log').push({ action: `signin`, type, username, ip: req.ip, date: new Date(), success: true });
+                        logRef.push({ action: `signin`, type, [type]: username, ip: req.ip, date: new Date(), success: true });
     
                         // Add to cache
                         _authCache.set(user.uid, user);
@@ -677,7 +699,7 @@ class AceBaseServer extends EventEmitter {
                     });
                 })
                 .catch(err => {
-                    authDb.ref('log').push({ action: `signin`, type, username, ip: req.ip, date: new Date(), success: false, code: 'unexpected', message: err.message })
+                    logRef.push({ action: `signin`, type, [type]: username, ip: req.ip, date: new Date(), success: false, code: 'unexpected', message: err.message })
                     return callback(err);
                 });
             };
@@ -759,6 +781,7 @@ class AceBaseServer extends EventEmitter {
                     // }
 
                     const details = req.body;
+                    const clientId = details.client_id || null;  // NEW in AceBaseClient v0.9.4
 
                     /**
                      * 
@@ -767,6 +790,11 @@ class AceBaseServer extends EventEmitter {
                      * @param {{ code: string, message: string }} details 
                      */
                     const handle = (err, user, details) => {
+                        const client = typeof clientId === 'string' ? clients.get(clientId) : null;
+                        if (client) {
+                            // Bind user to client socket
+                            client.user = user || null;
+                        }
                         if (err) {
                             res.statusCode = 500;
                             res.send(err.message);
@@ -798,8 +826,15 @@ class AceBaseServer extends EventEmitter {
                 app.post(`/auth/${dbname}/signout`, (req, res) => {
                     // Remove access token from cache
                     if (!req.user) {
+                        // Strange request.. User wasn't signed in
                         res.send('Bye!');
                         return;
+                    }
+
+                    const client = typeof req.client_id === 'string' ? clients.get(req.client_id) : null; // NEW in AceBaseClient v0.9.4
+                    if (client) {
+                        // Remove user binding from client socket
+                        client.user = null;
                     }
 
                     // Remove token from cache
@@ -818,11 +853,11 @@ class AceBaseServer extends EventEmitter {
                         return user;
                     })
                     .then(() => {
-                        authDb.ref('log').push({ action: 'signout', success: true, uid: req.user.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'signout', success: true, uid: req.user.uid, ip: req.ip, date: new Date() });
                         res.send('Bye!');
                     })
                     .catch(err => {
-                        authDb.ref('log').push({ action: 'signout', success: false, code: 'unexpected', message: err.message, uid: req.user.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'signout', success: false, code: 'unexpected', message: err.message, uid: req.user.uid, ip: req.ip, date: new Date() });
                         res.statusCode = 500;
                         res.send({ code: 'unexpected', message: err.message });
                     });
@@ -833,13 +868,13 @@ class AceBaseServer extends EventEmitter {
                     const details = req.body;
 
                     if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
-                        authDb.ref('log').push({ action: 'change_pwd', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'change_pwd', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
                         res.statusCode = 400; // Bad Request
                         res.send('Bad Request');
                         return;                    
                     }
                     if (details.new_password.length < 8 || ~details.new_password.indexOf(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
-                        authDb.ref('log').push({ action: 'change_pwd', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
+                        logRef.push({ action: 'change_pwd', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
                         err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
                         res.statusCode = 422; // Unprocessable Entity
                         res.send(err);
@@ -888,7 +923,7 @@ class AceBaseServer extends EventEmitter {
                         res.send({ access_token: publicAccessToken }); // Client must use this new access token from now on
                     })
                     .catch(err => {
-                        authDb.ref('log').push({ action: 'change_pwd', success: false, code: err.code, ip: req.ip, date: new Date(), uid: details.uid });
+                        logRef.push({ action: 'change_pwd', success: false, code: err.code, ip: req.ip, date: new Date(), uid: details.uid });
                         if (typeof err.code === 'string') {
                             res.statusCode = 400; // Bad Request
                             res.send({ code: err.code, message: err.message });
@@ -933,7 +968,7 @@ class AceBaseServer extends EventEmitter {
 
                 app.post(`/auth/${dbname}/signup`, (req, res) => {
                     if (!this.config.authentication.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
-                        authDb.ref('log').push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
                         res.statusCode = 403; // Forbidden
                         return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
                     }
@@ -965,7 +1000,7 @@ class AceBaseServer extends EventEmitter {
                     }
                     if (err) {
                         // Log failure
-                        authDb.ref('log').push({ action: 'signup', success: false, code: err.code, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'signup', success: false, code: err.code, ip: req.ip, date: new Date() });
 
                         res.statusCode = 422; // Unprocessable Entity
                         res.send(err);
@@ -987,7 +1022,7 @@ class AceBaseServer extends EventEmitter {
                     })
                     .then(userCount => {
                         if (userCount > 0) {
-                            authDb.ref('log').push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
+                            logRef.push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
                             res.statusCode = 409; // conflict
                             res.send({ code: 'conflict', message: `Account with username and/or email already exists` });
                             return;
@@ -1017,7 +1052,7 @@ class AceBaseServer extends EventEmitter {
                             user.uid = uid;
 
                             // Log success
-                            authDb.ref('log').push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid });
+                            logRef.push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid });
 
                             // Cache the user
                             _authCache.set(user.uid, user);
@@ -1039,14 +1074,14 @@ class AceBaseServer extends EventEmitter {
                     let details = req.body;
 
                     if (!req.user) {
-                        authDb.ref('log').push({ action: 'update', success: false, code: 'unauthenticated_update', update_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'update', success: false, code: 'unauthenticated_update', update_uid: details.uid, ip: req.ip, date: new Date() });
                         return sendNotAuthenticatedError(res, 'unauthenticated_update', 'Sign in to change details');
                     }
 
                     const uid = details.uid || req.user.uid;
 
                     if (req.user.uid !== 'admin' && (uid !== req.user.uid || typeof details.is_disabled === 'boolean')) {
-                        authDb.ref('log').push({ action: 'update', success: false, code: 'unauthorized_update', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'update', success: false, code: 'unauthorized_update', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
                         return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this update. This attempt has been logged.');
                     }
 
@@ -1066,7 +1101,7 @@ class AceBaseServer extends EventEmitter {
                     }
                     if (err) {
                         // Log failure
-                        authDb.ref('log').push({ action: 'update', success: false, code: err.code, auth_uid: req.user.uid, update_uid: uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'update', success: false, code: err.code, auth_uid: req.user.uid, update_uid: uid, ip: req.ip, date: new Date() });
 
                         res.statusCode = 422; // Unprocessable Entity
                         res.send(err);
@@ -1078,7 +1113,7 @@ class AceBaseServer extends EventEmitter {
                     .transaction(snap => {
                         if (!snap.exists()) {
                             const code = 'user_not_found';
-                            authDb.ref('log').push({ action: 'update', success: false, code, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                            logRef.push({ action: 'update', success: false, code, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
 
                             res.statusCode = 404; // Not Found
                             res.send({ code, message: `No user found with uid ${uid}` });
@@ -1100,7 +1135,7 @@ class AceBaseServer extends EventEmitter {
                             });
                             if (!isValid.settings(user.settings)) {
                                 err = validationErrors.settings;
-                                authDb.ref('log').push({ action: 'update', success: false, code: 'too_many_settings', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                                logRef.push({ action: 'update', success: false, code: 'too_many_settings', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
                                 res.statusCode = 422; // Unprocessable Entity
                                 res.send(err);
                                 return;        
@@ -1119,7 +1154,7 @@ class AceBaseServer extends EventEmitter {
                         res.send({ user: getPublicAccountDetails(user) });
                     })
                     .catch(err => {
-                        authDb.ref('log').push({ action: 'update', success: false, code: 'unexpected', message: err.message, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'update', success: false, code: 'unexpected', message: err.message, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
                         res.statusCode = 500;
                         res.send({ code: 'unexpected', message: err.message });
                     });                    ;
@@ -1129,12 +1164,12 @@ class AceBaseServer extends EventEmitter {
                     let details = req.body;
 
                     if (!req.user) {
-                        authDb.ref('log').push({ action: 'delete', success: false, code: 'unauthenticated_delete', delete_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'delete', success: false, code: 'unauthenticated_delete', delete_uid: details.uid, ip: req.ip, date: new Date() });
                         return sendNotAuthenticatedError(res, 'unauthenticated_delete', 'You are not authorized to perform this operation, your attempt has been logged');
                     }
 
                     if (req.user.uid !== 'admin' && (details.uid !== req.user.uid || typeof details.is_disabled === 'boolean')) {
-                        authDb.ref('log').push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
                         return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this operation, your attempt has been logged');
                     }
 
@@ -1142,11 +1177,11 @@ class AceBaseServer extends EventEmitter {
                     return authRef.child(uid)
                     .remove()
                     .then(() => {
-                        authDb.ref('log').push({ action: 'delete', success: true, auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'delete', success: true, auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
                         res.send('Farewell');
                     })
                     .catch(err => {
-                        authDb.ref('log').push({ action: 'delete', success: false, code: 'unexpected', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+                        logRef.push({ action: 'delete', success: false, code: 'unexpected', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
                         res.statusCode = 500;
                         res.send({ code: 'unexpected', message: err.message });
                     })
@@ -1188,15 +1223,49 @@ class AceBaseServer extends EventEmitter {
             });
 
             app.get("/info", (req, res) => {
-                let obj = {
+                const info = {
                     time: new Date(), 
-                    process: process.pid,
-                    dbname: dbname
+                    process: process.pid
+                };
+                if (true || req.user && req.user.uid === 'admin') {
+                    const os = require('os');
+                    const numberToByteSize = number => {
+                        return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
+                    }
+                    const sPerMinute = 60;
+                    const sPerHour = sPerMinute * 60;
+                    const sPerDay = sPerHour * 24;
+                    const numberToTime = number => {
+                        const days = Math.floor(number / sPerDay);
+                        number -= sPerDay * days;
+                        const hours = Math.floor(number / sPerHour);
+                        number -= hours * sPerHour;
+                        const minutes = Math.floor(number / sPerMinute);
+                        number -= minutes * sPerMinute;
+                        const seconds = Math.floor(number);
+                        return `${days}d${hours}h${minutes}m${seconds}s`;
+                    }
+                    const adminInfo = {
+                        dbname: dbname,
+                        platform: os.platform(),
+                        arch: os.arch(),
+                        release: os.release(),
+                        host: os.hostname(),
+                        uptime: numberToTime(os.uptime()),
+                        load: os.loadavg(),
+                        mem: {
+                            total: numberToByteSize(os.totalmem()),
+                            free: numberToByteSize(os.freemem())
+                        },
+                        cpus: os.cpus(),
+                        network: os.networkInterfaces()
+                    }
+                    Object.assign(info, adminInfo);
                 }
                 // for (let i = 0; i < 1000000000; i++) {
                 //     let j = Math.pow(i, 2);
                 // }
-                res.send(obj);
+                res.send(info);
             });
 
             app.get(`/data/${dbname}/*`, (req, res) => {
@@ -1425,33 +1494,57 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const data = Transport.deserialize(req.body);
-                //const ref = db.ref(path);
-                const query = db.query(path);
-                data.query.filters.forEach(filter => {
-                    query.where(filter.key, filter.op, filter.compare);
-                });
-                data.query.order.forEach(order => {
-                    query.order(order.key, order.ascending);
-                });
-                if (data.query.skip > 0) {
-                    query.skip(data.query.skip);
+                // //const ref = db.ref(path);
+                // const query = db.query(path);
+                // data.query.filters.forEach(filter => {
+                //     query.where(filter.key, filter.op, filter.compare);
+                // });
+                // data.query.order.forEach(order => {
+                //     query.order(order.key, order.ascending);
+                // });
+                // if (data.query.skip > 0) {
+                //     query.skip(data.query.skip);
+                // }
+                // if (data.query.take > 0) {
+                //     query.take(data.query.take);
+                // }
+                const query = data.query;
+                const options = data.options;
+                if (options.monitor === true) {
+                    options.monitor = { add: true, change: true, remove: true };
                 }
-                if (data.query.take > 0) {
-                    query.take(data.query.take);
+                if (typeof options.monitor === 'object' && (options.monitor.add || options.monitor.change || options.monitor.remove)) {
+                    const queryId = data.query_id;
+                    const clientId = data.client_id;
+                    const client = clients.get(clientId);
+                    client.realtimeQueries[queryId] = { path, query, options };
+                    
+                    const sendEvent = event => {
+                        const client = clients.get(clientId);
+                        if (!client) { return false; } // Not connected, stop subscription
+                        if (!userHasAccess(client.user, event.path, false)) {
+                            return false; // Access denied, stop subscription
+                        }
+                        event.query_id = queryId;
+                        const data = Transport.serialize(event);
+                        client.socket.emit('query-event', data);
+                    }
+                    options.eventHandler = sendEvent;
                 }
-                query.get(data.options).then(results => {
+                return db.api.query(path, query, options) //query.get(options)
+                .then(results => {
                     const response = {
                         count: results.length,
-                        list: []
+                        list: results // []
                     };
-                    results.forEach(result => {
-                        if (data.options.snapshots) {
-                            response.list.push({ path: result.ref.path, val: result.val() });
-                        }
-                        else {
-                            response.list.push(result.path);
-                        }
-                    });
+                    // results.forEach(result => {
+                    //     if (data.options.snapshots) {
+                    //         response.list.push({ path: result.ref.path, val: result.val() });
+                    //     }
+                    //     else {
+                    //         response.list.push(result.path);
+                    //     }
+                    // });
                     res.send(Transport.serialize(response));
                 });
             });
@@ -1557,10 +1650,12 @@ class AceBaseServer extends EventEmitter {
                 get(id) {
                     return this.list.find(client => client.id === id);
                 },
-                add(id) {
+                add(socket) {
                     const client = {
-                        id,
+                        socket,
+                        id: socket.id,
                         subscriptions: {},
+                        realtimeQueries: {},
                         transactions: {},
                         user: null
                     };
@@ -1588,9 +1683,10 @@ class AceBaseServer extends EventEmitter {
             // const clientsNew = new Map();
 
             io.sockets.on("connection", socket => {
-                clients.add(socket.id);
+                const client = clients.add(socket);
+                client.signInToken = ID.generate();
                 this.debug.verbose(`New client connected, total: ${clients.list.length}`);
-                //socket.emit("welcome");
+                socket.emit("welcome");
 
                 socket.on("disconnect", data => {
                     // We lost one
@@ -1629,6 +1725,8 @@ class AceBaseServer extends EventEmitter {
                 })
 
                 socket.on("signin", accessToken => {
+                    // client sends this request once user has been signed in, binds the user to the socket, 
+                    // deprecated since client v0.9.4, which sends client_id with signin api call
                     const client = clients.get(socket.id);
                     let uid;
                     try {
@@ -1642,6 +1740,7 @@ class AceBaseServer extends EventEmitter {
                 });
 
                 socket.on("signout", data => {
+                    // deprecated since client v0.9.4, which sends client_id with signout api call
                     const client = clients.get(socket.id);
                     client.user = null;
                 });
@@ -1654,7 +1753,7 @@ class AceBaseServer extends EventEmitter {
                     const client = clients.get(socket.id);
 
                     if (!userHasAccess(client.user, subscriptionPath, false)) {
-                        authDb.ref('log').push({ action: `access_denied`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+                        logRef.push({ action: `subscribe`, success: false, code: `access_denied`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
                         socket.emit('result', {
                             success: false,
                             reason: `access_denied`,
@@ -1667,7 +1766,7 @@ class AceBaseServer extends EventEmitter {
                         if (!userHasAccess(client.user, path, false)) {
                             if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
                                 // Could potentially be very many callbacks, so
-                                // DISABLED: authDb.ref('log').push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+                                // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
                                 // Only log when user subscribes again
                                 socket.emit('result', {
                                     success: false,
@@ -1718,6 +1817,13 @@ class AceBaseServer extends EventEmitter {
                     //     });
                     // });                    
                 });
+
+                socket.on("query_unsubscribe", data => {
+                    // Client unsubscribing from realtime query events
+                    this.debug.verbose(`Client ${socket.id} is unsubscribing from realtime query "${data.query_id}"`);
+                    const client = clients.get(socket.id);
+                    delete client.realtimeQueries[data.query_id];
+                })
 
                 socket.on("unsubscribe", data => {
                     // Client unsubscribes from events on a node
