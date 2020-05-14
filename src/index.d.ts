@@ -14,6 +14,7 @@ declare namespace acebaseserver {
         authentication?: AceBaseServerAuthenticationSettings
         maxPayloadSize?: string
         allowOrigin?: string
+        email?: AceBaseServerEmailSettings
     }
 
     interface AceBaseServerHttpsSettings {
@@ -31,6 +32,48 @@ declare namespace acebaseserver {
         defaultAccessRule?: string
         defaultAdminPassword?: string
         seperateDb?: boolean
+    }
+
+    interface AceBaseServerEmailSettings {
+        /**
+         * @param request Callback function to call when an e-mail needs to be sent
+         */
+        send?(request: AceBaseEmailRequest): Promise<boolean>
+        /**
+         * NOT IMPLEMENTED YET - Use send property for your own implementation
+         */
+        server?: AceBaseServerEmailServerSettings
+    }
+
+    interface AceBaseServerEmailServerSettings {
+        host: string
+        port: number
+        username?: string
+        password?: string
+        secure?: boolean
+    }
+
+    interface AceBaseEmailRequest {
+        readonly type: string
+        readonly ip: string
+        readonly date: Date
+    }
+    interface AceBaseUserEmailRequest extends AceBaseEmailRequest {
+        readonly user: {
+            readonly uid: string
+            readonly email?: string
+            readonly username?: string
+            readonly displayName: string
+            readonly settings: any
+        }
+    }
+    interface AceBaseUserSignupEmailRequest extends AceBaseUserEmailRequest {
+        readonly type: 'user_signup'
+        readonly verifyCode: string
+    }
+    interface AceBaseUserPasswordResetEmailRequest extends AceBaseUserEmailRequest {
+        readonly type: 'user_reset_password'
+        readonly resetCode: string
     }
 
     // enum AccessDefault {

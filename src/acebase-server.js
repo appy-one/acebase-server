@@ -2,6 +2,7 @@
 const { EventEmitter } = require('events');
 const { AceBase, AceBaseSettings } = require('acebase');
 const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger } = require('acebase-core');
+const { TypeChecker } = require('./typecheck');
 const fs = require('fs');
 const crypto = require('crypto');
 require('colors'); // Make sure we can use colors for log output
@@ -14,6 +15,13 @@ class AceBaseClusterSettings {
         this.workers = this.enabled ? settings.workers : [process];
     }
 }
+
+// class AceBaseClusterSettings {
+//     constructor(settings) {
+//         this.enabled = typeof settings === "object";
+//         this.port = this.enabled ? settings.port : 0;
+//     }
+// }
 
 class AceBaseServerHttpsSettings {
     /**
@@ -66,6 +74,101 @@ class AceBaseServerAuthenticationSettings {
     }
 }
 
+class AceBaseServerEmailServerSettings {
+    /**
+     * 
+     * @param {object} settings 
+     * @param {string} settings.host
+     * @param {number} settings.port
+     * @param {string} [settings.username]
+     * @param {string} [settings.password]
+     * @param {boolean} [settings.secure]
+     * @
+     */
+    constructor(settings) {
+        this.host = settings.host;
+        this.port = settings.port;
+        this.secure = settings.secure;
+        this.username = settings.username;
+        this.password = settings.password;
+    }
+}
+
+class AceBaseEmailRequest {
+    /**
+     * 
+     * @param {string} type email request type
+     */
+    constructor(type) {
+        this.type = type;
+    }
+}
+
+class AceBaseUserEmailRequest extends AceBaseEmailRequest {
+    /**
+     * @param {string} type
+     * @param {object} data 
+     * @param {object} data.user
+     * @param {string} data.user.uid
+     * @param {string} data.user.email
+     * @param {string} data.user.username
+     * @param {string} data.user.displayName
+     * @param {any} data.user.settings
+     * @param {string} data.ip
+     * @param {Date} data.date
+     */
+    constructor(type, data) {
+        super(type);
+        this.user = data.user;
+        this.ip = data.ip;
+        this.date = data.date;
+    }
+}
+
+class AceBaseUserSignupEmailRequest extends AceBaseUserEmailRequest {
+    /**
+     * 
+     * @param {AceBaseUserSignupEmailRequest} data
+     */
+    constructor(data) {
+        super('user_signup', data);
+        this.activationCode = data.activationCode;
+    }
+}
+
+class AceBaseUserResetPasswordEmailRequest extends AceBaseUserEmailRequest {
+    /**
+     * @param {AceBaseUserResetPasswordEmailRequest} data
+     */
+    constructor(data) {
+        super('user_reset_password', data);
+        this.resetCode = data.resetCode;
+    }
+}
+
+class AceBaseUserResetPasswordSuccessEmailRequest extends AceBaseUserEmailRequest{
+    /**
+     * @param {AceBaseUserResetPasswordSuccessEmailRequest} data
+     */
+    constructor(data) {
+        super('user_reset_password_success', data);
+    }
+}
+
+class AceBaseServerEmailSettings {
+    /**
+     * 
+     * @param {object} settings 
+     * @param {AceBaseServerEmailServerSettings} [settings.server] NOT IMPLEMENTED YET - Use send property for your own implementation
+     * @param {(request: AceBaseEmailRequest) => Promise<boolean>} [settings.send] Callback function to call when an e-mail needs to be sent
+     * 
+     */
+    constructor(settings) {
+        this.server = settings.server;
+        this.send = settings.send;
+    }
+}
+
 class AceBaseServerSettings {
 
     /**
@@ -79,6 +182,7 @@ class AceBaseServerSettings {
      * @param {string} [settings.allowOrigin='*']
      * @param {AceBaseServerHttpsSettings} [settings.https] { keyPath:string, certPath:string} | { pfxPath:string, passphrase:string }
      * @param {AceBaseServerAuthenticationSettings} [settings.auth]
+     * @param {AceBaseServerEmailSettings} [settings.email]
      * 
      */
     constructor(settings) {
@@ -92,6 +196,7 @@ class AceBaseServerSettings {
         this.authentication = new AceBaseServerAuthenticationSettings(settings.authentication);
         this.maxPayloadSize = settings.maxPayloadSize || '10mb';
         this.allowOrigin = settings.allowOrigin || '*';
+        this.email = typeof settings.email === 'object' ? new AceBaseServerEmailSettings(settings.email) : null;
     }
 }
 
@@ -190,10 +295,12 @@ class Client {
  * @property {string} [username] username
  * @property {string} [email] email address
  * @property {boolean} [email_verified] if the supplied e-mail address has been verified
+ * @property {string} [email_verification_code] Code that enables the user to verify their email address with
  * @property {boolean} [is_disabled] if the account has been disabled
  * @property {string} [display_name]
  * @property {string} password password hash
  * @property {string} password_salt random password salt used to secure password hash
+ * @property {string} [password_reset_code] Code that allows a user to reset their password with
  * @property {boolean} [change_password] TODO: whether the user has to change their password
  * @property {Date} [change_password_requested] TODO: date/time the password reset was requested
  * @property {Date} [change_password_before] TODO: date/time the user must have changed their password
@@ -219,6 +326,7 @@ function getPublicAccountDetails(account) {
         username: account.username, 
         email: account.email,
         displayName: account.display_name, 
+        emailVerified: account.email_verified,
         created: account.created,
         prevSignin: account.prev_signin,
         prevSigninIp: account.prev_signin_ip,
@@ -266,6 +374,62 @@ function decodePublicAccessToken(accessToken) {
     }
 }
 
+function createPublicToken(data) {
+    // TODO: Use encryption
+    // let obj = {
+    //     uid: uid,
+    //     email: email,
+    //     code: ID.generate()
+    // };
+    let str = JSON.stringify(data);
+    str = Buffer.from(str).toString('base64');
+    return 'a' + str; // version a
+}
+
+function decodePublicToken(code) {
+    if (!code || code[0] !== 'a') { return {}; }
+    try {
+        let str = code.slice(1);
+        str = Buffer.from(str, 'base64').toString();
+        let obj = JSON.parse(str);
+        return obj;
+    }
+    catch(err) {
+        return {};
+    }
+}
+
+function createVerificationCode(uid, email) {
+    return createPublicToken({
+        uid,
+        email,
+        code: ID.generate()
+    });
+}
+function decodeVerificationCode(code) {
+    let details = decodePublicToken(code);
+    return {
+        uid: details.uid,
+        email: details.email,
+        code: details.code
+    };
+}
+function createPasswordResetCode(uid, email) {
+    return createPublicToken({
+        uid,
+        email,
+        code: ID.generate()
+    });    
+}
+function decodePasswordResetCode(code) {
+    let details = decodePublicToken(code);
+    return {
+        uid: details.uid,
+        email: details.email,
+        code: details.code
+    };    
+}
+
 class AceBaseServer extends EventEmitter {
 
     /**
@@ -289,7 +453,8 @@ class AceBaseServer extends EventEmitter {
                 return `http${this.https.enabled ? 's' : ''}://${this.hostname}:${this.port}`;
             },
             https: options.https,
-            authentication: options.authentication
+            authentication: options.authentication,
+            email: options.email
         };
         this.url = this.config.url; // Is this used?
         this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.green); //`« ${dbname} »`
@@ -479,7 +644,7 @@ class AceBaseServer extends EventEmitter {
                     }
 
                     // Convert string rules to functions that can be executed
-                    const processRules = (parent, variables) => {
+                    const processRules = (path, parent, variables) => {
                         Object.keys(parent).forEach(key => {
                             let rule = parent[key];
                             if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
@@ -491,15 +656,35 @@ class AceBaseServer extends EventEmitter {
                                 }
                                 parent[key] = rule;
                             }
+                            else if (key === '.schema') {
+                                // Parse "typescript" schema
+                                const text = rule;
+                                /** @@type {TypeChecker} */
+                                let checker;
+                                try {
+                                    checker = new TypeChecker(rule);
+                                }
+                                catch(err) {
+                                    this.debug.error(`Error parsing .schema: ${err.message}`)
+                                }
+                                rule = (value) => {
+                                    const result = checker.check(path, value);
+                                    return result;
+                                };
+                                rule.getText = () => {
+                                    return text;
+                                };
+                                parent[key] = rule;
+                            }
                             else if (key.startsWith('$')) {
                                 variables.push(key);
                             }
                             if (typeof rule === 'object') {
-                                processRules(rule, variables.slice());
+                                processRules(`${path}/${key}`, rule, variables.slice());
                             }
                         });
                     };
-                    processRules(accessRules.rules, []);
+                    processRules('', accessRules.rules, []);
 
                     // Watch file for changes
                     fs.watchFile(rulesFilePath, (currStats, prevStats) => {
@@ -508,6 +693,65 @@ class AceBaseServer extends EventEmitter {
                     })
                 }
                 setupRules();
+
+                this.verifyEmailAddress = (code) => {
+                    const verification = decodeVerificationCode(code);
+                    return authRef.query().filter('uid', '==', verification.uid).get()
+                    .then(snaps => {
+                        if (snaps.length !== 1) { const err = new Error(`Uknown user`); err.code = 'unknown_user'; throw err; }
+                        /** @type {DbUserAccountDetails} */
+                        let user = snaps[0].val();
+                        user.uid = snaps[0].key;
+                        if (user.email !== verification.email) { const err = new Error(`Account mismatch`); err.code = 'account_mismatch'; throw err; }
+                        if (user.email_verification_code !== verification.code) { const err = new Error(`Invalid code`); err.code = 'invalid_code'; throw err; }
+                        // Verified
+                        return snaps[0].ref.update({ email_verified: true })
+                        .then(ref => user);
+                    });
+                }
+
+                /**
+                 * @param {string} newPassword
+                 */
+                this.resetPassword = (clientIp, code, newPassword) => {
+                    const verification = decodePasswordResetCode(code);
+                    return authRef.query().filter('uid', '==', verification.uid).get()
+                    .then(snaps => {
+                        if (snaps.length !== 1) { throw new Error(`Uknown user`); }
+                        /** @type {DbUserAccountDetails} */
+                        let user = snaps[0].val();
+                        user.uid = snaps[0].key;
+
+                        if (user.email !== verification.email) { const err = new Error(`Account mismatch`); err.code = 'account_mismatch'; throw err; }
+                        if (user.password_reset_code !== verification.code) { const err = new Error(`Invalid code`); err.code = 'invalid_code'; throw err; }
+                        if (newPassword.length < 8 || newPassword.includes(' ')) { const err = new Error(`Password must be at least 8 characters, and cannot contain spaces`); err.code = 'password_requirement_mismatch'; throw err; }
+                        
+                        // Ok to change password
+                        const pwd = createPasswordHash(newPassword);                        
+                        return snaps[0].ref.update({ 
+                            password: pwd.hash, 
+                            password_salt: pwd.salt, 
+                            password_reset_code: null 
+                        })
+                        .then(() => user);
+                    })
+                    .then(user => {
+                        // Send confirmation email
+                        const request = new AceBaseUserResetPasswordSuccessEmailRequest({
+                            date: new Date(),
+                            ip: clientIp,
+                            user: {
+                                uid: user.uid,
+                                email: user.email,
+                                username: user.username,
+                                displayName: user.display_name,
+                                settings: user.settings
+                            }
+                        });
+                        this.config.email.send(request);
+                        return user;
+                    });
+                }
             }
 
             /**
@@ -550,7 +794,7 @@ class AceBaseServer extends EventEmitter {
                     if (typeof checkRule === 'boolean') { 
                         const allow = checkRule; 
                         if (!allow) {
-                            denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Acces denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') });
+                            denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') });
                         }
                         return allow;
                     }
@@ -559,13 +803,13 @@ class AceBaseServer extends EventEmitter {
                             // Execute rule function
                             let allow = checkRule(env);
                             if (!allow) {
-                                denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Acces denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/') });
+                                denyDetailsCallback && denyDetailsCallback({ code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/') });
                             }
                             return allow;
                         }
                         catch(err) {
                             // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                            denyDetailsCallback && denyDetailsCallback({ code: 'exception', message: `Acces denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
+                            denyDetailsCallback && denyDetailsCallback({ code: 'exception', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err });
                             return false; 
                         }
                     }
@@ -577,8 +821,97 @@ class AceBaseServer extends EventEmitter {
                     // need to change things here for usage of wildcard paths in subscriptions
                     if (typeof rule[nextKey] === 'undefined') {
                         // Check if current rule has a wildcard child
-                        const wildcardKey = Object.keys(rule).find(key => key[0] === '$');
+                        const wildcardKey = Object.keys(rule).find(key => key ==='*' || key[0] === '$');
                         if (wildcardKey) { env[wildcardKey] = nextKey; }
+                        nextKey = wildcardKey;
+                    }
+                    nextKey && rulePath.push(nextKey);
+                    rule = rule[nextKey];
+                }
+            };
+
+            /**
+             * 
+             * @param {string} path 
+             * @param {any} data 
+             * @returns {{ ok: boolean, reason?: string }}
+             */
+            const validateSchema = (path, data) => {
+                // Process rules to find if there are any ".validate" or ".schema" rules set on given path
+                // starts from the root, digs deeper in the path
+                const pathKeys = PathInfo.getPathKeys(path);
+                let rule = accessRules.rules;
+                let rulePath = [];
+                while(true) {
+                    if (!rule) { 
+                        return { ok: true };
+                    }
+                    let validate = rule['.validate']; // NOT implemented yet
+                    let checkSchema = rule['.schema'];
+                    if (checkSchema) {
+                        // Rule set on higher or same path as data being updated
+                        const trailKeys = pathKeys.slice(rulePath.length);
+                        const checkData = trailKeys.length === 0 ? data : trailKeys.reduce((obj, key, index, arr) => {
+                            obj[key] = index === arr.length-1 ? data : { };
+                        }, {});
+                        const result = checkSchema(checkData);
+                        if (!result.ok) {
+                            return { ok: false, reason: result.reason };
+                        }
+                    }
+                    if (pathKeys.length === 0) {
+                        // No more rules set on updating path trail
+                        // Check if there are rules set on deeper paths
+                        // eg: 
+                        // rule set on path 'users/$uid/posts/$postId/tags/$tagId': { name: string, link_id: number }
+                        // data being inserted at 'users/352352/posts/572245': { text: 'this is my post', tags: { sometag: 'deny this' } }
+                        const checkNestedRules = (parentRule, parentData) => {
+                            const childKeys = Object.keys(parentData);
+                            const checkKeys = Object.keys(parentRule)
+                                .filter(key => 
+                                    key === '*' || 
+                                    key[0] === '$' || 
+                                    (key[0] !== '.' && childKeys.includes(key))
+                                )
+                                .sort((a, b) => {
+                                    // First, check known properties, then wildcards
+                                    const wa = a === '*' || a[0] === '$';
+                                    const wb = b === '*' || b[0] === '$';
+                                    if (!wa && wb) { return -1; }
+                                    if (wa && !wb) { return 1; }
+                                    return 0;
+                                });
+                            let failed;
+                            const matches = checkKeys.sort().every(key => {
+                                const rule = parentRule[key];
+                                let keepGoing = true;
+                                if ('.schema' in rule) {
+                                    const checkSchema = rule['.schema'];
+                                    const checkChildKeys = key === '*' || key[0] === '$' ? childKeys.filter(key => !checkKeys.includes(key)) : key;
+                                    keepGoing = checkChildKeys.every(key => {
+                                        const checkData = parentData[key];
+                                        const result = checkSchema(checkData);
+                                        if (!result.ok) { failed = result; return false; }
+                                    })
+                                }
+                                if (keepGoing) {
+                                    return checkNestedRules(rule, checkData); // Dig deeper
+                                }
+                            });
+                            if (!matches) {
+                                return failed;
+                            }
+                            return { ok: true }
+                        }
+                        return checkNestedRules(rule, data);
+                    }
+                    let nextKey = pathKeys.shift();
+                    // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
+                    // need to change things here for usage of wildcard paths in subscriptions
+                    if (typeof rule[nextKey] === 'undefined') {
+                        // Check if current rule has a wildcard child
+                        const wildcardKey = Object.keys(rule).find(key => key === '*' || key[0] === '$');
+                        // if (wildcardKey) { env[wildcardKey] = nextKey; }
                         nextKey = wildcardKey;
                     }
                     nextKey && rulePath.push(nextKey);
@@ -597,6 +930,15 @@ class AceBaseServer extends EventEmitter {
                 res.statusMessage = 'Unauthorized';
                 res.send({ code, message });
             };
+
+            const sendError = (res, err) => {
+                if (typeof err.code === 'string') {
+                    res.status(400).send({ code: err.code, message: err.message }); // Bad Request
+                }
+                else {
+                    res.status(500).send({ code: 'unknown', message: 'server error', details: err.message }); // Internal server error
+                }
+            }
 
             /** @type {Map<string, User>} Maps uid's to users  */
             const _authCache = new Map();
@@ -796,16 +1138,10 @@ class AceBaseServer extends EventEmitter {
                             client.user = user || null;
                         }
                         if (err) {
-                            res.statusCode = 500;
-                            res.send(err.message);
-                            return;
+                            return sendError(err);
                         }
                         if (!user) {
-                            // res.statusCode = 401;
-                            // res.statusMessage = details.message;
-                            // res.send(details);
-                            sendNotAuthenticatedError(res, details.code, details.message)
-                            return;
+                            return sendNotAuthenticatedError(res, details.code, details.message)
                         }
                         res.send({ 
                             access_token: createPublicAccessToken(user.uid, req.ip, user.access_token), 
@@ -824,7 +1160,6 @@ class AceBaseServer extends EventEmitter {
                 });
 
                 app.post(`/auth/${dbname}/signout`, (req, res) => {
-                    // Remove access token from cache
                     if (!req.user) {
                         // Strange request.. User wasn't signed in
                         res.send('Bye!');
@@ -837,8 +1172,11 @@ class AceBaseServer extends EventEmitter {
                         client.user = null;
                     }
 
+                    const signOutEverywhere = typeof req.body === 'object' && req.body.everywhere === true; // NEW in AceBaseClient v0.9.14
+                    // TODO: if signOutEverywhere, immediately tell other connected clients to sign out (now they will remain signed in until they retry with access token)
+
                     // Remove token from cache
-                    _authCache.delete(req.user.uid);
+                    signOutEverywhere && _authCache.delete(req.user.uid);
 
                     // Remove token from user's auth node
                     return authRef.child(req.user.uid)
@@ -847,7 +1185,9 @@ class AceBaseServer extends EventEmitter {
 
                         /** @type {AceBaseUserAccount} */
                         let user = snap.val();
-                        user.access_token = null;
+                        if (signOutEverywhere) {
+                            user.access_token = null;
+                        }
                         user.last_signout = new Date();
                         user.last_signout_ip = req.ip;
                         return user;
@@ -863,21 +1203,88 @@ class AceBaseServer extends EventEmitter {
                     });
                 });
 
+                app.post(`/auth/${dbname}/forgot_password`, (req, res) => {
+                    const details = req.body;
+                    return Promise.resolve()
+                    .then(() => {
+                        if (!this.config.email || typeof this.config.email.send !== 'function') {
+                            const err = new Error('Server email settings have not been configured');
+                            err.code = 'server_email_config';
+                            throw err;
+                        }
+                        if (typeof details !== 'object' || typeof details.email !== 'string' || details.email.length === 0) {
+                            const err = new Error('Invalid details');
+                            err.code = 'invalid_details';
+                            throw err;
+                        }
+                        return authRef.query().filter('email', '==', details.email).get()             
+                    })
+                    .then(snaps => {
+                        if (snaps.length !== 1) { 
+                            const err = new Error('Email address not found, or duplicate entries found');
+                            err.code = 'invalid_email';
+                            throw err;
+                        }
+                        const snap = snaps[0];
+                        /** @type {DbUserAccountDetails} */
+                        const user = snap.val();
+                        user.uid = snap.key;
+                        const resetCode = createPasswordResetCode(user.uid, user.email);
+
+                        // Request a password reset email to be sent:
+                        const request = new AceBaseUserResetPasswordEmailRequest({
+                            date: new Date(),
+                            ip: req.ip,
+                            resetCode,
+                            user: {
+                                email: user.email,
+                                uid: user.uid,
+                                username: user.username,
+                                settings: user.settings,
+                                displayName: user.display_name
+                            }
+                        });
+                        return Promise.all([
+                            this.config.email.send(request),
+                            snap.ref.update({ password_reset_code: resetCode })
+                        ])
+                    })
+                    .then(() => {
+                        logRef.push({ action: 'forgot_password', success: true, email: details.email, ip: req.ip, date: new Date() });
+                        res.send('OK');
+                    })
+                    .catch(err => {
+                        logRef.push({ action: 'forgot_password', success: false, code: err.code || err.message, email: details.email, ip: req.ip, date: new Date() });
+                        sendError(res, err);
+                    })
+                });
+
+                app.post(`/auth/${dbname}/reset_password`, (req, res) => {
+                    const details = req.body;
+                    return this.resetPassword(req.ip, details.code, details.password)
+                    .then(user => {
+                        logRef.push({ action: 'reset_password', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+                        res.send('OK');
+                    })
+                    .catch(err => {
+                        logRef.push({ action: 'reset_password', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: details.uid });
+                        sendError(res, err);
+                    });
+                });
+
                 app.post(`/auth/${dbname}/change_password`, (req, res) => {
                     let access_token = req.user && req.user.access_token;
                     const details = req.body;
 
                     if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
-                        logRef.push({ action: 'change_pwd', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
-                        res.statusCode = 400; // Bad Request
-                        res.send('Bad Request');
+                        logRef.push({ action: 'change_password', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
+                        res.status(400).send('Bad Request'); // Bad Request
                         return;                    
                     }
                     if (details.new_password.length < 8 || ~details.new_password.indexOf(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
-                        logRef.push({ action: 'change_pwd', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
+                        logRef.push({ action: 'change_password', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
                         err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
-                        res.statusCode = 422; // Unprocessable Entity
-                        res.send(err);
+                        res.status(422).send(err);// Unprocessable Entity
                         return;
                     }
 
@@ -924,14 +1331,7 @@ class AceBaseServer extends EventEmitter {
                     })
                     .catch(err => {
                         logRef.push({ action: 'change_pwd', success: false, code: err.code, ip: req.ip, date: new Date(), uid: details.uid });
-                        if (typeof err.code === 'string') {
-                            res.statusCode = 400; // Bad Request
-                            res.send({ code: err.code, message: err.message });
-                        }
-                        else {
-                            res.statusCode = 500; // Internal server error
-                            res.send({ code: 'unknown', message: 'server error', details: err.message });
-                        }
+                        sendError(res, err);
                     });
                 });
 
@@ -946,7 +1346,8 @@ class AceBaseServer extends EventEmitter {
                         return typeof displayName === 'string' && displayName.length >= 5;
                     },
                     password(password) {
-                        return typeof password === 'string' && password.length >= 8 && password.indexOf(' ') < 0 && /[0-9]/.test(password) && /[a-z]/.test(password) && /[A-Z]/.test(password);
+                        // return typeof password === 'string' && password.length >= 8 && password.indexOf(' ') < 0 && /[0-9]/.test(password) && /[a-z]/.test(password) && /[A-Z]/.test(password);
+                        return typeof password === 'string' && password.length >= 8 && password.indexOf(' ') < 0; // Let client application set their own password rules. Keep minimum length of 8 and no spaces requirement.
                     },
                     settings(settings) {
                         return typeof settings === 'undefined'
@@ -962,7 +1363,7 @@ class AceBaseServer extends EventEmitter {
                     email: { code: 'invalid_email', message: 'Invalid email address' },
                     username: { code: 'invalid_username', message: 'Invalid username, must be at least 5 characters and can only contain lowercase characters a-z and 0-9' },
                     displayName: { code: 'invalid_display_name', message: 'Invalid display_name, must be at least 5 characters' },
-                    password: { code: 'invalid_password', message: 'Invalid password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)' },
+                    password: { code: 'invalid_password', message: 'Invalid password, must be at least 8 characters and cannot contain spaces' },
                     settings: { code: 'invalid_settings', message: 'Invalid settings, must be an object and contain only string, number and/or boolean values. Additionaly, string values can have a maximum length of 250, and a maximum of 100 settings can be added' }
                 };
 
@@ -1034,6 +1435,7 @@ class AceBaseServer extends EventEmitter {
                         const user = {
                             username: details.username,
                             email: details.email,
+                            email_verification_code: ID.generate(),
                             display_name: details.displayName,
                             password: pwd.hash,
                             password_salt: pwd.salt,
@@ -1057,16 +1459,35 @@ class AceBaseServer extends EventEmitter {
                             // Cache the user
                             _authCache.set(user.uid, user);
 
+                            // Request welcome e-mail to be sent
+                            const request = new AceBaseUserSignupEmailRequest({
+                                user: {
+                                    uid: user.uid,
+                                    username: user.username,
+                                    email: user.email,
+                                    displayName: user.display_name,
+                                    settings: user.settings
+                                },
+                                date: user.created,
+                                ip: user.created_ip,
+                                activationCode: user.email_verification_code
+                            });
+
+                            this.config.email && this.config.email.send(request).catch(err => {
+                                logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                            });
+
                             // Return the positive news
+                            const isAdmin = req.user && req.user.uid === 'admin';
                             res.send({ 
-                                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token),
+                                access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token),
                                 user: getPublicAccountDetails(user)
                             });
                         });
                     })
                     .catch(err => {
-                        res.statusCode = 500;
-                        res.send({ code: 'unexpected', message: err.message });
+                        logRef.push({ action: 'signup', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, username: details.username, email: details.email });
+                        sendError(res, err);
                     });
                 });
 
@@ -1102,9 +1523,7 @@ class AceBaseServer extends EventEmitter {
                     if (err) {
                         // Log failure
                         logRef.push({ action: 'update', success: false, code: err.code, auth_uid: req.user.uid, update_uid: uid, ip: req.ip, date: new Date() });
-
-                        res.statusCode = 422; // Unprocessable Entity
-                        res.send(err);
+                        res.status(422).send(err); // Unprocessable Entity
                         return;
                     }
 
@@ -1155,9 +1574,10 @@ class AceBaseServer extends EventEmitter {
                     })
                     .catch(err => {
                         logRef.push({ action: 'update', success: false, code: 'unexpected', message: err.message, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
-                        res.statusCode = 500;
-                        res.send({ code: 'unexpected', message: err.message });
-                    });                    ;
+                        // res.statusCode = 500;
+                        // res.send({ code: 'unexpected', message: err.message });
+                        sendError(res, err);
+                    });
                 });
 
                 app.post(`/auth/${dbname}/delete`, (req, res) => {
@@ -1174,6 +1594,10 @@ class AceBaseServer extends EventEmitter {
                     }
 
                     const uid = details.uid || req.user.uid;
+                    if (uid === 'admin') {
+                        logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+                        return sendUnauthorizedError(res, 'unauthorized_update', 'The admin account cannot be deleted, your attempt has been logged');
+                    }
                     return authRef.child(uid)
                     .remove()
                     .then(() => {
@@ -1317,12 +1741,15 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/reflect/${dbname}/*`, (req, res) => {
                 // Reflection API
-                if (!req.user || req.user.username !== 'admin') {
-                    return sendUnauthorizedError(res, 'admin_only', 'only admin can use reflection api');
-                }
+                // if (!req.user || req.user.username !== 'admin') {
+                //     return sendUnauthorizedError(res, 'admin_only', 'only admin can use reflection api');
+                // }
                 const path = req.path.substr(dbname.length + 10);
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
+                    return;
+                }
                 const impersonatedAccess = {
-                    uid: req.query.impersonate,
+                    uid: (!req.user || req.user.username !== 'admin') ? null : req.query.impersonate,
                     read: {
                         allow: false,
                         error: null
@@ -1331,7 +1758,7 @@ class AceBaseServer extends EventEmitter {
                         allow: false,
                         error: null
                     }
-                }
+                };
                 const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
                 if (impersonatedAccess.uid) {
                     impersonatedAccess.read.allow = userHasAccess(impersonatedUser, path, false, denyDetails => { 
@@ -1448,6 +1875,12 @@ class AceBaseServer extends EventEmitter {
                 const data = req.body;
                 const val = Transport.deserialize(data);
 
+                const validation = validateSchema(path, val);
+                if (!validation.ok) {
+                    logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
+                    return res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                }
+
                 db.ref(path)
                 .update(val)
                 .then(ref => {
@@ -1457,8 +1890,8 @@ class AceBaseServer extends EventEmitter {
                 })
                 .catch(err => {
                     this.debug.error(`failed to update "${path}":`, err);
-                    res.statusCode = 500;
-                    res.send(err);
+                    logRef.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message });
+                    sendError(res, err);
                 });
             });
 
@@ -1472,6 +1905,12 @@ class AceBaseServer extends EventEmitter {
                 const data = req.body;
                 const val = Transport.deserialize(data);
 
+                const validation = validateSchema(path, val);
+                if (!validation.ok) {
+                    logRef.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
+                    return res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                }
+
                 db.ref(path)
                 .set(val)
                 .then(ref => {
@@ -1481,8 +1920,8 @@ class AceBaseServer extends EventEmitter {
                 })
                 .catch(err => {
                     this.debug.error(`failed to set "${path}":`, err);
-                    res.statusCode = 500;
-                    res.send(err);
+                    logRef.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
+                    sendError(res, err);
                 });
             });
 
@@ -1948,16 +2387,30 @@ class AceBaseServer extends EventEmitter {
             return promise;
         }
     }
+
+    verifyEmailAddress(code) {
+        throw new Error(`authentication is not enabled`);
+    }
 }
 
 if (__filename.replace(/\\/g,"/").endsWith("/acebase-server.js") && process.argv[2] === "start") {
     // If one executed "node server.js start [hostname] [port]"
-    const dbname = process.argv[3] || "default";
-    const options = { host: process.argv[4], port: process.argv[5] };
+    const dbname = process.argv[3] || process.env.DBNAME || "default";
+    const host = process.argv[4] || process.env.HOST || "0.0.0.0";
+    const port = process.argv[5] || process.env.PORT || 3000;
+    const options = { host , port };
     const server = new AceBaseServer(dbname, options);
     server.once("ready", () => {
         server.debug.log(`AceBase server running`);
     });
 }
 
-module.exports = { AceBaseServer, AceBaseServerSettings, AceBaseClusterSettings };
+module.exports = { 
+    AceBaseServer, 
+    AceBaseServerSettings, 
+    AceBaseClusterSettings,
+    AceBaseEmailRequest,
+    AceBaseUserSignupEmailRequest,
+    AceBaseUserResetPasswordEmailRequest,
+    AceBaseUserResetPasswordSuccessEmailRequest
+};
