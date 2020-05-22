@@ -2124,13 +2124,13 @@ class AceBaseServer extends EventEmitter {
             io.sockets.on("connection", socket => {
                 const client = clients.add(socket);
                 client.signInToken = ID.generate();
-                this.debug.verbose(`New client connected, total: ${clients.list.length}`);
+                this.debug.verbose(`New socket connected, total: ${clients.list.length}`);
                 socket.emit("welcome");
 
                 socket.on("disconnect", data => {
                     // We lost one
-                    const client = clients.get(socket.id);
-                    if (!client) { return; } // Disconnected a client we did not know? Don't crash, just ignore.
+                    // const client = clients.get(socket.id);
+                    // if (!client) { return; } // Disconnected a client we did not know? Don't crash, just ignore.
                     const subscribedPaths = Object.keys(client.subscriptions);
                     if (subscribedPaths.length > 0) {
                         // TODO: Substitute the original callbacks to cache them
@@ -2160,13 +2160,15 @@ class AceBaseServer extends EventEmitter {
 
                 socket.on("reconnect", data => {
                     let prevSocketId = data.id;
+                    clients.list.push(client);
+                    this.debug.verbose(`Socket reconnected, total: ${clients.list.length}`);
                     // TODO: implement cached notification sending
-                })
+                });
 
                 socket.on("signin", accessToken => {
                     // client sends this request once user has been signed in, binds the user to the socket, 
                     // deprecated since client v0.9.4, which sends client_id with signin api call
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
                     let uid;
                     try {
                         uid = decodePublicAccessToken(accessToken).uid;
@@ -2180,7 +2182,7 @@ class AceBaseServer extends EventEmitter {
 
                 socket.on("signout", data => {
                     // deprecated since client v0.9.4, which sends client_id with signout api call
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
                     client.user = null;
                 });
 
@@ -2189,7 +2191,7 @@ class AceBaseServer extends EventEmitter {
                     const subscriptionPath = data.path;
 
                     // Get client
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
 
                     if (!userHasAccess(client.user, subscriptionPath, false)) {
                         logRef.push({ action: `subscribe`, success: false, code: `access_denied`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
@@ -2260,7 +2262,7 @@ class AceBaseServer extends EventEmitter {
                 socket.on("query_unsubscribe", data => {
                     // Client unsubscribing from realtime query events
                     this.debug.verbose(`Client ${socket.id} is unsubscribing from realtime query "${data.query_id}"`);
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
                     delete client.realtimeQueries[data.query_id];
                 })
 
@@ -2268,7 +2270,7 @@ class AceBaseServer extends EventEmitter {
                     // Client unsubscribes from events on a node
                     this.debug.verbose(`Client ${socket.id} is unsubscribing from event "${data.event || '(any)'}" on path "/${data.path}"`);
                     
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
                     let pathSubs = client.subscriptions[data.path];
                     if (!pathSubs) {
                         return; // We have no knowledge of any active subscriptions on this path
@@ -2292,7 +2294,7 @@ class AceBaseServer extends EventEmitter {
 
                 socket.on("transaction", data => {
                     this.debug.verbose(`Client ${socket.id} is sending ${data.action} transaction request on path "${data.path}"`);
-                    const client = clients.get(socket.id);
+                    // const client = clients.get(socket.id);
 
                     if (data.action === "start") {
                         const tx = {
