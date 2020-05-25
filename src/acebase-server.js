@@ -1053,10 +1053,15 @@ class AceBaseServer extends EventEmitter {
             app.use(bodyParser.json({ limit: options.maxPayloadSize, extended: true }));
 
             app.use((req, res, next) => {
-                res.set('Access-Control-Allow-Origin', options.allowOrigin);
-                res.set('Access-Control-Allow-Methods', '*');
-                res.set('Access-Control-Allow-Headers', '*');
-                next();
+                res.header('Access-Control-Allow-Origin', options.allowOrigin);
+                res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+                res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With'); // Safari is not satisfied with *
+                if (req.method === 'OPTIONS') {
+                    res.send(200);
+                }
+                else {
+                    next();
+                }
             });
 
             if (options.authentication.enabled) {
