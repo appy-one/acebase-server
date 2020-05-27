@@ -1057,7 +1057,7 @@ class AceBaseServer extends EventEmitter {
                 res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
                 res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With'); // Safari is not satisfied with *
                 if (req.method === 'OPTIONS') {
-                    res.send(200);
+                    res.sendStatus(200);
                 }
                 else {
                     next();
