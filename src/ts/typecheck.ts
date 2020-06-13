@@ -120,6 +120,7 @@ function parse(definition: string) {
             type.typeOf = 'any';
         }
         else if (name === 'null') {
+            // This is ignored, null values are not stored in the db (null indicates deletion)
             type.typeOf = 'object';
             type.value = null;
         }
@@ -166,23 +167,23 @@ function parse(definition: string) {
     return readType();
 }
 
-function checkObject(path: string, properties: IProperty[], obj: Object) {
+function checkObject(path: string, properties: IProperty[], obj: Object, partial: boolean) {
     // Are there any properties that should not be in there?
-    if (!Object.keys(obj).every(key => !!properties.find(prop => prop.name === key))) {
-        // Which keys are too much?
-        const invalid = Object.keys(obj).filter(key => properties.find(prop => prop.name === key));
-        return { ok: false, reason: `Object at path "${path}" cannot have properties ${invalid.map(p => `"${p}"`).join(', ')}`}
+    const invalidProperties = Object.keys(obj).filter(key => ![null,undefined].includes(obj[key]) && !!properties.find(prop => prop.name === key));
+    if (invalidProperties.length > 0) {
+        return { ok: false, reason: `Object at path "${path}" cannot have properties ${invalidProperties.map(p => `"${p}"`).join(', ')}`}
     }
     // Loop through properties that should be present
     function checkProperty(property: IProperty) {
-        if (!property.optional && !(property.name in obj)) {
+        const hasValue = ![null,undefined].includes(obj[property.name]);
+        if (!property.optional && !hasValue && !partial) {
             return { ok: false, reason: `Property at path "${path}/${property.name}" is not optional` };
         }
-        if (property.name in obj && property.types.length === 1) {
-            return checkType(`${path}/${property.name}`, property.types[0], obj[property.name]);
+        if (hasValue && property.types.length === 1) {
+            return checkType(`${path}/${property.name}`, property.types[0], obj[property.name], false);
         }
-        if (property.name in obj && !property.types.some(type => checkType(`${path}/${property.name}`, type, obj[property.name]).ok)) {
-            return { ok: false, reason: `Property at path "${path}/${property.name}" is of the wrong type`  };
+        if (hasValue && !property.types.some(type => checkType(`${path}/${property.name}`, type, obj[property.name], false).ok)) {
+            return { ok: false, reason: `Property at path "${path}/${property.name}" is of the wrong type` };
         }
         return { ok: true };
     }
@@ -194,7 +195,10 @@ function checkObject(path: string, properties: IProperty[], obj: Object) {
     return { ok: true };
 }
 
-function checkType(path: string, type: IType, value: any) {
+function checkType(path: string, type: IType, value: any, partial: boolean) {
+    if (value === null) {
+        return { ok: true };
+    }
     if (type.typeOf !== 'any' && typeof value !== type.typeOf) {
         return { ok: false, reason: `"${path}" must be typeof ${type.typeOf}` };
     }
@@ -204,18 +208,13 @@ function checkType(path: string, type: IType, value: any) {
     if ('value' in type && value !== type.value) {
         return { ok: false, reason: `"${path}" must be value: ${type.value}` };
     }
-    if (type.instanceOf === Array && type.genericTypes && !(value as Array<any>).every(v => type.genericTypes.some(t => checkType(path, t, v).ok ))) {
+    if (type.instanceOf === Array && type.genericTypes && !(value as Array<any>).every(v => type.genericTypes.some(t => checkType(path, t, v, false).ok ))) {
         return { ok: false, reason: `every array value of "${path}" must match one of the specified types` };
     }
     if (type.typeOf === 'object' && type.children) {
-        return checkObject(path, type.children, value as Object);
+        return checkObject(path, type.children, value as Object, partial);
     }
     return { ok: true };
-}
-
-function check(definition, value) {
-    const type = parse(definition);
-    return checkType('', type, value);
 }
 
 export class TypeChecker {
@@ -252,8 +251,8 @@ export class TypeChecker {
             throw new Error(`Type definiton must be a string or an object`);
         }
     }
-    check(path: string, value: any) {
-        return checkType(path, this.type, value);
+    check(path: string, value: any, partial: boolean) {
+        return checkType(path, this.type, value, partial);
     }
 }
 

@@ -527,6 +527,107 @@ class AceBaseServer extends EventEmitter {
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
             const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
 
+            const setupRules = () => {
+                // Check if there is a rules file, load it or generate default
+                const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
+
+                fs.unwatchFile(rulesFilePath); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
+
+                const defaultAccessRule = (def => {
+                    switch (def) {
+                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED: {
+                            return 'auth !== null';
+                        }
+                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_ALL: {
+                            return true;
+                        }
+                        case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.DENY_ALL: {
+                            return false;
+                        }
+                        default: {
+                            this.debug.error(`Unknown defaultAccessRule "${def}"`);
+                            return false;
+                        }
+                    }
+                })(options.authentication.defaultAccessRule);
+                const defaultRules = {
+                    rules: {
+                        ".read": defaultAccessRule,
+                        ".write": defaultAccessRule
+                    }
+                };
+                if (!fs.existsSync(rulesFilePath)) {
+                    // Default: deny access
+                    accessRules = defaultRules;
+                    // Write defaults
+                    fs.writeFileSync(rulesFilePath, JSON.stringify(accessRules, null, 4));
+                }
+                else {
+                    try {
+                        const json = fs.readFileSync(rulesFilePath);
+                        const obj = JSON.parse(json);
+                        if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
+                            throw new Error(`malformed rules object`);
+                        }
+                        accessRules = obj;
+                    }
+                    catch (err) {
+                        this.debug.error(`Failed to read rules from "${rulesFilePath}": ${err.message}`);
+                        accessRules = defaultRules;
+                    }
+                }
+
+                // Convert string rules to functions that can be executed
+                const processRules = (path, parent, variables) => {
+                    Object.keys(parent).forEach(key => {
+                        let rule = parent[key];
+                        if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
+                            // Convert to function
+                            const text = rule;
+                            rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
+                            rule.getText = () => {
+                                return text;
+                            }
+                            parent[key] = rule;
+                        }
+                        else if (key === '.schema') {
+                            // Parse "typescript" schema
+                            const text = rule;
+                            /** @@type {TypeChecker} */
+                            let checker;
+                            try {
+                                checker = new TypeChecker(rule);
+                            }
+                            catch(err) {
+                                this.debug.error(`Error parsing ${path}/.schema: ${err.message}`)
+                            }
+                            rule = (value, partial) => {
+                                const result = checker.check(path, value, partial);
+                                return result;
+                            };
+                            rule.getText = () => {
+                                return text;
+                            };
+                            parent[key] = rule;
+                        }
+                        else if (key.startsWith('$')) {
+                            variables.push(key);
+                        }
+                        if (typeof rule === 'object') {
+                            processRules(`${path}/${key}`, rule, variables.slice());
+                        }
+                    });
+                };
+                processRules('', accessRules.rules, []);
+
+                // Watch file for changes
+                fs.watchFile(rulesFilePath, (currStats, prevStats) => {
+                    // rules.json file changed, setup rules again
+                    setupRules();
+                })
+            }
+            setupRules();
+
             if (options.authentication.enabled) {
                 // NEW: Make sure there is an administrator account in the database
                 // NOTE: the admin account is the only account with a non-generated uid: 'admin'
@@ -592,107 +693,6 @@ class AceBaseServer extends EventEmitter {
                     authDb.indexes.create(authRef.path, 'email');
                     authDb.indexes.create(authRef.path, 'access_token');
                 });
-
-                const setupRules = () => {
-                    // Check if there is a rules file, load it or generate default
-                    const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
-
-                    fs.unwatchFile(rulesFilePath); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
-
-                    const defaultAccessRule = (def => {
-                        switch (def) {
-                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED: {
-                                return 'auth !== null';
-                            }
-                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_ALL: {
-                                return true;
-                            }
-                            case AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.DENY_ALL: {
-                                return false;
-                            }
-                            default: {
-                                this.debug.error(`Unknown defaultAccessRule "${def}"`);
-                                return false;
-                            }
-                        }
-                    })(options.authentication.defaultAccessRule);
-                    const defaultRules = {
-                        rules: {
-                            ".read": defaultAccessRule,
-                            ".write": defaultAccessRule
-                        }
-                    };
-                    if (!fs.existsSync(rulesFilePath)) {
-                        // Default: deny access
-                        accessRules = defaultRules;
-                        // Write defaults
-                        fs.writeFileSync(rulesFilePath, JSON.stringify(accessRules, null, 4));
-                    }
-                    else {
-                        try {
-                            const json = fs.readFileSync(rulesFilePath);
-                            const obj = JSON.parse(json);
-                            if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
-                                throw new Error(`malformed rules object`);
-                            }
-                            accessRules = obj;
-                        }
-                        catch (err) {
-                            this.debug.error(`Failed to read rules from "${rulesFilePath}": ${err.message}`);
-                            accessRules = defaultRules;
-                        }
-                    }
-
-                    // Convert string rules to functions that can be executed
-                    const processRules = (path, parent, variables) => {
-                        Object.keys(parent).forEach(key => {
-                            let rule = parent[key];
-                            if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
-                                // Convert to function
-                                const text = rule;
-                                rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
-                                rule.getText = () => {
-                                    return text;
-                                }
-                                parent[key] = rule;
-                            }
-                            else if (key === '.schema') {
-                                // Parse "typescript" schema
-                                const text = rule;
-                                /** @@type {TypeChecker} */
-                                let checker;
-                                try {
-                                    checker = new TypeChecker(rule);
-                                }
-                                catch(err) {
-                                    this.debug.error(`Error parsing .schema: ${err.message}`)
-                                }
-                                rule = (value) => {
-                                    const result = checker.check(path, value);
-                                    return result;
-                                };
-                                rule.getText = () => {
-                                    return text;
-                                };
-                                parent[key] = rule;
-                            }
-                            else if (key.startsWith('$')) {
-                                variables.push(key);
-                            }
-                            if (typeof rule === 'object') {
-                                processRules(`${path}/${key}`, rule, variables.slice());
-                            }
-                        });
-                    };
-                    processRules('', accessRules.rules, []);
-
-                    // Watch file for changes
-                    fs.watchFile(rulesFilePath, (currStats, prevStats) => {
-                        // rules.json file changed, setup rules again
-                        setupRules();
-                    })
-                }
-                setupRules();
 
                 this.verifyEmailAddress = (code) => {
                     const verification = decodeVerificationCode(code);
@@ -834,17 +834,19 @@ class AceBaseServer extends EventEmitter {
              * 
              * @param {string} path 
              * @param {any} data 
-             * @returns {{ ok: boolean, reason?: string }}
+             * @param {boolean} partial if the passed data is partial (update instead of set)
+             * @returns {{ ok: boolean, validated: boolean, reason?: string }}
              */
-            const validateSchema = (path, data) => {
+            const validateSchema = (path, data, partial = false) => {
                 // Process rules to find if there are any ".validate" or ".schema" rules set on given path
                 // starts from the root, digs deeper in the path
                 const pathKeys = PathInfo.getPathKeys(path);
                 let rule = accessRules.rules;
                 let rulePath = [];
+                let validated = false;
                 while(true) {
                     if (!rule) { 
-                        return { ok: true };
+                        return { ok: true, validated };
                     }
                     let validate = rule['.validate']; // NOT implemented yet
                     let checkSchema = rule['.schema'];
@@ -854,7 +856,8 @@ class AceBaseServer extends EventEmitter {
                         const checkData = trailKeys.length === 0 ? data : trailKeys.reduce((obj, key, index, arr) => {
                             obj[key] = index === arr.length-1 ? data : { };
                         }, {});
-                        const result = checkSchema(checkData);
+                        validated = true;
+                        const result = checkSchema(checkData, partial);
                         if (!result.ok) {
                             return { ok: false, reason: result.reason };
                         }
@@ -866,7 +869,10 @@ class AceBaseServer extends EventEmitter {
                         // rule set on path 'users/$uid/posts/$postId/tags/$tagId': { name: string, link_id: number }
                         // data being inserted at 'users/352352/posts/572245': { text: 'this is my post', tags: { sometag: 'deny this' } }
                         const checkNestedRules = (parentRule, parentData) => {
-                            const childKeys = Object.keys(parentData);
+
+                            const childKeys = typeof parentData === 'object' && parentData !== null 
+                                ? Object.keys(parentData)
+                                : [];
                             const checkKeys = Object.keys(parentRule)
                                 .filter(key => 
                                     key === '*' || 
@@ -882,15 +888,16 @@ class AceBaseServer extends EventEmitter {
                                     return 0;
                                 });
                             let failed;
-                            const matches = checkKeys.sort().every(key => {
+                            const matches = childKeys.length === 0 || checkKeys.every(key => {
                                 const rule = parentRule[key];
                                 let keepGoing = true;
                                 if ('.schema' in rule) {
                                     const checkSchema = rule['.schema'];
-                                    const checkChildKeys = key === '*' || key[0] === '$' ? childKeys.filter(key => !checkKeys.includes(key)) : key;
+                                    const checkChildKeys = key === '*' || key[0] === '$' ? childKeys.filter(key => !checkKeys.includes(key)) : [key];
+                                    validated = true;
                                     keepGoing = checkChildKeys.every(key => {
                                         const checkData = parentData[key];
-                                        const result = checkSchema(checkData);
+                                        const result = checkSchema(checkData, false);
                                         if (!result.ok) { failed = result; return false; }
                                     })
                                 }
@@ -901,7 +908,7 @@ class AceBaseServer extends EventEmitter {
                             if (!matches) {
                                 return failed;
                             }
-                            return { ok: true }
+                            return { ok: true, validated };
                         }
                         return checkNestedRules(rule, data);
                     }
@@ -1880,18 +1887,42 @@ class AceBaseServer extends EventEmitter {
                 const data = req.body;
                 const val = Transport.deserialize(data);
 
-                const validation = validateSchema(path, val);
-                if (!validation.ok) {
-                    logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
-                    return res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                let validation = validateSchema(path, val, true);
+                let updatePromise;
+                if (validation.ok && validation.validated && typeof val === 'object' && val.constructor === Object) {
+                    // Schema validation was triggered for this path. If this update is on a non-existing path, we have
+                    // to run validation again because updates are not partial, they create the new node
+                    updatePromise = db.ref(path).exists().then(exists => {
+                        if (exists) {
+                            // Proceed as normal, do not check existing data possibly inserted before schema rules 
+                            // were set/changed. This prevents old data becoming stale.
+                            return db.ref(path).update(val);
+                        }
+                        // Target node does not exist. We must validate schema again with "partial" off
+                        // to check if it contains all compulsory data
+                        validation = validateSchema(path, val, false);
+                        if (validation.ok) {
+                            // Set instead of update
+                            return db.ref(path).set(val);
+                        }
+                    });
+                }
+                else {
+                    // No schema validation used
+                    updatePromise = db.ref(path).update(val);
                 }
 
-                db.ref(path)
-                .update(val)
-                .then(ref => {
-                    res.send({
-                        success: true
-                    });
+                updatePromise
+                .then(() => {
+                    if (!validation.ok) {
+                        logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
+                        res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                    }
+                    else {
+                        res.send({
+                            success: true
+                        });
+                    }
                 })
                 .catch(err => {
                     this.debug.error(`failed to update "${path}":`, err);
