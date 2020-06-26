@@ -128,17 +128,32 @@ class AceBaseUserEmailRequest extends AceBaseEmailRequest {
 class AceBaseUserSignupEmailRequest extends AceBaseUserEmailRequest {
     /**
      * 
-     * @param {AceBaseUserSignupEmailRequest} data
+     * @param {AceBaseUserEmailRequest & { provider: string, activationCode: string, emailVerified: boolean }} data
      */
     constructor(data) {
         super('user_signup', data);
         this.activationCode = data.activationCode;
+        this.emailVerified = data.emailVerified;
+        this.provider = data.provider;
+    }
+}
+
+class AceBaseUserSignInEmailRequest extends AceBaseUserEmailRequest {
+    /**
+     * 
+     * @param {AceBaseUserEmailRequest & { provider: string, activationCode: string, emailVerified: boolean }} data
+     */
+    constructor(data) {
+        super('user_signin', data);
+        this.activationCode = data.activationCode;
+        this.emailVerified = data.emailVerified;
+        this.provider = data.provider;
     }
 }
 
 class AceBaseUserResetPasswordEmailRequest extends AceBaseUserEmailRequest {
     /**
-     * @param {AceBaseUserResetPasswordEmailRequest} data
+     * @param {AceBaseUserEmailRequest & { resetCode: string }} data
      */
     constructor(data) {
         super('user_reset_password', data);
@@ -298,6 +313,10 @@ class Client {
  * @property {string} [email_verification_code] Code that enables the user to verify their email address with
  * @property {boolean} [is_disabled] if the account has been disabled
  * @property {string} [display_name]
+ * @property {object} [picture]
+ * @property {string} picture.url
+ * @property {number} picture.width
+ * @property {number} picture.height
  * @property {string} password password hash
  * @property {string} password_salt random password salt used to secure password hash
  * @property {string} [password_reset_code] Code that allows a user to reset their password with
@@ -326,6 +345,7 @@ function getPublicAccountDetails(account) {
         username: account.username, 
         email: account.email,
         displayName: account.display_name, 
+        picture: account.picture,
         emailVerified: account.email_verified,
         created: account.created,
         prevSignin: account.prev_signin,
@@ -441,6 +461,7 @@ class AceBaseServer extends EventEmitter {
 
         options = new AceBaseServerSettings(options);
         const app = require('express')();
+        app.set('trust proxy', true); // When behind proxy server, req.ip and req.hostname will be set the right way
         const bodyParser = require('body-parser');
         const server = options.https.enabled ? require('https').createServer(options.https, app) : require('http').createServer(app);
         const io = require('socket.io').listen(server);
@@ -471,6 +492,9 @@ class AceBaseServer extends EventEmitter {
 
         const db = new AceBase(dbname, dbOptions);
 
+        if (options.authentication.enabled) {
+            this.authProviders = {};
+        }
         if (options.authentication.enabled && !options.https.enabled) {
             this.debug.warn(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`.red);
         }
@@ -495,6 +519,13 @@ class AceBaseServer extends EventEmitter {
         // process.on("unhandledRejection", (reason, p) => {
         //     this.debug.error("Unhandled promise rejection at: ", reason.stack);
         // });
+
+        const generatePassword = () => {
+            return Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
+                if (i > 15) { return password; }
+                return password + chars[Math.floor(Math.random() * chars.length)];
+            }, '');
+        };
 
         const createPasswordHash = (password) => {
             let length = 16;
@@ -637,10 +668,7 @@ class AceBaseServer extends EventEmitter {
                     let adminAccount = snap.val();
                     if (!snap.exists()) {
                         // Use provided default password, or generate one:
-                        const adminPassword = options.authentication.defaultAdminPassword  || Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
-                            if (i > 15) { return password; }
-                            return password + chars[Math.floor(Math.random() * chars.length)];
-                        }, '');
+                        const adminPassword = options.authentication.defaultAdminPassword || generatePassword();
 
                         const pwd = createPasswordHash(adminPassword);
                         adminAccount = {
@@ -694,7 +722,11 @@ class AceBaseServer extends EventEmitter {
                     authDb.indexes.create(authRef.path, 'access_token');
                 });
 
-                this.verifyEmailAddress = (code) => {
+                /**
+                 * @param {string} clientIp ip address of the user
+                 * @param {string} code verification code sent to the user's email address
+                 */
+                this.verifyEmailAddress = (clientIp, code) => {
                     const verification = decodeVerificationCode(code);
                     return authRef.query().filter('uid', '==', verification.uid).get()
                     .then(snaps => {
@@ -711,7 +743,9 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 /**
-                 * @param {string} newPassword
+                 * @param {string} clientIp ip address of the user
+                 * @param {string} code reset code that was sent to the user's email address
+                 * @param {string} newPassword new password chosen by the user
                  */
                 this.resetPassword = (clientIp, code, newPassword) => {
                     const verification = decodePasswordResetCode(code);
@@ -1271,6 +1305,19 @@ class AceBaseServer extends EventEmitter {
                     })
                 });
 
+                app.post(`/auth/${dbname}/verify_email`, (req, res) => {
+                    const details = req.body;
+                    return this.verifyEmailAddress(req.ip, details.code)
+                    .then(user => {
+                        logRef.push({ action: 'verify_email', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+                        res.send('OK');
+                    })
+                    .catch(err => {
+                        logRef.push({ action: 'verify_email', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: details.uid });
+                        sendError(res, err);
+                    });
+                }); 
+                
                 app.post(`/auth/${dbname}/reset_password`, (req, res) => {
                     const details = req.body;
                     return this.resetPassword(req.ip, details.code, details.password)
@@ -1282,7 +1329,7 @@ class AceBaseServer extends EventEmitter {
                         logRef.push({ action: 'reset_password', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: details.uid });
                         sendError(res, err);
                     });
-                });
+                }); 
 
                 app.post(`/auth/${dbname}/change_password`, (req, res) => {
                     let access_token = req.user && req.user.access_token;
@@ -1447,6 +1494,7 @@ class AceBaseServer extends EventEmitter {
                         const user = {
                             username: details.username,
                             email: details.email,
+                            email_verified: false,
                             email_verification_code: ID.generate(),
                             display_name: details.displayName,
                             password: pwd.hash,
@@ -1482,7 +1530,9 @@ class AceBaseServer extends EventEmitter {
                                 },
                                 date: user.created,
                                 ip: user.created_ip,
-                                activationCode: user.email_verification_code
+                                provider: 'acebase',
+                                activationCode: user.email_verification_code,
+                                emailVerified: false
                             });
 
                             this.config.email && this.config.email.send(request).catch(err => {
@@ -1551,9 +1601,9 @@ class AceBaseServer extends EventEmitter {
                             return;
                         }
                         user = snap.val();
-                        if (details.email) {
+                        if (details.email !== user.email) {
                             user.email = details.email; 
-                            user.email_verified = true; // TODO: send verification email
+                            user.email_verified = false; // TODO: send verification email
                         }
                         if (details.username) { updates.username = details.username; }
                         if (details.display_name) { updates.display_name = details.display_name; }
@@ -1569,7 +1619,7 @@ class AceBaseServer extends EventEmitter {
                                 logRef.push({ action: 'update', success: false, code: 'too_many_settings', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
                                 res.statusCode = 422; // Unprocessable Entity
                                 res.send(err);
-                                return;        
+                                return;
                             }
                         }
                         if (typeof details.is_disabled === 'boolean') {
@@ -1622,6 +1672,241 @@ class AceBaseServer extends EventEmitter {
                         res.send({ code: 'unexpected', message: err.message });
                     })
                 });
+
+                app.get(`/oauth2/${dbname}/init`, async (req, res) => {
+                    try {
+                        const providerName =  req.query.provider; // req.path.substr(dbname.length + 7);
+                        const callbackUrl = req.query.callbackUrl;
+                        const provider = this.authProviders[providerName];
+                        if (!provider) {
+                            throw new Error(`Provider ${provider} is not available, or not properly configured by the db admin`);
+                        }
+                        const state = Buffer.from(JSON.stringify({ flow: 'redirect', provider: providerName, callbackUrl })).toString('base64');
+                        const clientAuthUrl = await provider.init({ redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin`, state });
+                        res.send({ redirectUrl: clientAuthUrl });
+                    }
+                    catch(err) {
+                        res.status(500).send(err.message);
+                    }
+                });
+
+                app.get(`/oauth2/${dbname}/signin`, async (req, res) => {
+                    // This is where the user is redirected to by the provider after signin or error
+                    try {
+                        const state = JSON.parse(Buffer.from(req.query.state, "base64").toString("utf8"));
+                        if (req.query.error) {
+                            if (state.flow === 'socket') {
+                                const client = clients.get(state.client_id);
+                                client.socket.emit('oauth2-signin', { error: req.query.error, reason: req.query.error_reason, description: req.query.error_description, provider: state.provider });
+                            }
+                            else {
+                                const callbackUrl = `${state.callbackUrl}?provider=${state.provider}&error=${req.query.error}&reason=${req.query.error_reason}&description=${req.query.error_description}`;
+                                res.redirect(callbackUrl);
+                            }
+                            return;
+                        }
+
+                        // Got authorization code
+                        const authCode = req.query.code;
+                        const provider = this.authProviders[state.provider];
+
+                        // Get access & refresh tokens
+                        const tokens = await provider.getAccessToken({ auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin` });
+
+                        let user_details;
+                        // TODO: Have we got an id_token?
+                        // if (tokens.id_token) {
+                        //     // decode, extract user information
+                        // }
+                        // else {
+                        user_details = await provider.getUserInfo(tokens.access_token);
+                        // }
+
+                        if (user_details.picture && user_details.picture.length > 0) {
+                            // Download it, convert to base64
+                            const best = user_details.picture.sort((a,b) => a.width * a.height > b.width * b.height ? -1 : 1)[0]
+                            // TODO: Let client do this instead:
+                            const { fetch } = require('./oauth-providers/simple-fetch');
+                            await fetch(best.url).then(async response => {
+                                const contentType = response.headers.get('Content-Type');
+                                if (contentType === 'image/png') { //state.provider === 'google' && 
+                                    // Don't accept image/png, because it's probably a placeholder image. Google does this by creating a png with people's initials
+                                    user_details.picture = [];
+                                    return;
+                                }
+                                const image = await response.arrayBuffer();
+                                let buff = new Buffer.from(image);
+                                best.url = `data:${contentType};base64,${buff.toString('base64')}`;
+                                user_details.picture = [best]; // Only keep the best one
+                            });
+                        }
+
+                        const getProviderSettings = () => {
+                            // Returns an object with any other info the provider has about the user
+                            const settings = { [`${state.provider}_id`]: user_details.id };
+                            Object.keys(user_details.other).forEach(key => {
+                                settings[`${state.provider}_${key}`] = user_details.other[key];
+                            });
+                            return settings;
+                        };
+                        const providerUsername = `${state.provider}:${user_details.id}`;
+
+                        // Check if this user exists in the database
+                        const query = authRef.query();
+                        if (user_details.email) {
+                            query.filter('email', '==', user_details.email);
+                        }
+                        else {
+                            // User did not allow reading e-mail address, or provider does not have one (eg whatsapp?)
+                            // Switch to using a generated username such as "facebook-3292389234" instead
+                            query.filter('username', '==', providerUsername);
+                        }
+                        let snaps = await query.get();
+                        if (snaps.length === 0 && user_details.email) {
+                            // Try again with providerUsername, use might previously have denied access to email, 
+                            // and now has granted access. In that case, we'll already have an account with the 
+                            // generated providerUsername
+                            snaps = await authRef.query().filter('username', '==', providerUsername).get();
+                        }
+                        /** @type {DbUserAccountDetails} */
+                        let user;
+                        if (snaps.length === 1) {
+                            const uid = snaps[0].key;
+                            user = snaps[0].val();
+                            user.uid = uid;
+
+                            // Update user details
+                            user.email_verified = user.email_verified || user_details.email_verified;
+                            user.email = user.email || user_details.email;
+                            if (user_details.picture && user_details.picture.length > 0) {
+                                user.picture = user_details.picture[0];
+                            }
+                            await authRef.child(uid).update({
+                                email: user.email || null,
+                                email_verified: user.email_verified,
+                                last_signin: new Date(),
+                                last_signin_ip: req.ip,
+                                picture: user.picture
+                            });
+                            // Add provider details
+                            await authRef.child(uid).child('settings').update(getProviderSettings());
+
+                            // Log success
+                            logRef.push({ action: 'oauth2_signin', success: true, ip: req.ip, date: new Date(), uid });
+
+                            // Cache the user
+                            _authCache.set(user.uid, user);
+
+                            // Request signin e-mail to be sent
+                            const request = new AceBaseUserSignInEmailRequest({
+                                user: {
+                                    uid: user.uid,
+                                    username: user.username,
+                                    email: user.email,
+                                    displayName: user.display_name,
+                                    settings: user.settings
+                                },
+                                date: user.created,
+                                ip: req.ip,
+                                activationCode: user.email_verification_code,
+                                emailVerified: user.email_verified,
+                                provider: state.provider
+                            });
+
+                            this.config.email && this.config.email.send(request).catch(err => {
+                                logRef.push({ action: 'oauth2_login_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                            });                            
+                        }
+                        else if (snaps.length === 0) {
+                            // User does not exist, create
+
+                            if (!this.config.authentication.allowUserSignup) {
+                                logRef.push({ action: 'oauth2_signup', success: false, code: 'user_signup_disabled', provider: state.provider, email: user_details.email, date: new Date() });
+                                res.statusCode = 403; // Forbidden
+                                return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
+                            }
+
+                            // Create user with Generated password
+                            let pwd = createPasswordHash(generatePassword());
+                            user = {
+                                username: typeof user_details.email === 'undefined' ? providerUsername : null, // provider-accountid usernames for external accounts without email address
+                                email: user_details.email || null,
+                                email_verified: user_details.email_verified, // trust provider's verification
+                                email_verification_code: ID.generate(),
+                                display_name: user_details.display_name,
+                                password: pwd.hash,
+                                password_salt: pwd.salt,
+                                created: new Date(),
+                                created_ip: req.ip,
+                                access_token: ID.generate(),
+                                access_token_created: new Date(),
+                                last_signin: new Date(),
+                                last_signin_ip: req.ip,
+                                picture: user_details.picture && user_details.picture[0],
+                                settings: getProviderSettings()
+                            };
+    
+                            const userRef = await authRef.push(user);
+                            const uid = userRef.key;
+                            user.uid = uid;
+
+                            // Log success
+                            logRef.push({ action: 'oauth2_signup', success: true, ip: req.ip, date: new Date(), uid });
+
+                            // Cache the user
+                            _authCache.set(user.uid, user);
+
+                            // Request welcome e-mail to be sent
+                            const request = new AceBaseUserSignupEmailRequest({
+                                user: {
+                                    uid: user.uid,
+                                    username: user.username,
+                                    email: user.email,
+                                    displayName: user.display_name,
+                                    settings: user.settings
+                                },
+                                date: user.created,
+                                ip: user.created_ip,
+                                activationCode: user.email_verification_code,
+                                emailVerified: user.email_verified,
+                                provider: state.provider
+                            });
+    
+                            this.config.email && this.config.email.send(request).catch(err => {
+                                logRef.push({ action: 'oauth2_signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                            });
+                        }
+                        else {
+                            // More than 1?!!
+                            const callbackUrl = `${state.callbackUrl}?provider=${state.provider}&error=account_duplicates`;
+                            return res.redirect(callbackUrl);
+                        }
+
+                        let result = { 
+                            provider: {
+                                name: state.provider, 
+                                access_token: tokens.access_token
+                            },
+                            access_token: createPublicAccessToken(user.uid, req.ip, user.access_token),
+                            user: getPublicAccountDetails(user)
+                        };
+
+                        if (state.flow === 'socket') {
+                            const client = clients.get(state.client_id);
+                            client.socket.emit('oauth2-signin', { action: 'success', result });
+                            res.send(`<html><script>window.close()</script><body>You can <a href="javascript:window.close()">close</a> this page</body></html>`)                        
+                        }
+                        else {
+                            const base64Result = Buffer.from(JSON.stringify(result)).toString('base64');
+                            const callbackUrl = `${state.callbackUrl}?result=${base64Result}`;
+                            res.redirect(callbackUrl);
+                        }
+                    }
+                    catch(err) {
+                        res.status(500).send(err.message);
+                    }
+                });
+
             }
 
             const webManagerDir = `/webmanager/`;
@@ -2222,6 +2507,19 @@ class AceBaseServer extends EventEmitter {
                     client.user = null;
                 });
 
+                socket.on("oauth2-signin", async providerName => {
+                    try {
+                        const provider = this.authProviders[providerName];
+                        const state = Buffer.from(JSON.stringify({ flow: 'socket', provider: providerName, client_id: client.id })).toString('base64');
+                        const clientAuthUrl = await provider.init({ redirectUrl: `${req.protocol}://${req.headers.host}/ouath2/${dbname}/signin`, state });
+                        socket.emit('oauth2-signin', { action: 'auth', url: clientAuthUrl });
+                    }
+                    catch(err) {
+                        this.debug.error(`websocket: cannot sign in with oauth provider ${providerName}`);
+                        socket.emit('oauth2-signin', { error: err.message });
+                    }
+                });
+
                 socket.on("subscribe", data => {
                     // Client wants to subscribe to events on a node
                     const subscriptionPath = data.path;
@@ -2428,6 +2726,20 @@ class AceBaseServer extends EventEmitter {
 
     verifyEmailAddress(code) {
         throw new Error(`authentication is not enabled`);
+    }
+
+    configOAuthProvider(providerName, settings) {
+        if (!this.config.authentication.enabled) {
+            throw new Error(`Authentication is not enabled`);
+        }
+        try {
+            const { AuthProvider } = require('./oauth-providers/' + providerName);
+            const provider = new AuthProvider(settings);
+            this.authProviders[providerName] = provider;
+        }
+        catch(err) {
+            throw new Error(`Failed to configure provider ${providerName}: ${err.message}`)
+        }
     }
 }
 

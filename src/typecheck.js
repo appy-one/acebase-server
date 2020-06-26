@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TypeChecker = void 0;
 // parses a typestring, creates checker functions 
 function parse(definition) {
     // tokenize
@@ -156,7 +157,7 @@ function parse(definition) {
 }
 function checkObject(path, properties, obj, partial) {
     // Are there any properties that should not be in there?
-    const invalidProperties = Object.keys(obj).filter(key => ![null, undefined].includes(obj[key]) && !properties.find(prop => prop.name === key));
+    const invalidProperties = Object.keys(obj).filter(key => ![null, undefined].includes(obj[key]) && !!properties.find(prop => prop.name === key));
     if (invalidProperties.length > 0) {
         return { ok: false, reason: `Object at path "${path}" cannot have properties ${invalidProperties.map(p => `"${p}"`).join(', ')}` };
     }
