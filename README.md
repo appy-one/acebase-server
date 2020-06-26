@@ -181,6 +181,101 @@ And, if you prefer, schema definitions can be defined as strings instead:
 (...)
 ```
 
+## Sending user e-mails [NEW]
+
+If your app allows users to sign up, you'll need a way to verify their e-mail addresses, send welcome and password reset e-mails etc. AceBase Server does not send the e-mails itself (yet), but provides a way to handle this yourself:
+
+```javascript
+const server = new AceBaseServer(('mydb', { host: 'localhost', port: 5757, authentication: { enabled: true, allowUserSignup: true }, email: { send: sendRequestedEmail } });
+
+function sendRequestedEmail(request) {
+    switch (request.type) {
+        case 'user_signup': {
+            console.log(`Should send an e-mail to ${request.user.email} to verify their e-mail address with code ${request.verifyCode}`);
+            break;
+        }
+        case 'user_reset_password': {
+            console.log(`Should send an e-mail to ${request.user.email} to reset their password with code ${request.resetCode}`);
+            break;
+        }
+    }
+}
+```
+
+Any links you would add to the e-mails you send out should point to your own website/app, where you would handle account verification / password resets through an ```AceBaseClient``` connected to your server:
+
+```javascript
+const resetCode = 'weydgaed7gjsdhfjadbsfadsfasq3w7dtuqwebd'; // eg from your_reset_url?code=weydga...
+const newPassword = 'MyNewPassword'; // from user input on your page
+client.auth.resetPassword(resetCode, newPassword)
+.then(() => {
+    // User can now sign in with their new password
+})
+.catch(err => {
+    // Something went wrong
+})
+```
+
+OR, if you have direct access to your AceBaseServer instance from your website:
+
+```javascript
+server.resetPassword(req.ip, resetCode, newPassword)
+.then(() => { ... });
+```
+
+To verify a user's email address:
+```javascript
+const verificationCode = 'weydgaed7gjsdhfjadbsfadsfasq3w7dtuqwebd'; // eg from your_verify_url?code=weydga...
+client.auth.verifyEmailAddress(verificationCode)
+.then(() => { ... })
+```
+
+OR, directly on your server:
+
+```javascript
+server.verifyEmailAddress(req.ip, verificationCode)
+.then(() => { ... });
+```
+
+## Using third party login providers [NEW]
+
+You can enable users to sign into your app through a third party login provider, such as Facebook, Google, Twitter etc. To enable this, follow these steps for each provider:
+
+* First, get ```client_id``` and ```client_secret``` API keys from the auth providers' developer environment. This will allow your app to use with the provider's auth API.
+
+* Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you allowe AceBase's callback URL in the provider's API settings: ```"https://your.acebase.server/oauth2/dbname/signin"``` (replace hostname and dbname to your server Url)
+
+* Then, add your API keys to your ```AceBaseServer``` config with ```configOAuthProvider```:
+
+```javascript
+server.configOAuthProvider('facebook', { client_id: '[your facebook app_id]', client_secret: '[your facebook app_secret]' });
+```
+
+* Now, you can kick off Facebook authentication in your app:
+```javascript
+// In your login.js:
+const callbackUrl = 'http://your.app.url/authenticated';
+client.auth.startOAuthProviderSignIn('facebook', callbackUrl)
+.then(redirectUrl => {
+    window.location = redirectUrl; // Send user to auth provider's login screen
+});
+```
+
+* Once the user authenticated your request, they are redirected back to your website (your callbackUrl):
+```javascript
+// In your authenticated.js: (executes from /authenticated?result=awefi873r4gqw...)
+const callbackResult = window.location.search.match(/[?&]result=(.*?)(?:&|$)/)[1]; // Or some other way you'd get the ?result from the url
+client.auth.finishOAuthProviderSignIn(callbackResult)
+.then(result => {
+    console.log(`User ${result.user.email} signed in with ${result.provider.name}`);
+})
+```
+
+Currently implemented auth providers are:
+* Google
+* Facebook
+* Spotify
+
 ## Connecting to a server
 
 See *acebase-client* on [npm](https://www.npmjs.com/package/acebase-client) or [github](https://github.com/appy-one/acebase-client)
