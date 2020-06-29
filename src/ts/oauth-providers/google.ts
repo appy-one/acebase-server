@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration } from "./oauth-provider";
+import { IOAuth2Provider, IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
 import { fetch } from './simple-fetch';
 
 /**
@@ -9,8 +9,6 @@ export interface IGoogleAuthSettings extends IOAuth2ProviderSettings {
     scopes?: string[]
 }
 
-interface IGoogleAuthCodeParams { auth_code: string, redirect_url: string }
-interface IGoogleRefreshTokenParams { refresh_token: string }
 interface IGoogleAuthToken { access_token: string, expires_in: number, expires: Date, id_token: IOpenIDToken, refresh_token: string, scope: string, token_type: string }
 interface IGoogleError { error: string, error_description: string }
 interface IGoogleUser {
@@ -80,7 +78,7 @@ export class GoogleAuthProvider implements IOAuth2Provider {
         return authUrl;
     }
 
-    async getAccessToken(params: IGoogleAuthCodeParams|IGoogleRefreshTokenParams) : Promise<IGoogleAuthToken> {
+    async getAccessToken(params: IOAuth2AuthCodeParams|IOAuth2RefreshTokenParams) : Promise<IGoogleAuthToken> {
         // Request access & refresh tokens with authorization code, or refresh token
         const config = await this.getOpenIDConfig();
         // 'https://oauth2.googleapis.com/token'
@@ -88,9 +86,9 @@ export class GoogleAuthProvider implements IOAuth2Provider {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=` 
-            + ('refresh_token' in params
-                ? `${(params as IGoogleRefreshTokenParams).refresh_token}&grant_type=refresh_token`
-                : `${(params as IGoogleAuthCodeParams).auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent((params as IGoogleAuthCodeParams).redirect_url)}`)
+            + (params.type === 'refresh'
+                ? `${params.refresh_token}&grant_type=refresh_token`
+                : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
         })
         .then(response => response.json())
         .then((result: IGoogleAuthToken) => {

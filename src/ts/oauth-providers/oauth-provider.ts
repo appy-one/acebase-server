@@ -3,10 +3,24 @@ export interface IOAuth2ProviderSettings {
     client_secret: string,
     scopes?: string[]
 }
-
+export interface IOAuth2RefreshTokenParams {
+    type: 'refresh'
+    refresh_token: string
+}
+export interface IOAuth2AuthCodeParams {
+    type: 'auth'
+    auth_code: string
+    redirect_url: string
+}
+export interface IOAuth2TokenResult {
+    access_token: string, 
+    id_token?: IOpenIDToken, 
+    expires_in?: number, 
+    refresh_token?: string
+}
 export interface IOAuth2Provider {
     init(options: { redirect_url: string, state?: string }): Promise<string>
-    getAccessToken(params: { auth_code: string, redirect_url: string }): Promise<{ access_token: string, id_token?: IOpenIDToken, expires_in?: number, refresh_token?: string }>
+    getAccessToken(params: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult>
     getUserInfo(access_token: string): Promise<{ id: string, name: string, display_name: string, picture?: Array<{ width?: number, height?: number, url: string }>, email: string, email_verified: boolean, other: any }>
 }
 // For OAuth2.0 providers with id_token in getAccessToken, see https://auth0.com/docs/tokens/concepts/jwts

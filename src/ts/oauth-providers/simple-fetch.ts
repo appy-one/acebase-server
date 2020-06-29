@@ -44,16 +44,6 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
                 async text() {
                     const buffer = await ready;
                     return buffer.toString('utf8');
-                    // return new Promise((resolve, reject) => {
-                    //     res.setEncoding('utf8');
-                    //     let text = '';
-                    //     res.on('data', data => {
-                    //         text += data;
-                    //     });
-                    //     res.on('end', () => {
-                    //         resolve(text);
-                    //     });
-                    // });
                 },
                 json() {
                     // return Promise.resolve(JSON.parse(body));
@@ -63,28 +53,10 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
                     const data = await ready;
                     const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
                     return arrayBuffer;
-                    // return new Promise((resolve, reject) => {
-                    //     res.setEncoding('binary');
-                    //     let chunks = [];
-                    //     res.on('data', data => {
-                    //         chunks.push(data);
-                    //     });
-                    //     res.on('end', () => {
-                    //         const data = Buffer.concat(chunks);
-                    //         const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-                    //         resolve(arrayBuffer);
-                    //     });
-                    // });
                 }
             };
 
-            // res.on('data', data => {
-            //      body += data;
-            // });
-            // res.on('end', () => {
-
             resolve(response);
-            // });
         });
         options?.body && req.write(options.body, 'utf8');
         req.end();

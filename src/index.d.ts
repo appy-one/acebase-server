@@ -18,11 +18,11 @@ declare namespace acebaseserver {
         resetPassword(clientIp: string, code: string, newPassword: string): Promise<void>
         
         /**
-         * Configure an OAuth provider to allow users to sign in with Facebook, Google, etc
+         * Configure an auth provider to allow users to sign in with Facebook, Google, etc
          * @param providerName name of the thrird party OAuth provider. Eg: "Facebook", "Google", "spotify" etc
          * @param settings API key & secret for the OAuth provider
          */
-        configOAuthProvider(providerName: string, settings: OAuthProviderSettings)
+        configAuthProvider(providerName: string, settings: OAuthProviderSettings)
     }
 
     interface OAuthProviderSettings {

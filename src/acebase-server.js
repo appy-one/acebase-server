@@ -1675,7 +1675,7 @@ class AceBaseServer extends EventEmitter {
 
                 app.get(`/oauth2/${dbname}/init`, async (req, res) => {
                     try {
-                        const providerName =  req.query.provider; // req.path.substr(dbname.length + 7);
+                        const providerName =  req.query.provider;
                         const callbackUrl = req.query.callbackUrl;
                         const provider = this.authProviders[providerName];
                         if (!provider) {
@@ -1711,7 +1711,7 @@ class AceBaseServer extends EventEmitter {
                         const provider = this.authProviders[state.provider];
 
                         // Get access & refresh tokens
-                        const tokens = await provider.getAccessToken({ auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin` });
+                        const tokens = await provider.getAccessToken({ type: 'auth', auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin` });
 
                         let user_details;
                         // TODO: Have we got an id_token?
@@ -1885,7 +1885,9 @@ class AceBaseServer extends EventEmitter {
                         let result = { 
                             provider: {
                                 name: state.provider, 
-                                access_token: tokens.access_token
+                                access_token: tokens.access_token,
+                                refresh_token: tokens.refresh_token,
+                                expires_in: tokens.expires_in
                             },
                             access_token: createPublicAccessToken(user.uid, req.ip, user.access_token),
                             user: getPublicAccountDetails(user)
@@ -1907,6 +1909,32 @@ class AceBaseServer extends EventEmitter {
                     }
                 });
 
+                app.get(`/oauth2/${dbname}/refresh`, async (req, res) => {
+                    try {
+                        const providerName =  req.query.provider;
+                        const refreshToken = req.query.refresh_token;
+                        const provider = this.authProviders[providerName];
+                        if (!provider) {
+                            throw new Error(`Provider ${provider} is not available, or not properly configured by the db admin`);
+                        }
+                        if (!refreshToken) {
+                            throw new Error(`No refresh_token passed`);
+                        }
+                        // Get new access & refresh tokens
+                        const tokens = await provider.getAccessToken({ type: 'refresh', refresh_token: refreshToken });
+                        res.send({
+                            provider: {
+                                name: providerName,
+                                access_token: tokens.access_token,
+                                refresh_token: tokens.refresh_token,
+                                expires_in: tokens.expires_in
+                            }
+                        });
+                    }
+                    catch(err) {
+                        res.status(500).send(err.message);
+                    }
+                });
             }
 
             const webManagerDir = `/webmanager/`;
@@ -2728,7 +2756,7 @@ class AceBaseServer extends EventEmitter {
         throw new Error(`authentication is not enabled`);
     }
 
-    configOAuthProvider(providerName, settings) {
+    configAuthProvider(providerName, settings) {
         if (!this.config.authentication.enabled) {
             throw new Error(`Authentication is not enabled`);
         }

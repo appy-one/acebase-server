@@ -49,7 +49,7 @@ class GoogleAuthProvider {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=`
-                + ('refresh_token' in params
+                + (params.type === 'refresh'
                     ? `${params.refresh_token}&grant_type=refresh_token`
                     : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
         })

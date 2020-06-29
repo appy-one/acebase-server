@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings } from "./oauth-provider";
+import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
 import { fetch } from './simple-fetch';
 
 /**
@@ -46,9 +46,13 @@ export class FacebookAuthProvider implements IOAuth2Provider {
         return authUrl;
     }
 
-    getAccessToken(params: { auth_code: string, redirect_url: string }) {
-        // Request access & refresh tokens with authorization code
-        return fetch(`https://graph.facebook.com/v7.0/oauth/access_token?client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
+    getAccessToken(params: IOAuth2AuthCodeParams|IOAuth2RefreshTokenParams) {
+        // Request access token with authorization code, or previously granted (short or long-lived) access_token
+        const url = `https://graph.facebook.com/v7.0/oauth/access_token?client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` + 
+            (params.type === 'refresh' 
+                ? `&grant_type=fb_exchange_token&fb_exchange_token=${params.refresh_token}`
+                : `&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
+        return fetch(url)
         .then(response => response.json())
         .then((result: IFacebookAuthToken) => {
             if ((result as any).error) {
@@ -56,6 +60,11 @@ export class FacebookAuthProvider implements IOAuth2Provider {
             }
             const secondsToExpiry = result.expires_in;
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
+            
+            // A short-lived access token can be exchanged for a long-lived (60 day) token. 
+            // Not sure if a long-lived token can be used to get a new long-lived token, 
+            // needs testing. See docs at: https://developers.facebook.com/docs/facebook-login/access-tokens/refreshing/
+            result.refresh_token = result.access_token; 
             return result;
         });
     }

@@ -32,7 +32,10 @@ class SpotifyAuthProvider {
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`
+            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
+                (params.type === 'refresh'
+                    ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
+                    : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
         })
             .then(response => response.json())
             .then((result) => {

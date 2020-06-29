@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings } from "./oauth-provider";
+import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams } from "./oauth-provider";
 import { fetch } from './simple-fetch';
 
 /**
@@ -52,7 +52,7 @@ export class InstagramAuthProvider implements IOAuth2Provider {
     }
 
     _userInfo: IInstagramUser;
-    getAccessToken(params: { auth_code: string, redirect_url: string }) {
+    getAccessToken(params: IOAuth2AuthCodeParams) {
         // Request access & refresh tokens with authorization code
         return fetch(`https://api.instagram.com/oauth/access_token`, {
             method: 'POST',
