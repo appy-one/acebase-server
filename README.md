@@ -245,17 +245,17 @@ You can enable users to sign into your app through a third party login provider,
 
 * Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you allowe AceBase's callback URL in the provider's API settings: ```"https://your.acebase.server/oauth2/dbname/signin"``` (replace hostname and dbname to your server Url)
 
-* Then, add your API keys to your ```AceBaseServer``` config with ```configOAuthProvider```:
+* Then, add your API keys to your ```AceBaseServer``` config with ```configAuthProvider```:
 
 ```javascript
-server.configOAuthProvider('facebook', { client_id: '[your facebook app_id]', client_secret: '[your facebook app_secret]' });
+server.configAuthProvider('facebook', { client_id: '[your fb app_id]', client_secret: '[your fb app_secret]', scopes: [/* Any additional scopes, such as 'user_birthday' */] });
 ```
 
 * Now, you can kick off Facebook authentication in your app:
 ```javascript
 // In your login.js:
 const callbackUrl = 'http://your.app.url/authenticated';
-client.auth.startOAuthProviderSignIn('facebook', callbackUrl)
+client.auth.startAuthProviderSignIn('facebook', callbackUrl)
 .then(redirectUrl => {
     window.location = redirectUrl; // Send user to auth provider's login screen
 });
@@ -265,16 +265,39 @@ client.auth.startOAuthProviderSignIn('facebook', callbackUrl)
 ```javascript
 // In your authenticated.js: (executes from /authenticated?result=awefi873r4gqw...)
 const callbackResult = window.location.search.match(/[?&]result=(.*?)(?:&|$)/)[1]; // Or some other way you'd get the ?result from the url
-client.auth.finishOAuthProviderSignIn(callbackResult)
+client.auth.finishAuthProviderSignIn(callbackResult)
 .then(result => {
     console.log(`User ${result.user.email} signed in with ${result.provider.name}`);
 })
 ```
 
+The ```result``` object will also contain the provider's ```access_token``` and ```refresh_token``` in case you want to make custom calls to the provider's API. If you want to keep the provider's access_token active, you will have to call ```client.auth.refreshAuthProviderToken``` before it expires:
+
+```javascript
+const keepAlive = (provider) => {
+    // Schedule token refresh 1 minute before it expires
+    const refreshMs = (provider.expires_in - 60) * 1000;
+    setTimeout(() => {
+        client.auth.refreshAuthProviderToken(provider.refresh_token)
+        .then(result => {
+            keepAlive(result.provider); // Schedule again
+        })
+    }, refreshMs);
+};
+
+client.auth.finishAuthProviderSignIn(callbackResult)
+.then(result => {
+    // schedule a token refresh:
+    keepAlive(result.provider);
+});
+```
+
 Currently implemented auth providers are:
 * Google
-* Facebook
+* Facebook*
 * Spotify
+
+*NOTE: Facebook access tokens are short-lived by default, but will be exchanged for a long-lived (60 day) access token upon refresh. If you need to keep the Facebook access token active, execute ```refreshAuthProviderToken``` immediately after ```finishAuthProviderSignIn```, and keep refreshing every time the user starts your app. Once a Facebook access token has expired, it cannot be refreshed and the user will have to sign in again.
 
 ## Connecting to a server
 
