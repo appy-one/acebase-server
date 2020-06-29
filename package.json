@@ -1,6 +1,6 @@
 {
   "name": "acebase-server",
-  "version": "0.9.15",
+  "version": "0.9.16",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
   "main": "./src/index.js",
   "private": false,
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/acebase-server.js start default 0.0.0.0 3000",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "tsc --project ./src/ts/tsconfig.json --outDir ./src"
+    "compile": "tsc --outDir ./src"
   },
   "keywords": [
     "database",
@@ -38,7 +38,8 @@
     "authorization",
     "ssl",
     "https",
-    "firebase"
+    "firebase",
+    "oauth2"
   ],
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
