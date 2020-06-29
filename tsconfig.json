@@ -4,5 +4,8 @@
         "lib": ["ES2017"],
         "module": "CommonJS",
         "listEmittedFiles": true
-    }
+    },
+    "exclude": [
+        "node_modules"
+    ]
 }
