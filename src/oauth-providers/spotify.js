@@ -47,6 +47,24 @@ class SpotifyAuthProvider {
             return result;
         });
     }
+    getClientAccessToken() {
+        // Can client only access to Spotify API, without signed in user
+        return simple_fetch_1.fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`
+            },
+            body: `grant_type=client_credentials`
+        })
+            .then(response => response.json())
+            .then((result) => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            return result;
+        });
+    }
     getUserInfo(access_token) {
         return simple_fetch_1.fetch('https://api.spotify.com/v1/me', {
             method: 'GET',

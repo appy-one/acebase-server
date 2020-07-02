@@ -10,6 +10,7 @@ export interface ISpotifyAuthSettings extends IOAuth2ProviderSettings {
 }
 
 interface ISpotifyAuthToken { access_token: string, expires_in: number, expires: Date, refresh_token: string, scope: string, token_type: string }
+interface ISpotifyClientAuthToken { access_token: string, token_type: string, expires_in: number }
 interface ISpotifyExternalUrl {}
 interface ISpotifyFollowers {}
 interface ISpotifyImage { width: number, height: number, url: string }
@@ -67,6 +68,25 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
             return result;
         });
+    }
+
+    getClientAccessToken() {
+        // Can client only access to Spotify API, without signed in user
+        return fetch('https://accounts.spotify.com/api/token', { 
+            method: 'POST', 
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`
+            },
+            body: `grant_type=client_credentials`
+        })
+        .then(response => response.json())
+        .then((result: ISpotifyClientAuthToken) => {
+            if ((result as any).error) {
+                throw new Error((result as any).error);
+            }
+            return result;
+        });        
     }
 
     getUserInfo(access_token: string) {
