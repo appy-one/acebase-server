@@ -180,7 +180,16 @@ class AceBaseServerEmailSettings {
      */
     constructor(settings) {
         this.server = settings.server;
-        this.send = settings.send;
+        this.send = request => {
+            try {
+                const ret = settings.send(request);
+                if (ret instanceof Promise) { return ret; }
+                return Promise.resolve();
+            }
+            catch(err) {
+                return Promise.reject(err);
+            }
+        }
     }
 }
 
@@ -310,7 +319,6 @@ class Client {
  * @property {string} [username] username
  * @property {string} [email] email address
  * @property {boolean} [email_verified] if the supplied e-mail address has been verified
- * @property {string} [email_verification_code] Code that enables the user to verify their email address with
  * @property {boolean} [is_disabled] if the account has been disabled
  * @property {string} [display_name]
  * @property {object} [picture]
@@ -359,16 +367,17 @@ function getPublicAccountDetails(account) {
     };
 }
 
-function createPublicAccessToken(uid, ip, dbToken) {
+function createPublicAccessToken(uid, ip, dbToken, password) {
     let obj = {
         t:dbToken,
         c:Date.now(),
         u:uid,
         i:ip
     };
-    let str = JSON.stringify(obj);
-    str = Buffer.from(str).toString('base64');
-    return 'a' + str; // version a
+    // let str = JSON.stringify(obj);
+    // str = Buffer.from(str).toString('base64');
+    // return 'a' + str; // version a
+    return 'b' + createSignedPublicToken(obj, password);
 }
 
 /**
@@ -376,17 +385,33 @@ function createPublicAccessToken(uid, ip, dbToken) {
  * @param {string} accessToken 
  * @returns {{ access_token?: string, uid?: string, created?: number, ip?: string }}
  */
-function decodePublicAccessToken(accessToken) {
-    if (!accessToken || accessToken[0] !== 'a') { return {}; }
+function decodePublicAccessToken(accessToken, password) {
     try {
-        let str = accessToken.slice(1);
-        str = Buffer.from(str, 'base64').toString();
-        let obj = JSON.parse(str);
-        return {
-            access_token: obj.t,
-            uid: obj.u,
-            created: obj.c,
-            ip: obj.i
+        if (accessToken[0] === 'b') {
+            // New signed version
+            const obj = parseSignedPublicToken(accessToken.slice(1), password);
+            return {
+                access_token: obj.t,
+                uid: obj.u,
+                created: obj.c,
+                ip: obj.i
+            }            
+        }
+        else if (accessToken[0] === 'a') {
+            // Old insecure version, allow until August 1, 2020
+            const deadline = (new Date('2020-08-01')).getTime();
+            if (Date.now() >= deadline) {
+                throw new Error('Old token version not allowed');
+            }
+            const str = accessToken.slice(1);
+            str = Buffer.from(str, 'base64').toString();
+            const obj = JSON.parse(str);
+            return {
+                access_token: obj.t,
+                uid: obj.u,
+                created: obj.c,
+                ip: obj.i
+            }
         }
     }
     catch(err) {
@@ -394,60 +419,57 @@ function decodePublicAccessToken(accessToken) {
     }
 }
 
-function createPublicToken(data) {
-    // TODO: Use encryption
-    // let obj = {
-    //     uid: uid,
-    //     email: email,
-    //     code: ID.generate()
-    // };
-    let str = JSON.stringify(data);
-    str = Buffer.from(str).toString('base64');
-    return 'a' + str; // version a
-}
+const generatePassword = () => {
+    return Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
+        if (i > 15) { return password; }
+        return password + chars[Math.floor(Math.random() * chars.length)];
+    }, '');
+};
 
-function decodePublicToken(code) {
-    if (!code || code[0] !== 'a') { return {}; }
-    try {
-        let str = code.slice(1);
-        str = Buffer.from(str, 'base64').toString();
-        let obj = JSON.parse(str);
-        return obj;
+const createPasswordHash = (password) => {
+    let length = 16;
+    let salt = crypto.randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
+    let hash = crypto.createHmac('sha512', salt).update(password).digest('hex');
+    return {
+        salt,
+        hash
     }
-    catch(err) {
-        return {};
-    }
-}
+};
+const getOldPasswordHash = (password) => {
+    // Backward compatibility with old saltless md5 passwords. 
+    // Becomes obsolete once all passwords have been updated
+    return crypto.createHash('md5').update(password).digest('hex');
+};
+const getPasswordHash = (password, salt) => {
+    return crypto.createHmac('sha512', salt).update(password).digest('hex');
+};
 
-function createVerificationCode(uid, email) {
-    return createPublicToken({
-        uid,
-        email,
-        code: ID.generate()
-    });
+const getSignature = (content, salt) => {
+    // Use fast md5 with salt to sign with. Large salt recommended!!
+    return crypto.createHash('md5').update(salt + content).digest('hex');
 }
-function decodeVerificationCode(code) {
-    let details = decodePublicToken(code);
-    return {
-        uid: details.uid,
-        email: details.email,
-        code: details.code
-    };
+function createSignedPublicToken(obj, password) {
+    // Sign objects with an md5 hash. An attacker might see the content 
+    // and generated hash, but will need to guess the salt used. This is 
+    // not impossible but will take a very long time when using a large salt
+    const str = JSON.stringify(obj);
+    const checksum = getSignature(str, password);
+    return Buffer.from(JSON.stringify({ v: 1, cs: checksum, d: str })).toString('base64');
 }
-function createPasswordResetCode(uid, email) {
-    return createPublicToken({
-        uid,
-        email,
-        code: ID.generate()
-    });    
-}
-function decodePasswordResetCode(code) {
-    let details = decodePublicToken(code);
-    return {
-        uid: details.uid,
-        email: details.email,
-        code: details.code
-    };    
+function parseSignedPublicToken(str, password) {
+    const json = Buffer.from(str, 'base64').toString('utf8');
+    const obj = JSON.parse(json);
+    if (obj.v !== 1) {
+        throw new Error(`Unsupported version`);
+    }
+    if (typeof obj.cs !== 'string' || typeof obj.d !== 'string') {
+        throw new Error('Invalid token');
+    }
+    const checksum = obj.cs;
+    if (checksum !== getSignature(obj.d, password)) {
+        throw new Error(`compromised object`);
+    }
+    return JSON.parse(obj.d);
 }
 
 class AceBaseServer extends EventEmitter {
@@ -459,6 +481,9 @@ class AceBaseServer extends EventEmitter {
      */
     constructor(dbname, options = new AceBaseServerSettings()) {
 
+        super();
+        this._ready = false;
+
         options = new AceBaseServerSettings(options);
         const app = require('express')();
         app.set('trust proxy', true); // When behind proxy server, req.ip and req.hostname will be set the right way
@@ -466,7 +491,6 @@ class AceBaseServer extends EventEmitter {
         const server = options.https.enabled ? require('https').createServer(options.https, app) : require('http').createServer(app);
         const io = require('socket.io').listen(server);
         
-        super();
         this.config = {
             hostname: options.host,
             port: options.port,
@@ -520,31 +544,6 @@ class AceBaseServer extends EventEmitter {
         //     this.debug.error("Unhandled promise rejection at: ", reason.stack);
         // });
 
-        const generatePassword = () => {
-            return Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
-                if (i > 15) { return password; }
-                return password + chars[Math.floor(Math.random() * chars.length)];
-            }, '');
-        };
-
-        const createPasswordHash = (password) => {
-            let length = 16;
-            let salt = crypto.randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
-            let hash = crypto.createHmac('sha512', salt).update(password).digest('hex');
-            return {
-                salt,
-                hash
-            }
-        };
-        const getOldPasswordHash = (password) => {
-            // Backward compatibility with old saltless md5 passwords. 
-            // Becomes obsolete once all passwords have been updated
-            return crypto.createHash('md5').update(password).digest('hex');
-        };
-        const getPasswordHash = (password, salt) => {
-            return crypto.createHmac('sha512', salt).update(password).digest('hex');
-        };
-
         const readyPromises = [
             db.ready(),
             authDb && authDb !== db ? authDb.ready() : null
@@ -555,6 +554,7 @@ class AceBaseServer extends EventEmitter {
             //this.debug.log(`Database "${dbname}" is ready to use`);
 
             let accessRules = {};
+            const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
             const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
 
@@ -659,14 +659,25 @@ class AceBaseServer extends EventEmitter {
             }
             setupRules();
 
+            let _secureObjectsSalt;
             if (options.authentication.enabled) {
                 // NEW: Make sure there is an administrator account in the database
                 // NOTE: the admin account is the only account with a non-generated uid: 'admin'
-                authRef.child('admin').transaction(snap => {
+                const p1 = securityRef.child('token_salt').transaction(snap => {
+                    _secureObjectsSalt = snap.val();
+                    if (!_secureObjectsSalt) {
+                        let length = 256;
+                        _secureObjectsSalt = crypto.randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);                        
+                        return _secureObjectsSalt;
+                    }
+                });
+                readyPromises.push(p1);
+
+                const p2 = authRef.child('admin').transaction(snap => {
 
                     /** @type {DbUserAccountDetails} */
                     let adminAccount = snap.val();
-                    if (!snap.exists()) {
+                    if (adminAccount === null) {
                         // Use provided default password, or generate one:
                         const adminPassword = options.authentication.defaultAdminPassword || generatePassword();
 
@@ -695,6 +706,7 @@ class AceBaseServer extends EventEmitter {
                         return adminAccount; // Save it
                     }
                     else if (options.authentication.defaultAdminPassword) {
+                        // Check if the default password was changed
                         let passwordHash;
                         if (!adminAccount.password_salt) {
                             // Old md5 password hash?
@@ -721,23 +733,32 @@ class AceBaseServer extends EventEmitter {
                     authDb.indexes.create(authRef.path, 'email');
                     authDb.indexes.create(authRef.path, 'access_token');
                 });
+                readyPromises.push(p2);
 
                 /**
                  * @param {string} clientIp ip address of the user
                  * @param {string} code verification code sent to the user's email address
                  */
                 this.verifyEmailAddress = (clientIp, code) => {
-                    const verification = decodeVerificationCode(code);
-                    return authRef.query().filter('uid', '==', verification.uid).get()
-                    .then(snaps => {
-                        if (snaps.length !== 1) { const err = new Error(`Uknown user`); err.code = 'unknown_user'; throw err; }
+                    /** @type {{ uid: string }} */
+                    let verification;
+                    try {
+                        verification = parseSignedPublicToken(code, _secureObjectsSalt);
+                    }
+                    catch(err) {
+                        err.code = 'invalid_code';
+                        return Promise.reject(err);
+                    }
+                    return authRef.child(verification.uid).get()
+                    .then(snap => {
+                        if (!snap.exists()) { const err = new Error(`Uknown user`); err.code = 'unknown_user'; throw err; }
                         /** @type {DbUserAccountDetails} */
-                        let user = snaps[0].val();
-                        user.uid = snaps[0].key;
-                        if (user.email !== verification.email) { const err = new Error(`Account mismatch`); err.code = 'account_mismatch'; throw err; }
-                        if (user.email_verification_code !== verification.code) { const err = new Error(`Invalid code`); err.code = 'invalid_code'; throw err; }
-                        // Verified
-                        return snaps[0].ref.update({ email_verified: true })
+                        let user = snap.val();
+                        user.uid = snap.key;
+
+                        // No need to do further checks, code was signed by us so we can trust the contents
+                        // Mark account as verified
+                        return snap.ref.update({ email_verified: true })
                         .then(ref => user);
                     });
                 }
@@ -748,21 +769,28 @@ class AceBaseServer extends EventEmitter {
                  * @param {string} newPassword new password chosen by the user
                  */
                 this.resetPassword = (clientIp, code, newPassword) => {
-                    const verification = decodePasswordResetCode(code);
-                    return authRef.query().filter('uid', '==', verification.uid).get()
-                    .then(snaps => {
-                        if (snaps.length !== 1) { throw new Error(`Uknown user`); }
+                    /** @type {{ uid: string, code: string }} */
+                    let verification;
+                    try {
+                        verification = parseSignedPublicToken(code, _secureObjectsSalt);
+                    }
+                    catch(err) {
+                        err.code = 'invalid_code';
+                        return Promise.reject(err);
+                    }
+                    return authRef.child(verification.uid).get()
+                    .then(snap => {
+                        if (!snap.exists()) { const err = new Error(`Uknown user`); err.code = 'unknown_user'; throw err; }
                         /** @type {DbUserAccountDetails} */
-                        let user = snaps[0].val();
-                        user.uid = snaps[0].key;
+                        let user = snap.val();
+                        user.uid = snap.key;
 
-                        if (user.email !== verification.email) { const err = new Error(`Account mismatch`); err.code = 'account_mismatch'; throw err; }
                         if (user.password_reset_code !== verification.code) { const err = new Error(`Invalid code`); err.code = 'invalid_code'; throw err; }
                         if (newPassword.length < 8 || newPassword.includes(' ')) { const err = new Error(`Password must be at least 8 characters, and cannot contain spaces`); err.code = 'password_requirement_mismatch'; throw err; }
                         
                         // Ok to change password
                         const pwd = createPasswordHash(newPassword);                        
-                        return snaps[0].ref.update({ 
+                        return snap.ref.update({ 
                             password: pwd.hash, 
                             password_salt: pwd.salt, 
                             password_reset_code: null 
@@ -782,7 +810,7 @@ class AceBaseServer extends EventEmitter {
                                 settings: user.settings
                             }
                         });
-                        this.config.email.send(request);
+                        this.config.email && this.config.email.send(request);
                         return user;
                     });
                 }
@@ -994,7 +1022,7 @@ class AceBaseServer extends EventEmitter {
             const signIn = function(req, type, username, password, callback) {
                 let tokenDetails;
                 if (type === 'access_token') {
-                    tokenDetails = decodePublicAccessToken(username);
+                    tokenDetails = decodePublicAccessToken(username, _secureObjectsSalt);
                     if (!tokenDetails.access_token) {
                         const code = 'invalid_token';
                         logRef.push({ action: `signin`, type, [type]: username, success: false, code, ip: req.ip, date: new Date() });
@@ -1122,7 +1150,7 @@ class AceBaseServer extends EventEmitter {
                         const token = authorization.slice(7);
                         let tokenDetails;
                         try {
-                            tokenDetails = decodePublicAccessToken(token);
+                            tokenDetails = decodePublicAccessToken(token, _secureObjectsSalt);
                             if (!tokenDetails.uid || !tokenDetails.access_token) { throw new Error('invalid token'); }
                         }
                         catch(err) {
@@ -1184,13 +1212,13 @@ class AceBaseServer extends EventEmitter {
                             client.user = user || null;
                         }
                         if (err) {
-                            return sendError(err);
+                            return sendError(res, err);
                         }
                         if (!user) {
                             return sendNotAuthenticatedError(res, details.code, details.message)
                         }
                         res.send({ 
-                            access_token: createPublicAccessToken(user.uid, req.ip, user.access_token), 
+                            access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt), 
                             user: getPublicAccountDetails(user)
                         });
                     };
@@ -1275,13 +1303,13 @@ class AceBaseServer extends EventEmitter {
                         /** @type {DbUserAccountDetails} */
                         const user = snap.val();
                         user.uid = snap.key;
-                        const resetCode = createPasswordResetCode(user.uid, user.email);
+                        user.password_reset_code = ID.generate();
 
                         // Request a password reset email to be sent:
                         const request = new AceBaseUserResetPasswordEmailRequest({
                             date: new Date(),
                             ip: req.ip,
-                            resetCode,
+                            resetCode: createSignedPublicToken({ uid: user.uid, code: user.password_reset_code }, _secureObjectsSalt),
                             user: {
                                 email: user.email,
                                 uid: user.uid,
@@ -1292,7 +1320,7 @@ class AceBaseServer extends EventEmitter {
                         });
                         return Promise.all([
                             this.config.email.send(request),
-                            snap.ref.update({ password_reset_code: resetCode })
+                            snap.ref.update({ password_reset_code: user.password_reset_code })
                         ])
                     })
                     .then(() => {
@@ -1381,7 +1409,7 @@ class AceBaseServer extends EventEmitter {
                         // Set or update cache
                         _authCache.set(user.uid, user);
                         // Create new public access token
-                        publicAccessToken = createPublicAccessToken(user.uid, req.ip, user.access_token);
+                        publicAccessToken = createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt);
                         
                         return user; // Update db
                     })
@@ -1495,7 +1523,6 @@ class AceBaseServer extends EventEmitter {
                             username: details.username,
                             email: details.email,
                             email_verified: false,
-                            email_verification_code: ID.generate(),
                             display_name: details.displayName,
                             password: pwd.hash,
                             password_salt: pwd.salt,
@@ -1531,7 +1558,7 @@ class AceBaseServer extends EventEmitter {
                                 date: user.created,
                                 ip: user.created_ip,
                                 provider: 'acebase',
-                                activationCode: user.email_verification_code,
+                                activationCode: createSignedPublicToken({ uid: user.uid }, _secureObjectsSalt), // , email: user.email, code: user.email_verification_code
                                 emailVerified: false
                             });
 
@@ -1542,7 +1569,7 @@ class AceBaseServer extends EventEmitter {
                             // Return the positive news
                             const isAdmin = req.user && req.user.uid === 'admin';
                             res.send({ 
-                                access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token),
+                                access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt),
                                 user: getPublicAccountDetails(user)
                             });
                         });
@@ -1677,11 +1704,14 @@ class AceBaseServer extends EventEmitter {
                     try {
                         const providerName =  req.query.provider;
                         const callbackUrl = req.query.callbackUrl;
+                        const signedInUid = req.user && req.user.uid;
                         const provider = this.authProviders[providerName];
                         if (!provider) {
                             throw new Error(`Provider ${provider} is not available, or not properly configured by the db admin`);
                         }
-                        const state = Buffer.from(JSON.stringify({ flow: 'redirect', provider: providerName, callbackUrl })).toString('base64');
+                        // Create secure state so it cannot be tampered with. hash it with a server-only known salt: the generated admin password salt
+                        await this.ready();
+                        const state = createSignedPublicToken({ flow: 'redirect', provider: providerName, uid: signedInUid, callbackUrl }, _secureObjectsSalt);
                         const clientAuthUrl = await provider.init({ redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin`, state });
                         res.send({ redirectUrl: clientAuthUrl });
                     }
@@ -1693,7 +1723,7 @@ class AceBaseServer extends EventEmitter {
                 app.get(`/oauth2/${dbname}/signin`, async (req, res) => {
                     // This is where the user is redirected to by the provider after signin or error
                     try {
-                        const state = JSON.parse(Buffer.from(req.query.state, "base64").toString("utf8"));
+                        const state = parseSignedPublicToken(req.query.state, _secureObjectsSalt); //JSON.parse(Buffer.from(req.query.state, "base64").toString("utf8"));
                         if (req.query.error) {
                             if (state.flow === 'socket') {
                                 const client = clients.get(state.client_id);
@@ -1752,16 +1782,35 @@ class AceBaseServer extends EventEmitter {
                         const providerUsername = `${state.provider}:${user_details.id}`;
 
                         // Check if this user exists in the database
-                        const query = authRef.query();
-                        if (user_details.email) {
-                            query.filter('email', '==', user_details.email);
+                        let snaps;
+                        let addToExistingAccount = true;
+                        if (typeof state.uid === 'string') {
+                            // Use the signed in uid to link this account to. This allows multiple auth provider
+                            // accounts ((with different email addresses) to be linked to the account the user
+                            // is signed into, and also allows multiple AceBase users to link to the same provider
+                            // accounts, eg if a client app allows users to link their own account to a shared 
+                            // family Spotify account.
+                            let snap = await authRef.child(state.uid).get();
+                            if (!snap.exists()) {
+                                // This is wrong!
+                                throw new Error(`Invalid uid`);
+                            }
+                            snaps = [snap];
+                            let user = snap.val();
+                            addToExistingAccount = user.email === user_info.email;
                         }
                         else {
-                            // User did not allow reading e-mail address, or provider does not have one (eg whatsapp?)
-                            // Switch to using a generated username such as "facebook-3292389234" instead
-                            query.filter('username', '==', providerUsername);
+                            const query = authRef.query();
+                            if (user_details.email) {
+                                query.filter('email', '==', user_details.email);
+                            }
+                            else {
+                                // User did not allow reading e-mail address, or provider does not have one (eg whatsapp?)
+                                // Switch to using a generated username such as "facebook-3292389234" instead
+                                query.filter('username', '==', providerUsername);
+                            }
+                            snaps = await query.get();
                         }
-                        let snaps = await query.get();
                         if (snaps.length === 0 && user_details.email) {
                             // Try again with providerUsername, use might previously have denied access to email, 
                             // and now has granted access. In that case, we'll already have an account with the 
@@ -1775,21 +1824,23 @@ class AceBaseServer extends EventEmitter {
                             user = snaps[0].val();
                             user.uid = uid;
 
-                            // Update user details
-                            user.email_verified = user.email_verified || user_details.email_verified;
-                            user.email = user.email || user_details.email;
-                            if (user_details.picture && user_details.picture.length > 0) {
-                                user.picture = user_details.picture[0];
+                            if (addToExistingAccount) {
+                                // Update user details
+                                user.email_verified = user.email_verified || user_details.email_verified;
+                                user.email = user.email || user_details.email;
+                                if (user_details.picture && user_details.picture.length > 0) {
+                                    user.picture = user_details.picture[0];
+                                }
+                                await authRef.child(uid).update({
+                                    email: user.email || null,
+                                    email_verified: user.email_verified,
+                                    last_signin: new Date(),
+                                    last_signin_ip: req.ip,
+                                    picture: user.picture
+                                });
+                                // Add provider details
+                                await authRef.child(uid).child('settings').update(getProviderSettings());
                             }
-                            await authRef.child(uid).update({
-                                email: user.email || null,
-                                email_verified: user.email_verified,
-                                last_signin: new Date(),
-                                last_signin_ip: req.ip,
-                                picture: user.picture
-                            });
-                            // Add provider details
-                            await authRef.child(uid).child('settings').update(getProviderSettings());
 
                             // Log success
                             logRef.push({ action: 'oauth2_signin', success: true, ip: req.ip, date: new Date(), uid });
@@ -1808,7 +1859,7 @@ class AceBaseServer extends EventEmitter {
                                 },
                                 date: user.created,
                                 ip: req.ip,
-                                activationCode: user.email_verification_code,
+                                activationCode: user.email_verified ? null : createSignedPublicToken({ uid: user.uid }, _secureObjectsSalt), //, email: user.email, code: user.email_verification_code
                                 emailVerified: user.email_verified,
                                 provider: state.provider
                             });
@@ -1832,7 +1883,6 @@ class AceBaseServer extends EventEmitter {
                                 username: typeof user_details.email === 'undefined' ? providerUsername : null, // provider-accountid usernames for external accounts without email address
                                 email: user_details.email || null,
                                 email_verified: user_details.email_verified, // trust provider's verification
-                                email_verification_code: ID.generate(),
                                 display_name: user_details.display_name,
                                 password: pwd.hash,
                                 password_salt: pwd.salt,
@@ -1867,7 +1917,7 @@ class AceBaseServer extends EventEmitter {
                                 },
                                 date: user.created,
                                 ip: user.created_ip,
-                                activationCode: user.email_verification_code,
+                                activationCode: user.email_verified ? null : createSignedPublicToken({ uid: user.uid }, _secureObjectsSalt), //, email: user.email, code: user.email_verification_code
                                 emailVerified: user.email_verified,
                                 provider: state.provider
                             });
@@ -1878,8 +1928,15 @@ class AceBaseServer extends EventEmitter {
                         }
                         else {
                             // More than 1?!!
-                            const callbackUrl = `${state.callbackUrl}?provider=${state.provider}&error=account_duplicates`;
-                            return res.redirect(callbackUrl);
+                            if (state.flow === 'socket') {
+                                const client = clients.get(state.client_id);
+                                client.socket.emit('oauth2-signin', { action: 'error', error: 'account_duplicates' });
+                                return res.send(`<html><script>window.close()</script><body>You can <a href="javascript:window.close()">close</a> this page</body></html>`)                        
+                            }
+                            else {
+                                const callbackUrl = `${state.callbackUrl}?provider=${state.provider}&error=account_duplicates`;
+                                return res.redirect(callbackUrl);
+                            }
                         }
 
                         let result = { 
@@ -1889,7 +1946,7 @@ class AceBaseServer extends EventEmitter {
                                 refresh_token: tokens.refresh_token,
                                 expires_in: tokens.expires_in
                             },
-                            access_token: createPublicAccessToken(user.uid, req.ip, user.access_token),
+                            access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt),
                             user: getPublicAccountDetails(user)
                         };
 
@@ -2426,10 +2483,35 @@ class AceBaseServer extends EventEmitter {
                 });
             });
 
+            /**
+             * Extend the server API with your own custom functions. Your handler will be listening
+             * on path /ext/[db name]/[ext_path]. 
+             * @example
+             * // Server side:
+             * const _quotes = [...];
+             * server.extend('get', 'quotes/random', (req, res) => {
+             *      let index = Math.round(Math.random() * _quotes.length);
+             *      res.send(quotes[index]);
+             * })
+             * // Client side:
+             * client.callExtension('get', 'quotes/random')
+             * .then(quote => {
+             *      console.log(`Got random quote: ${quote}`);
+             * })
+             * @param {'get'|'put'|'post'|'delete'} method 
+             * @param {string} ext_path 
+             * @param {(req: Express.Request, res: Express.Response)} handler 
+             */
+            this.extend = (method, ext_path, handler) => {
+                app[method.toLowerCase()](`/ext/${dbname}/${ext_path}`, handler);
+            }
+
             server.listen(this.config.port, this.config.hostname, () => {
                 this.debug.log(`"${dbname}" database server running at ${this.config.url}`);
-                this._ready === true;
-                this.emit(`ready`);
+                return Promise.all(readyPromises).then(() => {
+                    this._ready = true;
+                    this.emit(`ready`);
+                });
             });
 
             // Websocket implementation:
@@ -2520,7 +2602,7 @@ class AceBaseServer extends EventEmitter {
                     // const client = clients.get(socket.id);
                     let uid;
                     try {
-                        uid = decodePublicAccessToken(accessToken).uid;
+                        uid = decodePublicAccessToken(accessToken, _secureObjectsSalt).uid;
                         client.user = _authCache.get(uid) || null;
                     }
                     catch(err) {
@@ -2735,7 +2817,7 @@ class AceBaseServer extends EventEmitter {
      * @returns {Promise<void>} returns a promise that resolves when ready
      */
     ready(callback = undefined) {
-        if (this._ready === true) { 
+        if (this._ready) { 
             // ready event was emitted before
             callback && callback();
             return Promise.resolve();
@@ -2744,7 +2826,7 @@ class AceBaseServer extends EventEmitter {
             // Wait for ready event
             let resolve;
             const promise = new Promise(res => resolve = res);
-            this.on("ready", () => {
+            this.once("ready", () => {
                 resolve();
                 callback && callback(); 
             });
@@ -2764,6 +2846,7 @@ class AceBaseServer extends EventEmitter {
             const { AuthProvider } = require('./oauth-providers/' + providerName);
             const provider = new AuthProvider(settings);
             this.authProviders[providerName] = provider;
+            return provider;
         }
         catch(err) {
             throw new Error(`Failed to configure provider ${providerName}: ${err.message}`)
@@ -2780,6 +2863,7 @@ if (__filename.replace(/\\/g,"/").endsWith("/acebase-server.js") && process.argv
     const server = new AceBaseServer(dbname, options);
     server.once("ready", () => {
         server.debug.log(`AceBase server running`);
+        process.send('ready'); // When using pm2, you can use --wait-ready flag (see https://pm2.keymetrics.io/docs/usage/signals-clean-restart/)
     });
 }
 
