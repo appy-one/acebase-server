@@ -56,7 +56,8 @@ export class FacebookAuthProvider implements IOAuth2Provider {
         .then(response => response.json())
         .then((result: IFacebookAuthToken) => {
             if ((result as any).error) {
-                throw new Error((result as any).error);
+                const error = (result as any).error as IFacebookError
+                throw new Error(`${error.type} ${error.code}: ${error.message}`);
             }
             const secondsToExpiry = result.expires_in;
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));

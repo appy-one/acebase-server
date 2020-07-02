@@ -32,7 +32,8 @@ class FacebookAuthProvider {
             .then(response => response.json())
             .then((result) => {
             if (result.error) {
-                throw new Error(result.error);
+                const error = result.error;
+                throw new Error(`${error.type} ${error.code}: ${error.message}`);
             }
             const secondsToExpiry = result.expires_in;
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
