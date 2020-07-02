@@ -1,3 +1,5 @@
+import * as Express from 'express';
+
 declare namespace acebaseserver {
     class AceBaseServer {
         constructor(dbname: string, options?: AceBaseServerSettings)
@@ -21,11 +23,33 @@ declare namespace acebaseserver {
          * Configure an auth provider to allow users to sign in with Facebook, Google, etc
          * @param providerName name of the thrird party OAuth provider. Eg: "Facebook", "Google", "spotify" etc
          * @param settings API key & secret for the OAuth provider
+         * @returns Returns the created auth provider instance, which can be used to call non-user specific methods the provider might support. (example: the Spotify auth provider supports getClientAuthToken, which allows API calls to be made to the core (non-user) spotify service)
          */
-        configAuthProvider(providerName: string, settings: OAuthProviderSettings)
+        configAuthProvider(providerName: string, settings: IOAuthProviderSettings): any
+
+        /**
+         * Extend the server API with your own custom functions. Your handler will be listening
+         * on path /ext/[db name]/[ext_path]. 
+         * @example
+         * // Server side:
+         * const _quotes = [...];
+         * server.extend('get', 'quotes/random', (req, res) => {
+         *      let index = Math.round(Math.random() * _quotes.length);
+         *      res.send(quotes[index]);
+         * })
+         * // Client side:
+         * client.callExtension('get', 'quotes/random')
+         * .then(quote => {
+         *      console.log(`Got random quote: ${quote}`);
+         * })
+         * @param {'get'|'put'|'post'|'delete'} method 
+         * @param {string} ext_path 
+         * @param {(req: Express.Request, res: Express.Response)} handler 
+         */
+        extend(method:'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => any): void
     }
 
-    interface OAuthProviderSettings {
+    interface IOAuthProviderSettings {
         /** The Client/App ID generated for your app in the Provider's API developer environment */
         client_id: string
         /** The Client/App Secret generated for your app in the Provider's API developer environment */
@@ -33,6 +57,7 @@ declare namespace acebaseserver {
         /** Default scopes requested include email and some profile details such as name & picture. You can define additional scopes you'd want to request here */
         scopes?: string[]
     }
+
 
     interface AceBaseServerSettings {
         /** Level of messages logged to console */
