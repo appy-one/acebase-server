@@ -21,7 +21,7 @@ server.on("ready", () => {
 });
 ```
 
-**NOTE**: The above code will create an admin user with a generated password, which will be displayed once in the console output. Only MD5 hashes of user passwords are stored in the auth database, so it'll become fairly hard to sign into the admin account if you don't copy/paste the password somewhere. If you don't want to use a generated password, see _Enable authentication_ below for info about how to supply a default password
+**NOTE**: The above code will create an admin user with a generated password, which will be displayed once in the console output. Only randomly salted SHA512 hashes of user passwords are stored in the auth database, so it'll become _fairly hard_ to sign into the admin account if you don't copy/paste the password somewhere. If you don't want to use a generated password, see _Enable authentication_ below for info about how to supply a default password.
 
 ### Enable SSL (https)
 
@@ -298,6 +298,40 @@ Currently implemented auth providers are:
 * Spotify
 
 *NOTE: Facebook access tokens are short-lived by default, but will be exchanged for a long-lived (60 day) access token upon refresh. If you need to keep the Facebook access token active, execute ```refreshAuthProviderToken``` immediately after ```finishAuthProviderSignIn```, and keep refreshing every time the user starts your app. Once a Facebook access token has expired, it cannot be refreshed and the user will have to sign in again.
+
+## Extending the server API [NEW]
+
+You can add your own custom API functions to the server with the ```server.extend(method, path, handler)``` method:
+
+```javascript
+const server = new AceBaseServer(...);
+await server.ready();
+
+const _quotes = [...];
+server.extend('get', 'quotes/random', (req, res) => {
+    let index = Math.round(Math.random() * _quotes.length);
+    res.send(quotes[index]);
+});
+server.extend('get', 'quotes/specific', (req, res) => {
+    let index = req.body.index;
+    res.send(quotes[index]);
+});
+```
+
+You can then call your API methods on the client side as follows:
+```javascript
+// Get random quote:
+client.callExtension('get', 'quotes/random')
+.then(quote => {
+    console.log(`Got random quote: ${quote}`);
+});
+
+// And specific:
+client.callExtension('get', 'quotes/specific', { index: 15 })
+.then(quote => {
+    console.log(`Got quotes[15]: ${quote}`);
+})
+```
 
 ## Connecting to a server
 
