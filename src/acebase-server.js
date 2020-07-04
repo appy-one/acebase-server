@@ -403,8 +403,7 @@ function decodePublicAccessToken(accessToken, password) {
             if (Date.now() >= deadline) {
                 throw new Error('Old token version not allowed');
             }
-            const str = accessToken.slice(1);
-            str = Buffer.from(str, 'base64').toString();
+            const str = Buffer.from(accessToken.slice(1), 'base64').toString();
             const obj = JSON.parse(str);
             return {
                 access_token: obj.t,
@@ -2506,9 +2505,9 @@ class AceBaseServer extends EventEmitter {
                 app[method.toLowerCase()](`/ext/${dbname}/${ext_path}`, handler);
             }
 
-            server.listen(this.config.port, this.config.hostname, () => {
-                this.debug.log(`"${dbname}" database server running at ${this.config.url}`);
-                return Promise.all(readyPromises).then(() => {
+            Promise.all(readyPromises).then(() => {
+                server.listen(this.config.port, this.config.hostname, () => {
+                    this.debug.log(`"${dbname}" database server running at ${this.config.url}`);
                     this._ready = true;
                     this.emit(`ready`);
                 });
