@@ -313,8 +313,16 @@ server.extend('get', 'quotes/random', (req, res) => {
     res.send(quotes[index]);
 });
 server.extend('get', 'quotes/specific', (req, res) => {
-    let index = req.body.index;
+    let index = req.query.index;
     res.send(quotes[index]);
+});
+server.extend('post', 'quotes/add', (req, res) => {
+    let quote = {
+        text: req.body.text,
+        author: req.body.author
+    };
+    quotes.push(quote);
+    res.send('thanks!');
 });
 ```
 
@@ -323,14 +331,22 @@ You can then call your API methods on the client side as follows:
 // Get random quote:
 client.callExtension('get', 'quotes/random')
 .then(quote => {
-    console.log(`Got random quote: ${quote}`);
+    console.log(`Got random quote: `, quote);
 });
 
-// And specific:
+// Get specific quote:
 client.callExtension('get', 'quotes/specific', { index: 15 })
 .then(quote => {
-    console.log(`Got quotes[15]: ${quote}`);
-})
+    console.log(`Got quotes[15]: `, quote);
+});
+
+// Add a quote
+client.callExtension('post', 'quotes/add', { 
+    text: 'The greatest glory in living lies not in never falling, but in rising every time we fall', 
+    author: 'Nelson Mandela' })
+.then(result => {
+    // "thanks!"
+});
 ```
 
 ## Connecting to a server
