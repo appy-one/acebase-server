@@ -243,7 +243,7 @@ You can enable users to sign into your app through a third party login provider,
 
 * First, get ```client_id``` and ```client_secret``` API keys from the auth providers' developer environment. This will allow your app to use with the provider's auth API.
 
-* Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you allowe AceBase's callback URL in the provider's API settings: ```"https://your.acebase.server/oauth2/dbname/signin"``` (replace hostname and dbname to your server Url)
+* Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you add AceBase's callback URL in the provider's API settings: ```"https://your.acebase.server/oauth2/dbname/signin"``` (replace hostname and dbname to your server Url)
 
 * Then, add your API keys to your ```AceBaseServer``` config with ```configAuthProvider```:
 
