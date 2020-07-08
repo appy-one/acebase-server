@@ -1796,7 +1796,7 @@ class AceBaseServer extends EventEmitter {
                             }
                             snaps = [snap];
                             let user = snap.val();
-                            addToExistingAccount = user.email === user_info.email;
+                            addToExistingAccount = user.email === user_details.email;
                         }
                         else {
                             const query = authRef.query();
