@@ -1,6 +1,6 @@
 {
   "name": "acebase-server",
-  "version": "0.9.24",
+  "version": "0.9.25",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
   "main": "./src/index.js",
   "private": false,
@@ -44,7 +44,7 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "~0.9.45",
+    "acebase": "~0.9.46",
     "acebase-core": "~0.9.19",
     "express": "^4.16.3",
     "socket.io": "^2.1.1",
