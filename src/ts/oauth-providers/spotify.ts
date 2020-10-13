@@ -11,8 +11,8 @@ export interface ISpotifyAuthSettings extends IOAuth2ProviderSettings {
 
 interface ISpotifyAuthToken { access_token: string, expires_in: number, expires: Date, refresh_token: string, scope: string, token_type: string }
 interface ISpotifyClientAuthToken { access_token: string, token_type: string, expires_in: number }
-interface ISpotifyExternalUrl {}
-interface ISpotifyFollowers {}
+interface ISpotifyExternalUrl { key: string, value: string }
+interface ISpotifyFollowers { href: string, total: number }
 interface ISpotifyImage { width: number, height: number, url: string }
 interface ISpotifyError { status: number, message: string }
 interface ISpotifyUser {
@@ -38,7 +38,7 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
 
     /**
      * Starts auth flow by getting the url the user should be redirected to
-     * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url 
+     * @param info.redirectUrl Url spotify will redirect to after authorizing 
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
     async init(info: { redirect_url: string, state?: string }) {
@@ -71,7 +71,7 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
     }
 
     getClientAccessToken() {
-        // Can client only access to Spotify API, without signed in user
+        // Gets client only access to Spotify API, without signed in user
         return fetch('https://accounts.spotify.com/api/token', { 
             method: 'POST', 
             headers: {
@@ -112,7 +112,7 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
                 email_verified: false,
                 other: {
                     premium: user.product === 'premium',
-                    followers: user.followers,
+                    followers: user.followers ? user.followers.total : null,
                     country: user.country,
                     external_urls: user.external_urls,
                     uri: user.uri

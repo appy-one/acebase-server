@@ -17,7 +17,7 @@ class SpotifyAuthProvider {
     }
     /**
      * Starts auth flow by getting the url the user should be redirected to
-     * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url
+     * @param info.redirectUrl Url spotify will redirect to after authorizing
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
     async init(info) {
@@ -48,7 +48,7 @@ class SpotifyAuthProvider {
         });
     }
     getClientAccessToken() {
-        // Can client only access to Spotify API, without signed in user
+        // Gets client only access to Spotify API, without signed in user
         return simple_fetch_1.fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
@@ -88,7 +88,7 @@ class SpotifyAuthProvider {
                 email_verified: false,
                 other: {
                     premium: user.product === 'premium',
-                    followers: user.followers,
+                    followers: user.followers ? user.followers.total : null,
                     country: user.country,
                     external_urls: user.external_urls,
                     uri: user.uri
