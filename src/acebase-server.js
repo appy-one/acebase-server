@@ -1756,7 +1756,8 @@ class AceBaseServer extends EventEmitter {
                             const best = user_details.picture.sort((a,b) => a.width * a.height > b.width * b.height ? -1 : 1)[0]
                             // TODO: Let client do this instead:
                             const { fetch } = require('./oauth-providers/simple-fetch');
-                            await fetch(best.url).then(async response => {
+                            await fetch(best.url)
+                            .then(async response => {
                                 const contentType = response.headers.get('Content-Type');
                                 if (contentType === 'image/png') { //state.provider === 'google' && 
                                     // Don't accept image/png, because it's probably a placeholder image. Google does this by creating a png with people's initials
@@ -1767,6 +1768,10 @@ class AceBaseServer extends EventEmitter {
                                 let buff = new Buffer.from(image);
                                 best.url = `data:${contentType};base64,${buff.toString('base64')}`;
                                 user_details.picture = [best]; // Only keep the best one
+                            })
+                            .catch(err => {
+                                this.debug.warn(`Could not fetch profile picture from "${best.url}": `, err);
+                                user_details.picture = null;
                             });
                         }
 
