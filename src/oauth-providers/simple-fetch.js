@@ -55,6 +55,7 @@ function fetch(url, options) {
             };
             resolve(response);
         });
+        req.on('error', reject);
         (options === null || options === void 0 ? void 0 : options.body) && req.write(options.body, 'utf8');
         req.end();
     });

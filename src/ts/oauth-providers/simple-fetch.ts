@@ -58,6 +58,7 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
 
             resolve(response);
         });
+        req.on('error', reject);
         options?.body && req.write(options.body, 'utf8');
         req.end();
     })
