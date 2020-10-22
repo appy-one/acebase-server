@@ -1776,8 +1776,14 @@ class AceBaseServer extends EventEmitter {
                         }
 
                         const getProviderSettings = () => {
-                            // Returns an object with any other info the provider has about the user
-                            const settings = { [`${state.provider}_id`]: user_details.id };
+                            // Returns an object with all info (except picture) the provider has about the user
+                            const settings = { 
+                                [`${state.provider}_id`]: user_details.id,
+                                [`${state.provider}_email`]: user_details.email,
+                                [`${state.provider}_email_verified`]: user_details.email_verified,
+                                [`${state.provider}_name`]: user_details.name,
+                                [`${state.provider}_display_name`]: user_details.display_name,
+                            };
                             Object.keys(user_details.other).forEach(key => {
                                 settings[`${state.provider}_${key}`] = user_details.other[key];
                             });
@@ -1790,10 +1796,10 @@ class AceBaseServer extends EventEmitter {
                         let addToExistingAccount = true;
                         if (typeof state.uid === 'string') {
                             // Use the signed in uid to link this account to. This allows multiple auth provider
-                            // accounts ((with different email addresses) to be linked to the account the user
+                            // accounts (with different email addresses) to be linked to the account the user
                             // is signed into, and also allows multiple AceBase users to link to the same provider
                             // accounts, eg if a client app allows users to link their own account to a shared 
-                            // family Spotify account.
+                            // family Spotify / Dropbox account.
                             let snap = await authRef.child(state.uid).get();
                             if (!snap.exists()) {
                                 // This is wrong!
