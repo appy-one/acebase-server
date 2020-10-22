@@ -114,7 +114,7 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
                     premium: user.product === 'premium',
                     followers: user.followers ? user.followers.total : null,
                     country: user.country,
-                    external_urls: user.external_urls,
+                    // external_urls: user.external_urls,
                     uri: user.uri
                 }
             }
