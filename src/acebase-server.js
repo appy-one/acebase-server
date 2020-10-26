@@ -2164,7 +2164,9 @@ class AceBaseServer extends EventEmitter {
                 const args = {};
                 Object.keys(req.query).forEach(key => {
                     if (!['type','impersonate'].includes(key)) {
-                        args[key] = req.query[key];
+                        let val = req.query[key];
+                        if (/true|false|[0-9]+/.test(val)) { val = JSON.parse(val); }
+                        args[key] = val;
                     }
                 });
 
