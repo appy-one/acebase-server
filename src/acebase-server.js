@@ -836,7 +836,7 @@ class AceBaseServer extends EventEmitter {
                     return true;
                 }
                 else if (path.startsWith('__')) {
-                    // NEW: with the auth database is now integrated into the main database, 
+                    // NEW: with the auth database now integrated into the main database, 
                     // deny access to private resources starting with '__' for non-admins
                     denyDetailsCallback && denyDetailsCallback({ code: 'private', message: `Access to private resource "${path}" not allowed` });
                     return false;
@@ -1132,7 +1132,16 @@ class AceBaseServer extends EventEmitter {
                 }
             });
 
+            app.use((req, res, next) => {
+                // Setup AceBase context, to allow clients to pass contextual info with data updates,
+                // that will be sent along to data event subscribers on affected data.
+                req.context = JSON.parse(req.get('AceBase-Context'));
+                next();
+            });
+
             if (options.authentication.enabled) {
+                // Add authentication middleware and API endpoints
+
                 app.use((req, res, next) => {
                     let authorization = req.get('Authorization');
                     if (typeof authorization !== 'string' && 'auth_token' in req.query) {
@@ -2102,17 +2111,18 @@ class AceBaseServer extends EventEmitter {
                     options.child_objects = req.query.child_objects;
                 }
 
-                // if (path === '') {
-                //     // Prevent access to private "__auth__" node
-                //     if (options.include instanceof Array && ~options.include.indexOf('__auth__')) {
-                //         options.include.splice(options.include.indexOf('__auth__'), 1);
-                //     }
-                //     if (!(options.exclude instanceof Array)) { options.exclude = []; }
-                //     options.exclude.push('__auth__');
-                // }
-                // else if (path.startsWith('__auth__')) {
-                //     return sendUnauthorizedError(res, 'get lost!');
-                // }
+                if (path === '') {
+                    // If user has access to the root of database (NOT recommended for others than admin...)
+                    // Do not return private server data. If the admin user wants access, they should use 
+                    // direct requests on those paths (GET /data/dbname/__auth__), or use reflection
+
+                    if (options.include) {
+                        // Remove all includes for private paths
+                        options.include = options.include.filter(path => !path.startsWith('__')); 
+                    }
+                    // Add private paths to exclude
+                    options.exclude = [...options.exclude || [], '__auth__', '__log__'];
+                }
 
                 db.ref(path)
                 .get(options) //.once("value")
@@ -2199,10 +2209,10 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/export/${dbname}/*`, (req, res) => {
                 // Export API
-                if (!req.user || req.user.username !== 'admin') {
-                    return sendUnauthorizedError(res, 'admin_only', 'only admin can use export api');
-                }
                 const path = req.path.substr(dbname.length + 9);
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
+                    return;
+                }
                 const format = req.query.format || 'json';
 
                 const stream = {
@@ -2271,27 +2281,28 @@ class AceBaseServer extends EventEmitter {
 
                 let validation = validateSchema(path, val, true);
                 let updatePromise;
+                const ref = db.ref(path).context(req.context);
                 if (validation.ok && validation.validated && typeof val === 'object' && val.constructor === Object) {
                     // Schema validation was triggered for this path. If this update is on a non-existing path, we have
                     // to run validation again because updates are not partial, they create the new node
-                    updatePromise = db.ref(path).exists().then(exists => {
+                    updatePromise = ref.exists().then(exists => {
                         if (exists) {
                             // Proceed as normal, do not check existing data possibly inserted before schema rules 
                             // were set/changed. This prevents old data becoming stale.
-                            return db.ref(path).update(val);
+                            return ref.update(val);
                         }
                         // Target node does not exist. We must validate schema again with "partial" off
                         // to check if it contains all compulsory data
                         validation = validateSchema(path, val, false);
                         if (validation.ok) {
                             // Set instead of update
-                            return db.ref(path).set(val);
+                            return ref.set(val);
                         }
                     });
                 }
                 else {
                     // No schema validation used
-                    updatePromise = db.ref(path).update(val);
+                    updatePromise = ref.update(val);
                 }
 
                 updatePromise
@@ -2330,6 +2341,7 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 db.ref(path)
+                .context(req.context)
                 .set(val)
                 .then(ref => {
                     res.send({
@@ -2447,6 +2459,7 @@ class AceBaseServer extends EventEmitter {
                     id: ID.generate(),
                     started: Date.now(),
                     path: data.path,
+                    context: req.context,
                     finish: undefined
                 };
                 _transactions.set(tx.id, tx);
@@ -2465,7 +2478,7 @@ class AceBaseServer extends EventEmitter {
                     });
                     res.send({ id: tx.id, value: currentValue });
                     return promise;
-                });
+                }, { context: tx.context });
             });
 
             app.post(`/transaction/${dbname}/finish`, (req, res) => {
@@ -2659,7 +2672,7 @@ class AceBaseServer extends EventEmitter {
                         return;
                     }
 
-                    const callback = (err, path, currentValue, previousValue) => {
+                    const callback = (err, path, currentValue, previousValue, context) => {
                         if (!userHasAccess(client.user, path, false)) {
                             if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
                                 // Could potentially be very many callbacks, so
@@ -2685,7 +2698,8 @@ class AceBaseServer extends EventEmitter {
                             subscr_path: subscriptionPath,
                             path,
                             event: data.event,
-                            val
+                            val,
+                            context
                         });
                     };
                     this.debug.verbose(`Client ${socket.id} subscribes to event "${data.event}" on path "/${data.path}"`);
@@ -2757,6 +2771,7 @@ class AceBaseServer extends EventEmitter {
                             id: data.id,
                             started: Date.now(),
                             path: data.path,
+                            context: data.context,
                             finish: undefined
                         };
 
@@ -2781,7 +2796,7 @@ class AceBaseServer extends EventEmitter {
                             });
                             socket.emit("tx_started", { id: tx.id, value: currentValue }); // what if message is dropped? We should implement an ack/retry mechanism
                             return promise;
-                        });
+                        }, { context: tx.context });
                     }
 
                     if (data.action === "finish") {
