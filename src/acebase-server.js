@@ -1135,7 +1135,8 @@ class AceBaseServer extends EventEmitter {
             app.use((req, res, next) => {
                 // Setup AceBase context, to allow clients to pass contextual info with data updates,
                 // that will be sent along to data event subscribers on affected data.
-                req.context = JSON.parse(req.get('AceBase-Context'));
+                const context = req.get('AceBase-Context');
+                req.context = context && JSON.parse(context);
                 next();
             });
 
