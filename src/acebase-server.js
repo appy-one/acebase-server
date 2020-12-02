@@ -1,11 +1,10 @@
 
 const { EventEmitter } = require('events');
 const { AceBase, AceBaseSettings } = require('acebase');
-const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger } = require('acebase-core');
+const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger, ColorStyle } = require('acebase-core');
 const { TypeChecker } = require('./typecheck');
 const fs = require('fs');
 const crypto = require('crypto');
-require('colors'); // Make sure we can use colors for log output
 
 class AceBaseClusterSettings {
     constructor(settings) {
@@ -501,7 +500,7 @@ class AceBaseServer extends EventEmitter {
             email: options.email
         };
         this.url = this.config.url; // Is this used?
-        this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.green); //`« ${dbname} »`
+        this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.colorize(ColorStyle.green)); //`« ${dbname} »`
         
         const dbOptions = {
             logLevel: options.logLevel,
@@ -519,13 +518,13 @@ class AceBaseServer extends EventEmitter {
             this.authProviders = {};
         }
         if (options.authentication.enabled && !options.https.enabled) {
-            this.debug.warn(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`.red);
+            this.debug.warn(`WARNING: Authentication is enabled, but the server is not using https. Any password and other data transmitted may be intercepted!`.colorize(ColorStyle.red));
         }
         else if (!options.https.enabled) {
-            this.debug.warn(`WARNING: Server is not using https, any data transmitted may be intercepted!`.red);
+            this.debug.warn(`WARNING: Server is not using https, any data transmitted may be intercepted!`.colorize(ColorStyle.red));
         }
         if (!options.authentication.enabled) {
-            this.debug.warn(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`.red);
+            this.debug.warn(`WARNING: Authentication is disabled, *anyone* can do *anything* with your data!`.colorize(ColorStyle.red));
         }
 
         const otherDbsPath = `${options.path}/${dbname}.acebase`;
@@ -691,17 +690,17 @@ class AceBaseServer extends EventEmitter {
                             created: new Date(),
                             access_token: null, // Will be set upon login, so bearer authentication strategy can find user with this token
                         };
-                        this.debug.warn(`__________________________________________________________________`.red);
-                        this.debug.warn(``.red);
-                        this.debug.warn(`IMPORTANT: Admin account created`.red);
-                        this.debug.warn(`You need the admin account to remotely administer the database`.red);
-                        this.debug.warn(`Use the following credentials to authenticate an AceBaseClient:`.red);
+                        this.debug.warn(`__________________________________________________________________`.colorize(ColorStyle.red));
+                        this.debug.warn(``.colorize(ColorStyle.red));
+                        this.debug.warn(`IMPORTANT: Admin account created`.colorize(ColorStyle.red));
+                        this.debug.warn(`You need the admin account to remotely administer the database`.colorize(ColorStyle.red));
+                        this.debug.warn(`Use the following credentials to authenticate an AceBaseClient:`.colorize(ColorStyle.red));
                         this.debug.warn(``);
-                        this.debug.warn(`    username: admin`.red);
-                        this.debug.warn(`    password: ${adminPassword}`.red);
+                        this.debug.warn(`    username: admin`.colorize(ColorStyle.red));
+                        this.debug.warn(`    password: ${adminPassword}`.colorize(ColorStyle.red));
                         this.debug.warn(``);
-                        this.debug.warn(`THIS IS ONLY SHOWN ONCE!`.red);
-                        this.debug.warn(`__________________________________________________________________`.red);
+                        this.debug.warn(`THIS IS ONLY SHOWN ONCE!`.colorize(ColorStyle.red));
+                        this.debug.warn(`__________________________________________________________________`.colorize(ColorStyle.red));
                         return adminAccount; // Save it
                     }
                     else if (options.authentication.defaultAdminPassword) {
@@ -715,7 +714,7 @@ class AceBaseServer extends EventEmitter {
                             passwordHash = getPasswordHash(options.authentication.defaultAdminPassword, adminAccount.password_salt);
                         }
                         if (adminAccount.password === passwordHash) {
-                            this.debug.warn(`WARNING: default password for admin user was not changed!`.red);
+                            this.debug.warn(`WARNING: default password for admin user was not changed!`.colorize(ColorStyle.red));
 
                             if (!adminAccount.password_salt) {
                                 // Create new password hash
@@ -2656,34 +2655,50 @@ class AceBaseServer extends EventEmitter {
                     }
                 });
 
+                const acknowlegdeRequest = (requestId) => {
+                    // Send acknowledgement
+                    socket.emit('result', {
+                        success: true,
+                        req_id: requestId
+                    });
+                };
+                const failRequest = (requestId, code) => {
+                    // Send error
+                    socket.emit('result', {
+                        success: false,
+                        reason: code,
+                        req_id: requestId
+                    });
+                };
+
                 socket.on("subscribe", data => {
                     // Client wants to subscribe to events on a node
+                    this.debug.verbose(`Client ${socket.id} subscribes to event "${data.event}" on path "/${data.path}"`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
                     const subscriptionPath = data.path;
+                    const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === data.event)
+                    if (isSubscribed()) {
+                        return acknowlegdeRequest(data.req_id);
+                    }
 
                     // Get client
                     // const client = clients.get(socket.id);
 
                     if (!userHasAccess(client.user, subscriptionPath, false)) {
-                        logRef.push({ action: `subscribe`, success: false, code: `access_denied`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
-                        socket.emit('result', {
-                            success: false,
-                            reason: `access_denied`,
-                            req_id: data.req_id
-                        });
-                        return;
+                        logRef.push({ action: 'subscribe', success: false, code: 'access_denied', uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+                        return failRequest(data.req_id, 'access_denied');
                     }
 
                     const callback = (err, path, currentValue, previousValue, context) => {
+                        if (!isSubscribed()) {
+                            // Not subscribed anymore. Cancel sending
+                            return;
+                        }
                         if (!userHasAccess(client.user, path, false)) {
-                            if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
+                            if (!subscriptionPath.includes('*') && !subscriptionPath.includes('$')) {
                                 // Could potentially be very many callbacks, so
                                 // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
                                 // Only log when user subscribes again
-                                socket.emit('result', {
-                                    success: false,
-                                    reason: `access_denied`,
-                                    req_id: data.req_id
-                                });
+                                failRequest(data.req_id, 'access_denied');
                             }
                             return;
                         }
@@ -2694,7 +2709,7 @@ class AceBaseServer extends EventEmitter {
                             current: currentValue,
                             previous: previousValue
                         });
-                        this.debug.verbose(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`);
+                        this.debug.verbose(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
                         socket.emit("data-event", {
                             subscr_path: subscriptionPath,
                             path,
@@ -2703,7 +2718,6 @@ class AceBaseServer extends EventEmitter {
                             context
                         });
                     };
-                    this.debug.verbose(`Client ${socket.id} subscribes to event "${data.event}" on path "/${data.path}"`);
                     // const client = clients.get(socket.id);
 
                     let pathSubs = client.subscriptions[subscriptionPath];
@@ -2714,20 +2728,7 @@ class AceBaseServer extends EventEmitter {
 
                     db.api.subscribe(subscriptionPath, data.event, callback);
 
-                    // Send acknowledgement
-                    socket.emit('result', {
-                        success: true,
-                        req_id: data.req_id
-                    });
-                    // })
-                    // .catch(err => {
-                    //     // Not authorized
-                    //     // Let client know
-                    //     socket.emit('error', {
-                    //         reason: err instanceof AccessDeniedError ? err.message : 'internal_error',
-                    //         req_id: data.req_id
-                    //     });
-                    // });                    
+                    acknowlegdeRequest(data.req_id);
                 });
 
                 socket.on("query_unsubscribe", data => {
@@ -2735,16 +2736,18 @@ class AceBaseServer extends EventEmitter {
                     this.debug.verbose(`Client ${socket.id} is unsubscribing from realtime query "${data.query_id}"`);
                     // const client = clients.get(socket.id);
                     delete client.realtimeQueries[data.query_id];
-                })
+                    acknowlegdeRequest(data.req_id);
+                });
 
                 socket.on("unsubscribe", data => {
                     // Client unsubscribes from events on a node
-                    this.debug.verbose(`Client ${socket.id} is unsubscribing from event "${data.event || '(any)'}" on path "/${data.path}"`);
+                    this.debug.verbose(`Client ${socket.id} is unsubscribing from event "${data.event || '(any)'}" on path "/${data.path}"`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
                     
                     // const client = clients.get(socket.id);
                     let pathSubs = client.subscriptions[data.path];
                     if (!pathSubs) {
-                        return; // We have no knowledge of any active subscriptions on this path
+                        // We have no knowledge of any active subscriptions on this path
+                        return acknowlegdeRequest(data.req_id);
                     }
                     let remove = pathSubs;
                     if (data.event) {
@@ -2761,6 +2764,7 @@ class AceBaseServer extends EventEmitter {
                         // No subscriptions left on this path, remove the path entry
                         delete client.subscriptions[data.path];
                     }
+                    return acknowlegdeRequest(data.req_id);
                 });
 
                 socket.on("transaction", data => {
