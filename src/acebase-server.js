@@ -1857,9 +1857,9 @@ class AceBaseServer extends EventEmitter {
                                     last_signin_ip: req.ip,
                                     picture: user.picture
                                 });
-                                // Add provider details
-                                await authRef.child(uid).child('settings').update(getProviderSettings());
                             }
+                            // Add provider details
+                            await authRef.child(uid).child('settings').update(getProviderSettings());
 
                             // Log success
                             logRef.push({ action: 'oauth2_signin', success: true, ip: req.ip, date: new Date(), uid });
