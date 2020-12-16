@@ -2047,12 +2047,13 @@ class AceBaseServer extends EventEmitter {
                 }
             });
 
-            app.get("/info", (req, res) => {
+            app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    time: new Date(), 
+                    version: '0.9',
+                    time: Date.now(), 
                     process: process.pid
                 };
-                if (true || req.user && req.user.uid === 'admin') {
+                if (req.user && req.user.uid === 'admin') {
                     const os = require('os');
                     const numberToByteSize = number => {
                         return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
@@ -2069,7 +2070,8 @@ class AceBaseServer extends EventEmitter {
                         number -= minutes * sPerMinute;
                         const seconds = Math.floor(number);
                         return `${days}d${hours}h${minutes}m${seconds}s`;
-                    }
+                    };
+                    const mem = process.memoryUsage();
                     const adminInfo = {
                         dbname: dbname,
                         platform: os.platform(),
@@ -2080,7 +2082,14 @@ class AceBaseServer extends EventEmitter {
                         load: os.loadavg(),
                         mem: {
                             total: numberToByteSize(os.totalmem()),
-                            free: numberToByteSize(os.freemem())
+                            free: numberToByteSize(os.freemem()),
+                            process: {
+                                arrayBuffers: numberToByteSize(mem.arrayBuffers),
+                                external: numberToByteSize(mem.external),
+                                heapTotal: numberToByteSize(mem.heapTotal),
+                                heapUsed: numberToByteSize(mem.heapUsed),
+                                residentSet: numberToByteSize(mem.rss)
+                            }
                         },
                         cpus: os.cpus(),
                         network: os.networkInterfaces()
