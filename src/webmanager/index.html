@@ -243,7 +243,7 @@ M.AutoInit();
 </script>
 
 <!-- AceBase client js -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.37/dist/browser.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@0.9.39/dist/browser.min.js"></script>
 <!-- <script type="text/javascript" src="./acebase-client-browser.min.js"></script> -->
 
 <!-- AceBase Webmanager js -->
@@ -316,7 +316,9 @@ function updateBrowsePath(path) {
         .subscribe(ref => {
             console.log(`Got notification!`);
             M.toast({ html: `Child "${ref.key}" changed` });
-            updateBrowsePath(path);
+            // updateBrowsePath(path);
+            ref.reflect('info', { child_limit: 0, child_skip: 0, impersonate: impersonatedUid })
+            .then(updateNode);
         });
     }
     currentPath = path;
@@ -343,8 +345,9 @@ function updateBrowsePath(path) {
         parentPath = childPath;
     });
 
-    function addNode(nodeInfo) {
+    function createNode(nodeInfo) {
         const childElem = document.createElement('div');
+        childElem.id = 'child_' + nodeInfo.key;
         childElem.classList.add('db_node');
         const isObjectOrArray = ['object', 'array'].includes(nodeInfo.type);
         const hasInlineValue = typeof nodeInfo.value !== 'undefined';
@@ -418,7 +421,24 @@ function updateBrowsePath(path) {
             childElem.appendChild(nodeTypeElem);
         }
 
+        return childElem;
+    }
+
+    function addNode(nodeInfo) {
+        const childElem = createNode(nodeInfo);
         container.appendChild(childElem);
+    }
+    function updateNode(nodeInfo) {
+        const id = 'child_' + nodeInfo.key;
+        const currentElem = document.getElementById(id);
+        if (currentElem) { currentElem.id = 'prev_' + id; }
+        const newElem = createNode(nodeInfo);
+        if (currentElem) {
+            container.replaceChild(newElem, currentElem);
+        }
+        else {
+            container.appendChild(newElem);
+        }
     }
 
     function showError(message) {
@@ -432,7 +452,7 @@ function updateBrowsePath(path) {
 
     let ref = path ? connection.db.ref(path) : connection.db.root;
     const limit = 100; 
-    function getChildren(skip = 0) {        
+    function getChildren(skip = 0) {
         // Load path children with reflect API
         ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
         .then(info => {
