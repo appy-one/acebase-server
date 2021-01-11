@@ -504,10 +504,10 @@ class AceBaseServer extends EventEmitter {
         
         const dbOptions = {
             logLevel: options.logLevel,
+            info: 'realtime database server',
             storage: {
                 cluster: options.cluster,
                 path: options.path,
-                info: 'realtime database server',
                 removeVoidProperties: true
             }
         };
@@ -1135,7 +1135,12 @@ class AceBaseServer extends EventEmitter {
                 // Setup AceBase context, to allow clients to pass contextual info with data updates,
                 // that will be sent along to data event subscribers on affected data.
                 const context = req.get('AceBase-Context');
-                req.context = context && JSON.parse(context);
+                try {
+                    req.context = context && JSON.parse(context);
+                }
+                catch(err) {
+                    this.debug.error(`Failed to parse AceBase-Context header: "${context}" in request at ${req.url} from client ${req.ip}`);
+                }
                 next();
             });
 
