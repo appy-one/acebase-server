@@ -1,10 +1,27 @@
 import * as Express from 'express';
+import { AceBase } from 'acebase';
 
 declare namespace acebaseserver {
     class AceBaseServer {
         constructor(dbname: string, options?: AceBaseServerSettings)
         ready(callback: () => void): Promise<void>
         get url(): string
+
+        /**
+         * Gets direct access to the database, this bypasses any security rules and schema validators.
+         * You can use this to add custom event handlers ("cloud functions") to your database directly.
+         * NOTE: your code will run in the same thread as the server, make sure you are not performing
+         * CPU heavy tasks here. If you have to do heavy weightlifting, create a seperate app that connects
+         * to your server with an AceBaseClient, or execute in a worker thread.
+         * @example
+         * server.db.ref('uploads/images').on('child_added', async snap => {
+         *    const image = snap.val();
+         *    const resizedImages = await createImageSizes(image); // Some function that creates multiple image sizes in worker thread
+         *    const targetRef = await server.db.ref('images').push(resizedImages); // Store them somewhere else
+         *    await snap.ref.remove(); // Remove original upload
+         * });
+         */
+        get db(): AceBase
 
         /**
          * @param {string} clientIp ip address of the user

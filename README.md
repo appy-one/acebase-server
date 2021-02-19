@@ -99,7 +99,7 @@ If you want to further restrict what data users can access and/or write to (RECO
 }
 ```
 
-NOTE: Just like Firebase, access is denied by default when nu rule is found for the target path. If an access rule is found, it will be used for any child path. Eg: access for child/descending paths can not be overridden.
+NOTE: Just like Firebase, access is denied by default when no rule is found for the target path. If an access rule is found, it will be used for any child path. Eg: access for child/descending paths can not be overridden.
 
 ### Schema validation
 
@@ -237,7 +237,7 @@ server.verifyEmailAddress(req.ip, verificationCode)
 .then(() => { ... });
 ```
 
-## Using third party login providers [NEW]
+## Using third party login providers
 
 You can enable users to sign into your app through a third party login provider, such as Facebook, Google, Twitter etc. To enable this, follow these steps for each provider:
 
@@ -299,7 +299,41 @@ Currently implemented auth providers are:
 
 *NOTE: Facebook access tokens are short-lived by default, but will be exchanged for a long-lived (60 day) access token upon refresh. If you need to keep the Facebook access token active, execute ```refreshAuthProviderToken``` immediately after ```finishAuthProviderSignIn```, and keep refreshing every time the user starts your app. Once a Facebook access token has expired, it cannot be refreshed and the user will have to sign in again.
 
-## Extending the server API [NEW]
+## Add cloud functions to handle data changes
+
+You can add "cloud functions" to perform custom tasks upon data changes. You can do this in 2 ways:
+
+* In the same process you are running your ```AceBaseServer``` (requires server v1.1+). Make sure you run cpu heavy code in a separate worker thread to keep the server thread available for core tasks:
+```js
+const server = new AceBaseServer(dbname, settings);
+await server.ready();
+
+// Monitor images being added by users, resize them to multiple sizes:
+server.db.ref('uploads/images').on('child_added', async snap => {
+    const image = snap.val();
+    const resizedImages = await createImageSizes(image); // Some function that creates multiple image sizes in a worker thread
+    const targetRef = await db.ref('images').push(resizedImages); // Store them somewhere else
+    await snap.ref.remove(); // Remove original upload
+});
+```
+
+* Connect to your server with an AceBaseClient in a separate nodejs app, sign in as admin (or other user with rights to the data you want to read/write), add your custom event handlers.
+
+```js
+const db = new AceBaseClient({ host: 'localhost', port: 5757, dbname: 'mydb', https: false });
+await db.ready();
+await db.auth.signIn('admin', 'thepassword');
+
+// Monitor images being added by users, resize them to multiple sizes:
+db.ref('uploads/images').on('child_added', async snap => {
+    const image = snap.val();
+    const resizedImages = createImageSizes(image); // Some function that creates multiple image sizes
+    const targetRef = await db.ref('images').push(resizedImages); // Store them somewhere else
+    await snap.ref.remove(); // Remove original upload
+});
+```
+
+## Extending the server API
 
 You can add your own custom API functions to the server with the ```server.extend(method, path, handler)``` method:
 

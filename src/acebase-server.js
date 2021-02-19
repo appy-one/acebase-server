@@ -513,6 +513,7 @@ class AceBaseServer extends EventEmitter {
         };
 
         const db = new AceBase(dbname, dbOptions);
+        Object.defineProperty(this, 'db', { configurable: false, get: () => db }); // Expose to outside world
 
         if (options.authentication.enabled) {
             this.authProviders = {};
