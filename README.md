@@ -99,7 +99,26 @@ If you want to further restrict what data users can access and/or write to (RECO
 }
 ```
 
-NOTE: Just like Firebase, access is denied by default when no rule is found for the target path. If an access rule is found, it will be used for any child path. Eg: access for child/descending paths can not be overridden.
+NOTE: Just like Firebase, access is denied by default when no rule is found for the target path. If an access rule is found, it will be used for any child path. This means that read and/or write access for child/descending paths can not be overridden. If you want to allow users read access to a path, and write access only for specific child path(s), use the following rules:
+
+```json
+{
+    "rules": {
+        "shop_reviews": {
+            "$shopId": {
+                ".read": true,
+                "$uid": {
+                    ".write": "auth.uid === $uid"
+                }
+            }
+        }
+    }
+}
+```
+Above rules enforces:
+* No read or write access to the root node or any child for anyone. (No rule has been set for those nodes, access will be denied)
+* Read access to all reviews for specific shops ('shop_reviews/shop1', 'shop_reviews/shop2') for anyone, including unauthenticated clients (```".read"``` rule is set to ```true```)
+* Write access to an authenticated user's own review for any shop. (```".write"``` rule is set to ```"auth.uid === $uid"```)
 
 ### Schema validation
 
