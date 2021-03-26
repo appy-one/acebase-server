@@ -1,8 +1,7 @@
 
 const { EventEmitter } = require('events');
-const { AceBase, AceBaseSettings } = require('acebase');
+const { AceBase, SchemaValidationError } = require('acebase');
 const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger, ColorStyle } = require('acebase-core');
-const { TypeChecker } = require('./typecheck');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -621,24 +620,30 @@ class AceBaseServer extends EventEmitter {
                             parent[key] = rule;
                         }
                         else if (key === '.schema') {
-                            // Parse "typescript" schema
-                            const text = rule;
-                            /** @@type {TypeChecker} */
-                            let checker;
-                            try {
-                                checker = new TypeChecker(rule);
-                            }
-                            catch(err) {
+                            // Add schema
+                            db.schema.set(path, rule)
+                            .catch(err => {
                                 this.debug.error(`Error parsing ${path}/.schema: ${err.message}`)
-                            }
-                            rule = (value, partial) => {
-                                const result = checker.check(path, value, partial);
-                                return result;
-                            };
-                            rule.getText = () => {
-                                return text;
-                            };
-                            parent[key] = rule;
+                            });
+
+                            // // Parse "typescript" schema
+                            // const text = rule;
+                            // /** @@type {TypeChecker} */
+                            // let checker;
+                            // try {
+                            //     checker = new TypeChecker(rule);
+                            // }
+                            // catch(err) {
+                            //     this.debug.error(`Error parsing ${path}/.schema: ${err.message}`)
+                            // }
+                            // rule = (value, partial) => {
+                            //     const result = checker.check(path, value, partial);
+                            //     return result;
+                            // };
+                            // rule.getText = () => {
+                            //     return text;
+                            // };
+                            // parent[key] = rule;
                         }
                         else if (key.startsWith('$')) {
                             variables.push(key);
@@ -884,102 +889,6 @@ class AceBaseServer extends EventEmitter {
                         // Check if current rule has a wildcard child
                         const wildcardKey = Object.keys(rule).find(key => key ==='*' || key[0] === '$');
                         if (wildcardKey) { env[wildcardKey] = nextKey; }
-                        nextKey = wildcardKey;
-                    }
-                    nextKey && rulePath.push(nextKey);
-                    rule = rule[nextKey];
-                }
-            };
-
-            /**
-             * 
-             * @param {string} path 
-             * @param {any} data 
-             * @param {boolean} partial if the passed data is partial (update instead of set)
-             * @returns {{ ok: boolean, validated: boolean, reason?: string }}
-             */
-            const validateSchema = (path, data, partial = false) => {
-                // Process rules to find if there are any ".validate" or ".schema" rules set on given path
-                // starts from the root, digs deeper in the path
-                const pathKeys = PathInfo.getPathKeys(path);
-                let rule = accessRules.rules;
-                let rulePath = [];
-                let validated = false;
-                while(true) {
-                    if (!rule) { 
-                        return { ok: true, validated };
-                    }
-                    let validate = rule['.validate']; // NOT implemented yet
-                    let checkSchema = rule['.schema'];
-                    if (checkSchema) {
-                        // Rule set on higher or same path as data being updated
-                        const trailKeys = pathKeys.slice(rulePath.length);
-                        const checkData = trailKeys.length === 0 ? data : trailKeys.reduce((obj, key, index, arr) => {
-                            obj[key] = index === arr.length-1 ? data : { };
-                        }, {});
-                        validated = true;
-                        const result = checkSchema(checkData, partial);
-                        if (!result.ok) {
-                            return { ok: false, reason: result.reason };
-                        }
-                    }
-                    if (pathKeys.length === 0) {
-                        // No more rules set on updating path trail
-                        // Check if there are rules set on deeper paths
-                        // eg: 
-                        // rule set on path 'users/$uid/posts/$postId/tags/$tagId': { name: string, link_id: number }
-                        // data being inserted at 'users/352352/posts/572245': { text: 'this is my post', tags: { sometag: 'deny this' } }
-                        const checkNestedRules = (parentRule, parentData) => {
-
-                            const childKeys = typeof parentData === 'object' && parentData !== null 
-                                ? Object.keys(parentData)
-                                : [];
-                            const checkKeys = Object.keys(parentRule)
-                                .filter(key => 
-                                    key === '*' || 
-                                    key[0] === '$' || 
-                                    (key[0] !== '.' && childKeys.includes(key))
-                                )
-                                .sort((a, b) => {
-                                    // First, check known properties, then wildcards
-                                    const wa = a === '*' || a[0] === '$';
-                                    const wb = b === '*' || b[0] === '$';
-                                    if (!wa && wb) { return -1; }
-                                    if (wa && !wb) { return 1; }
-                                    return 0;
-                                });
-                            let failed;
-                            const matches = childKeys.length === 0 || checkKeys.every(key => {
-                                const rule = parentRule[key];
-                                let keepGoing = true;
-                                if ('.schema' in rule) {
-                                    const checkSchema = rule['.schema'];
-                                    const checkChildKeys = key === '*' || key[0] === '$' ? childKeys.filter(key => !checkKeys.includes(key)) : [key];
-                                    validated = true;
-                                    keepGoing = checkChildKeys.every(key => {
-                                        const checkData = parentData[key];
-                                        const result = checkSchema(checkData, false);
-                                        if (!result.ok) { failed = result; return false; }
-                                    })
-                                }
-                                if (keepGoing) {
-                                    return checkNestedRules(rule, checkData); // Dig deeper
-                                }
-                            });
-                            if (!matches) {
-                                return failed;
-                            }
-                            return { ok: true, validated };
-                        }
-                        return checkNestedRules(rule, data);
-                    }
-                    let nextKey = pathKeys.shift();
-                    // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
-                    // need to change things here for usage of wildcard paths in subscriptions
-                    if (typeof rule[nextKey] === 'undefined') {
-                        // Check if current rule has a wildcard child
-                        const wildcardKey = Object.keys(rule).find(key => key === '*' || key[0] === '$');
-                        // if (wildcardKey) { env[wildcardKey] = nextKey; }
                         nextKey = wildcardKey;
                     }
                     nextKey && rulePath.push(nextKey);
@@ -2190,7 +2099,7 @@ class AceBaseServer extends EventEmitter {
                 Object.keys(req.query).forEach(key => {
                     if (!['type','impersonate'].includes(key)) {
                         let val = req.query[key];
-                        if (/true|false|[0-9]+/.test(val)) { val = JSON.parse(val); }
+                        if (/^(?:true|false|[0-9]+)$/.test(val)) { val = JSON.parse(val); }
                         args[key] = val;
                     }
                 });
@@ -2284,90 +2193,76 @@ class AceBaseServer extends EventEmitter {
                 });
             });
             
-            app.post(`/data/${dbname}/*`, (req, res) => {
+            app.post(`/data/${dbname}/*`, async (req, res) => {
                 // update data                
                 const path = req.path.substr(dbname.length + 7);
                 if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
                     return;
                 }
 
-                const data = req.body;
-                const val = Transport.deserialize(data);
+                try {
+                    const data = req.body;
+                    const val = Transport.deserialize(data);
 
-                let validation = validateSchema(path, val, true);
-                let updatePromise;
-                const ref = db.ref(path).context(req.context);
-                if (validation.ok && validation.validated && typeof val === 'object' && val.constructor === Object) {
-                    // Schema validation was triggered for this path. If this update is on a non-existing path, we have
-                    // to run validation again because updates are not partial, they create the new node
-                    updatePromise = ref.exists().then(exists => {
-                        if (exists) {
-                            // Proceed as normal, do not check existing data possibly inserted before schema rules 
-                            // were set/changed. This prevents old data becoming stale.
-                            return ref.update(val);
-                        }
-                        // Target node does not exist. We must validate schema again with "partial" off
-                        // to check if it contains all compulsory data
-                        validation = validateSchema(path, val, false);
-                        if (validation.ok) {
-                            // Set instead of update
-                            return ref.set(val);
-                        }
-                    });
-                }
-                else {
-                    // No schema validation used
-                    updatePromise = ref.update(val);
-                }
-
-                updatePromise
-                .then(() => {
+                    // Schema validation moved to storage, no need to check here but an early check won't do no harm!
+                    let validation = await db.schema.check(path, val, true);
                     if (!validation.ok) {
-                        logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
-                        res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                        throw new SchemaValidationError(validation.reason);
+                    }
+
+                    await db.ref(path)
+                        .context(req.context)
+                        .update(val);
+
+                    res.send({ success: true });
+                }
+                catch(err) {
+                    if (err instanceof SchemaValidationError) {
+                        logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
+                        res.status(422).send({ code: 'schema_validation_failed', message: err.message });
                     }
                     else {
-                        res.send({
-                            success: true
-                        });
+                        this.debug.error(`failed to update "${path}":`, err);
+                        logRef.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message });
+                        sendError(res, err);
                     }
-                })
-                .catch(err => {
-                    this.debug.error(`failed to update "${path}":`, err);
-                    logRef.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message });
-                    sendError(res, err);
-                });
+                }
             });
 
-            app.put(`/data/${dbname}/*`, (req, res) => {
+            app.put(`/data/${dbname}/*`, async (req, res) => {
                 // Set data
                 const path = req.path.substr(dbname.length + 7);
                 if (!userHasAccess(req.user, path, true, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
                     return;
                 }
 
-                const data = req.body;
-                const val = Transport.deserialize(data);
+                try {
+                    const data = req.body;
+                    const val = Transport.deserialize(data);
 
-                const validation = validateSchema(path, val);
-                if (!validation.ok) {
-                    logRef.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: validation.reason });
-                    return res.status(422).send({ code: 'schema_validation_failed', message:validation.reason });
+                    // Schema validation moved to storage, no need to check here but an early check won't do no harm!
+                    const validation = await db.schema.check(path, val, false);
+                    if (!validation.ok) {
+                        throw new SchemaValidationError(validation.reason);
+                    }
+
+                    await db.ref(path)
+                        .context(req.context)
+                        .set(val);
+
+                    res.send({ success: true });
                 }
-
-                db.ref(path)
-                .context(req.context)
-                .set(val)
-                .then(ref => {
-                    res.send({
-                        success: true
-                    });
-                })
-                .catch(err => {
-                    this.debug.error(`failed to set "${path}":`, err);
-                    logRef.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
-                    sendError(res, err);
-                });
+                catch(err) {
+                    if (err instanceof SchemaValidationError) {
+                        logRef.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
+                        res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+                    }
+                    else {
+                        this.debug.error(`failed to set "${path}":`, err);
+                        logRef.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
+                        sendError(res, err);
+                    }
+                };
             });
 
             app.post(`/query/${dbname}/*`, (req, res) => {
@@ -2378,20 +2273,6 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const data = Transport.deserialize(req.body);
-                // //const ref = db.ref(path);
-                // const query = db.query(path);
-                // data.query.filters.forEach(filter => {
-                //     query.where(filter.key, filter.op, filter.compare);
-                // });
-                // data.query.order.forEach(order => {
-                //     query.order(order.key, order.ascending);
-                // });
-                // if (data.query.skip > 0) {
-                //     query.skip(data.query.skip);
-                // }
-                // if (data.query.take > 0) {
-                //     query.take(data.query.take);
-                // }
                 const query = data.query;
                 const options = data.options;
                 if (options.monitor === true) {
@@ -2421,45 +2302,104 @@ class AceBaseServer extends EventEmitter {
                         count: results.length,
                         list: results // []
                     };
-                    // results.forEach(result => {
-                    //     if (data.options.snapshots) {
-                    //         response.list.push({ path: result.ref.path, val: result.val() });
-                    //     }
-                    //     else {
-                    //         response.list.push(result.path);
-                    //     }
-                    // });
                     res.send(Transport.serialize(response));
                 });
             });
 
-            app.get(`/index/${dbname}`, (req, res) => {
+            app.get(`/index/${dbname}`, async (req, res) => {
                 // Get all indexes
-                db.indexes.get()
-                .then(indexes => {
-                    res.send(indexes);
-                });
-            });
-
-            app.post(`/index/${dbname}`, (req, res) => {
-                // create index
                 if (!req.user || req.user.username !== 'admin') {
-                    return sendUnauthorizedError(res, 'admin_only', 'only admin can create indexes');
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
                 }
 
-                const data = req.body;
-                if (data.action === "create") {
-                    db.indexes.create(data.path, data.key, data.options)
-                    .then(() => {
-                        res.send({ success: true });
-                    })
-                    .catch(err => {
-                        this.debug.error(`failed to query "${path}":`, err);
-                        res.statusCode = 500;
-                        res.send(err);         
-                    })
+                try {
+                    const indexes = await db.indexes.get()
+                    res.contentType('application/json').send(indexes);
+                }
+                catch(err) {
+                    sendError(err);
                 }
             });
+
+            app.post(`/index/${dbname}`, async (req, res) => {
+                // create / remove / rebuild index
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
+                }
+
+                try {
+                    const data = req.body;
+                    if (data.action === 'create') {
+                        await db.indexes.create(data.path, data.key, data.options)
+                    }
+                    // else if (data.action === 'rebuild') {
+                    //     // TODO
+                    // }
+                    // else if (data.action === 'remove') {
+                    //     // TODO
+                    // }
+                    else {
+                        throw new Error('Invalid action');
+                    }
+                    res.contentType('application/json').send({ success: true });
+                }
+                catch(err) {
+                    this.debug.error(`failed to perform index action`, err);
+                    sendError(res, err);
+                }
+            });
+
+            app.get(`/schema/${dbname}`, async (req, res) => {
+                // Get all defined schemas
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can perform schema operations');
+                }
+                try {
+                    const schemas = await db.schema.all();
+                    res.contentType('application/json').send(schemas);
+                }
+                catch(err) {
+                    sendError(res, err);
+                }
+            });
+
+            app.get(`/schema/${dbname}/*`, async (req, res) => {
+                // Get defined schema for a specifc path
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can perform schema operations');
+                }
+                try {
+                    const path = req.path.substr(dbname.length + 9);
+                    const schema = await db.schema.get(path);
+                    res.contentType('application/json').send(schema);
+                }
+                catch(err) {
+                    sendError(res, err);
+                }
+            });
+
+            app.post(`/schema/${dbname}`, async (req, res) => {
+                // defines a schema
+                if (!req.user || req.user.username !== 'admin') {
+                    return sendUnauthorizedError(res, 'admin_only', 'only admin can perform schema operations');
+                }
+
+                try {
+                    const data = req.body;
+                    if (data.action === 'set') {
+                        const { path, schema } = data;
+                        await db.schema.set(path, schema);
+                    }
+                    else {
+                        throw new Error(`Invalid action`);
+                    }
+                    res.contentType('application/json').send({ success: true });
+                }
+                catch(err) {
+                    sendError(res, err);
+                }
+            });
+
 
             const _transactions = new Map();
             app.post(`/transaction/${dbname}/start`, (req, res) => {

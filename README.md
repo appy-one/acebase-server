@@ -124,6 +124,10 @@ Above rules enforces:
 
 AceBase server now supports TypeScript based schema definitions and validation. Once you've defined a schema for a path, all data being written must adhere to the set schema. Data to be stored/updated will be validated against the schema and denied or allowed accordingly.
 
+There are 2 ways to can add schemas:
+- In your `rules.json` file, see below.
+- Programmatically through `db.schema.set`. See the [AceBase documentation](https://github.com/appy-one/acebase#adding-schemas-to-enforce-data-rules) for more info.
+
 To ensure all users have a ```name``` (string), ```email``` (string) and ```language``` (either Dutch, English, German, French or Spanish), optionally a ```birthdate``` (Date) and ```address``` (custom object definition), add the following to your _rules.json_ file:
 ```json
 {
