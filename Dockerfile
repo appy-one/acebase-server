@@ -4,7 +4,7 @@
 # docker build -t acebase-server .
 # To run:
 # docker volume create acebase-server-data
-# docker run --name MyAceBaseServer1 -p 3000:3000 -p 4000:4000 -v acebace-server-data:/default.acebase acebase-server
+# docker run --name MyAceBaseServer1 -p 3000:3000 -p 4000:4000 -v acebase-server-data:/default.acebase acebase-server
 
 FROM node:10-alpine
 WORKDIR /app
@@ -17,10 +17,10 @@ ARG DBNAME="data"
 ARG PORT=3000
 ARG CLUSTER_PORT=4000
 ARG HOST="0.0.0.0"
-ARG PATH="."
+ARG DBPATH="."
 
 # Set defaults for runtime environment variables, can be overriden by: docker run --env DBNAME=mydb ...
-ENV DBNAME=${DBNAME} HOST=${HOST} PORT=${PORT} CLUSTER_PORT=${CLUSTER_PORT} PATH=${PATH}
+ENV DBNAME=${DBNAME} HOST=${HOST} PORT=${PORT} CLUSTER_PORT=${CLUSTER_PORT} DBPATH=${DBPATH}
 
 # Start server without arguments, environment variables will be used
-CMD ["node", "start.js"]
+CMD ["node", "src/start.js"]
