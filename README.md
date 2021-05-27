@@ -214,7 +214,7 @@ const server = new AceBaseServer(('mydb', { host: 'localhost', port: 5757, authe
 function sendRequestedEmail(request) {
     switch (request.type) {
         case 'user_signup': {
-            console.log(`Should send an e-mail to ${request.user.email} to verify their e-mail address with code ${request.verifyCode}`);
+            console.log(`Should send an e-mail to ${request.user.email} to verify their e-mail address with code ${request.activationCode}`);
             break;
         }
         case 'user_reset_password': {
@@ -258,6 +258,59 @@ OR, directly on your server:
 ```javascript
 server.verifyEmailAddress(req.ip, verificationCode)
 .then(() => { ... });
+```
+
+### E-mail request examples
+
+If you've configured the email settings with a function like `sendRequestedEmail` in the example above, your function will be called with e-mail requests with the following formats:
+
+Request type *user_signup*:
+```js
+{
+    "type": "user_signup",
+    "user": {
+        "uid": "knq2aynt000dnc7bwt8gpj0c",
+        "email": "me@appy.one",
+        "displayName": "Ewout",
+        "settings": {}
+    },
+    "ip": "127.0.0.1",
+    "date": new Date("2021-04-20T13:27:46.937Z"),
+    "activationCode": "eyJ2IjoxLCJjcyI6ImNlMGRlYTgxM...",
+    "emailVerified": false,
+    "provider": "acebase"
+}
+```
+
+Request type *user_reset_password*:
+```js
+{
+    "type": "user_reset_password",
+    "user": {
+        "email": "me@appy.one",
+        "uid": "knq3eq5w0005jg7b3vym9fgr",
+        "settings": {},
+        "displayName": "Ewout"
+    },
+    "ip": "127.0.0.1",
+    "date": new Date("2021-04-21T07:19:26.588Z"),
+    "resetCode": "eyJ2IjoxLCJjcyI6ImI4ZTE5MGE5NTA3YT..."
+}
+```
+
+Request type *user_reset_password_success*:
+```js
+{
+    "type": "user_reset_password_success",
+    "user": {
+        "uid": "knq3eq5w0005jg7b3vym9fgr",
+        "email": "me@appy.one",
+        "displayName": "Ewout",
+        "settings": {}
+    },
+    "ip": "127.0.0.1",
+    "date": new Date("2021-04-21T10:15:28.148Z")
+}
 ```
 
 ## Using third party login providers
