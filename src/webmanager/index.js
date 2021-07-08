@@ -78,8 +78,9 @@ function subscribeToChildEvents(path, callback) {
 
 let currentPath = null;
 let currentPathSubscription = null;
+let currentPathIsArray = false;
 let lastMoreClickListener;
-function updateBrowsePath(path) {
+function updateBrowsePath(path = '') {
 
     if (currentPath !== path) {
         if (currentPathSubscription) {
@@ -247,6 +248,8 @@ function updateBrowsePath(path) {
         ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
         .then(info => {
 
+            currentPathIsArray = info.type === 'array';
+
             if (info.impersonation) {
                 const elem = document.getElementById('browse_impersonate_access');
                 if (info.impersonation.read.allow && info.impersonation.write.allow) {
@@ -345,7 +348,7 @@ function impersonateUser() {
 function specifyChildKey() {
     let key = window.prompt('Enter the child key to browse to:', '');
     if (typeof key !== 'string') { return; }
-    if (/^[0-9]+$/.test(key)) {
+    if (currentPathIsArray && /^[0-9]+$/.test(key)) {
         // index
         key = parseInt(key);
     }
@@ -389,6 +392,43 @@ document.getElementById('export_json').addEventListener('click', () => {
     // Will initiate a download:
     const url = `/export/${connection.dbname}/${currentPath}?format=json&auth_token=${connection.auth_token}`;
     window.location.href = url;
+});
+
+document.getElementById('edit_node').addEventListener('click', () => {
+    document.getElementById('edit_form').classList.remove('hide');
+});
+
+document.getElementById('update_button').addEventListener('click', () => {
+    // 
+    const textarea = document.getElementById('update_json');
+    let json = textarea.value;
+    if (!json.startsWith('{') || !json.endsWith('}')) { return alert('Value must be json'); }
+    
+    // TODO: Find a secure way to replace dates
+    // // Replace date strings with dates
+    // json = json.replace(/"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?Z"/g, m => `new Date(${m})`);
+    // // Parse object
+    // const updates = eval(`(${json})`); // eval to allow JS, eg: new Date("2021-04-13T20:03:02.735Z")
+    // Parse object
+
+    let updates;
+    try {
+        updates = JSON.parse(json);
+    }
+    catch(err) {
+        return alert(err.message);
+    }
+    
+    console.log(updates);
+    if (typeof updates !== 'object') { return alert('value must be an object'); }
+    // Update
+    connection.db.ref(currentPath).update(updates)
+    // .then(() => {
+    //     M.toast({ html: `Value was updated!` });
+    // })
+    .catch(err => {
+        M.toast({ html: `Error: ${err.message}` });
+    });
 });
 
 // TODO: create a stand-alone PWA (Ionic?) that has more functionality, such as:

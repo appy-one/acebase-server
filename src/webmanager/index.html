@@ -214,7 +214,11 @@
                 There's <a id="load_more_children" class="clickable">more</a>! If you want to browse a specific key, <a href="javascript:specifyChildKey()">enter it here</a>
             </div>
             <div id="export_node" class="hide">
-                You can export the value of this node to <a id="export_json" class="clickable">json</a>
+                You can <a id="edit_node" class="clickable">update</a> this node or export the value of this node to <a id="export_json" class="clickable">json</a>
+            </div>
+            <div id="edit_form" class="hide">
+                <textarea id="update_json">{ }</textarea>
+                <input type="button" value="update" id="update_button" />
             </div>
         </div>
 
