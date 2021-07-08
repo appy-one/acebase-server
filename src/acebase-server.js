@@ -2141,12 +2141,15 @@ class AceBaseServer extends EventEmitter {
 
                 const stream = {
                     write(chunk) {
-                        return new Promise((resolve, reject) => {
-                            res.write(chunk, err => {
-                                if (err) { reject(err); }
-                                else { resolve(); }
-                            });
-                        });
+                        res.write(chunk);
+
+                        // OLD: causes streaming issues
+                        // return new Promise((resolve, reject) => {
+                        //     res.write(chunk, err => {
+                        //         if (err) { reject(err); }
+                        //         else { resolve(); }
+                        //     });
+                        // });
                     }
                 };
 
@@ -2160,7 +2163,11 @@ class AceBaseServer extends EventEmitter {
                 .catch(err => {
                     res.statusCode = 500;
                     res.send(err);
-                });                
+                })
+                .catch(err => {
+                    // Previous catch raised another exception. Happens when streaming already started: Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+                    res.end();
+                });
             });
 
             app.get(`/exists/${dbname}/*`, (req, res) => {
