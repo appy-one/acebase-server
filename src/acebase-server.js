@@ -1,4 +1,4 @@
-
+const express = require('express');
 const { EventEmitter } = require('events');
 const { AceBase, SchemaValidationError } = require('acebase');
 const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger, ColorStyle } = require('acebase-core');
@@ -482,12 +482,44 @@ class AceBaseServer extends EventEmitter {
         this._ready = false;
 
         options = new AceBaseServerSettings(options);
-        const app = require('express')();
+
+        const app = express();
         app.set('trust proxy', true); // When behind proxy server, req.ip and req.hostname will be set the right way
-        const bodyParser = require('body-parser');
-        const server = options.https.enabled ? require('https').createServer(options.https, app) : require('http').createServer(app);
-        const io = require('socket.io').listen(server);
         
+        const corsOptions = {
+            origin: options.allowOrigin === '*' ? true : options.allowOrigin.split(/,\s*/),
+            methods: 'GET,PUT,POST,DELETE,OPTIONS',
+            allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context' // Disabled so cors will allow all used request headers
+        };
+
+        // When updating socket.io to 3+, use this for cors instead:
+        // const cors = require('cors');
+        // app.use(cors(corsOptions));
+
+        // With socket.io 2.x:
+        const corsHandler = (req, res, next) => {
+            res.header('Access-Control-Allow-Origin', options.allowOrigin !== '*' ? options.allowOrigin : (req.headers.origin || '*'));
+            res.header('Access-Control-Allow-Methods', corsOptions.methods);
+            res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders);
+            if (req.method === 'OPTIONS') {
+                res.status(200).end();
+            }
+            else {
+                next();
+            }
+        };
+        app.use(corsHandler);
+
+        const server = options.https.enabled ? require('https').createServer(options.https, app) : require('http').createServer(app);
+        const io = require('socket.io')(server, {
+            // socket.io 2.x:
+            handlePreflightRequest: corsHandler
+            // socket.io 3+:
+            // cors: corsOptions
+        });
+        
+        app.use(express.json({ limit: options.maxPayloadSize, extended: true }));
+
         this.config = {
             hostname: options.host,
             port: options.port,
@@ -1025,20 +1057,6 @@ class AceBaseServer extends EventEmitter {
 
             server.on("error", (err) => {
                 this.debug.log(err);
-            });
-
-            app.use(bodyParser.json({ limit: options.maxPayloadSize, extended: true }));
-
-            app.use((req, res, next) => {
-                res.header('Access-Control-Allow-Origin', options.allowOrigin);
-                res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-                res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context'); // Safari is not satisfied with *
-                if (req.method === 'OPTIONS') {
-                    res.sendStatus(200);
-                }
-                else {
-                    next();
-                }
             });
 
             app.use((req, res, next) => {
