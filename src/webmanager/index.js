@@ -202,9 +202,10 @@ function updateBrowsePath(path = '') {
         return childElem;
     }
 
-    function addNode(nodeInfo) {
+    function addNode(nodeInfo, noFlash = false) {
         console.log(`Adding node ${nodeInfo.key}:`, nodeInfo);
         const childElem = createNode(nodeInfo);
+        if (!noFlash) { childElem.classList.add('flash'); }
         container.appendChild(childElem);
     }
     function updateNode(nodeInfo) {
@@ -212,6 +213,7 @@ function updateBrowsePath(path = '') {
         const currentElem = document.getElementById(id);
         if (currentElem) { currentElem.id = 'prev_' + id; }
         const newElem = createNode(nodeInfo);
+        newElem.classList.add('flash');
         if (currentElem) {
             container.replaceChild(newElem, currentElem);
         }
@@ -283,7 +285,7 @@ function updateBrowsePath(path = '') {
 
             // Add children
             info.children.list.forEach(childInfo => {
-                addNode(childInfo);
+                addNode(childInfo, true);
             });
 
             // Is there more data?

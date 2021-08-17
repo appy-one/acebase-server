@@ -145,6 +145,22 @@
             /* general class to get pointer */
             cursor: pointer;
         }
+
+        @keyframes flash {
+            0%, 100% {
+                background-color: transparent;
+            }
+            50% {
+                background-color: lightskyblue;
+            }
+        }
+        .flash span {
+            animation-name: flash;
+            animation-duration: 1s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: 1;
+        }
+
         </style>
     </head>
     <body>
@@ -247,7 +263,7 @@ M.AutoInit();
 </script>
 
 <!-- AceBase client js -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@1.5.0/dist/browser.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/acebase-client@1.5.1/dist/browser.min.js"></script>
 <!-- <script type="text/javascript" src="./acebase-client-browser.min.js"></script> -->
 
 <!-- AceBase Webmanager js -->
