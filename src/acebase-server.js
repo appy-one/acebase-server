@@ -50,7 +50,7 @@ class AceBaseServerAuthenticationSettings {
      * @param {number} [settings.tokensExpire=0] how many minutes before access tokens expire. 0 for no expiration. not implemented yet
      * @param {string} [settings.defaultAccessRule='auth'] when the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
      * @param {boolean} [settings.defaultAdminPassword] when the server runs for the first time, what password to use for the admin user. If not supplied, a generated password will be used and shown ONCE in the console output.
-     * @param {boolean} [settings.seperateDb=false] whether to use a seperate database for auth and logging
+     * @param {boolean} [settings.separateDb=false] whether to use a separate database for auth and logging
      */
     constructor(settings) {
         if (typeof settings !== "object") { settings = {}; }
@@ -60,7 +60,9 @@ class AceBaseServerAuthenticationSettings {
         this.tokensExpire = typeof settings.tokensExpire === 'number' ? settings.tokensExpire : 0;
         this.defaultAccessRule = settings.defaultAccessRule || AceBaseServerAuthenticationSettings.ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
         this.defaultAdminPassword = typeof settings.defaultAdminPassword === 'string' ? settings.defaultAdminPassword : undefined;
-        this.seperateDb = typeof settings.seperateDb === 'boolean' ? settings.seperateDb : false;
+        this.separateDb = typeof settings.separateDb === 'boolean' 
+            ? settings.separateDb 
+            : typeof settings.seperateDb === 'boolean' ? seperateDb : false; // Handle previous _wrong_ spelling
     }
 
     static get ACCESS_DEFAULT() {
@@ -191,6 +193,19 @@ class AceBaseServerEmailSettings {
     }
 }
 
+class AceBaseServerTransactionSettings {
+    /**
+     * TODO: Use AceBaseTransactionLogSettings from 'acebase/src/storage-acebase.js'
+     * @param {AceBaseServerTransactionSettings} settings 
+     */
+    constructor(settings) {
+        settings = settings || { log: false }; // Keep default false until transaction logging is out of alpha/beta
+        this.log = settings.log === true;
+        this.maxAge = typeof settings.maxAge === 'number' ? settings.maxAge : 30; // 30 days
+        this.noWait = settings.noWait === true;
+    }
+}
+
 class AceBaseServerSettings {
 
     /**
@@ -205,6 +220,7 @@ class AceBaseServerSettings {
      * @param {AceBaseServerHttpsSettings} [settings.https] { keyPath:string, certPath:string} | { pfxPath:string, passphrase:string }
      * @param {AceBaseServerAuthenticationSettings} [settings.auth]
      * @param {AceBaseServerEmailSettings} [settings.email]
+     * @param {AceBaseServerTransactionSettings} [settings.transactions]
      * 
      */
     constructor(settings) {
@@ -219,6 +235,7 @@ class AceBaseServerSettings {
         this.maxPayloadSize = settings.maxPayloadSize || '10mb';
         this.allowOrigin = settings.allowOrigin || '*';
         this.email = typeof settings.email === 'object' ? new AceBaseServerEmailSettings(settings.email) : null;
+        this.transactions = new AceBaseServerTransactionSettings(settings.transactions);
     }
 }
 
@@ -528,7 +545,10 @@ class AceBaseServer extends EventEmitter {
             },
             https: options.https,
             authentication: options.authentication,
-            email: options.email
+            email: options.email,
+            get transactionLoggingEnabled() {
+                return options.transactions && options.transactions.log === true;
+            }
         };
         this.url = this.config.url; // Is this used?
         this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.colorize(ColorStyle.green)); //`« ${dbname} »`
@@ -539,7 +559,8 @@ class AceBaseServer extends EventEmitter {
             storage: {
                 cluster: options.cluster,
                 path: options.path,
-                removeVoidProperties: true
+                removeVoidProperties: true,
+                transactions: options.transactions
             }
         };
 
@@ -562,12 +583,16 @@ class AceBaseServer extends EventEmitter {
         const otherDbsPath = `${options.path}/${dbname}.acebase`;
         // const eventsDb = new AceBase('events', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
         // const logsDb = new AceBase('logs', { logLevel: dbOptions.logLevel,  storage: { path: otherDbsPath, removeVoidProperties: true } })
-        const authDb = options.authentication.enabled
-            ? 
-                options.authentication.seperateDb === true // NEW
-                    ? new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } })
-                    : db
-            : null;
+        const authDb = (() => {
+            if (!options.authentication.enabled) {
+                return null;
+            } 
+            switch(options.authentication.separateDb) {
+                case true: return new AceBase('auth', { logLevel: dbOptions.logLevel, storage: { path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } });
+                case 'v2': /*NOT TESTED YET*/return new AceBase(dbname, { logLevel: dbOptions.logLevel, storage: { type: 'auth', path: options.path, removeVoidProperties: true, info: `${dbname} auth database` } });
+                default: return db;
+            }
+        })();
 
         // To handle unhandled promise rejections so process will not die in future versions of node:
         // process.on("unhandledRejection", (reason, p) => {
@@ -587,11 +612,10 @@ class AceBaseServer extends EventEmitter {
             const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
             const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
+            const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
 
             const setupRules = () => {
                 // Check if there is a rules file, load it or generate default
-                const rulesFilePath = `${options.path}/${dbname}.acebase/rules.json`;
-
                 fs.unwatchFile(rulesFilePath); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
 
                 const defaultAccessRule = (def => {
@@ -691,7 +715,7 @@ class AceBaseServer extends EventEmitter {
                 fs.watchFile(rulesFilePath, (currStats, prevStats) => {
                     // rules.json file changed, setup rules again
                     setupRules();
-                })
+                });                
             }
             setupRules();
 
@@ -879,7 +903,7 @@ class AceBaseServer extends EventEmitter {
                     return false;
                 }
 
-                const env = { now: Date.now(), auth: user || null };
+                const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true" 
                 const pathKeys = PathInfo.getPathKeys(path);
                 let rule = accessRules.rules;
                 let rulePath = [];
@@ -1377,6 +1401,9 @@ class AceBaseServer extends EventEmitter {
                         // return typeof password === 'string' && password.length >= 8 && password.indexOf(' ') < 0 && /[0-9]/.test(password) && /[a-z]/.test(password) && /[A-Z]/.test(password);
                         return typeof password === 'string' && password.length >= 8 && password.indexOf(' ') < 0; // Let client application set their own password rules. Keep minimum length of 8 and no spaces requirement.
                     },
+                    picture(picture) {
+                        return picture === null || (typeof picture === 'object' && typeof picture.url === 'string' && typeof picture.width === 'number' && typeof picture.height === 'number');
+                    },
                     settings(settings) {
                         return typeof settings === 'undefined'
                              || (
@@ -1392,6 +1419,7 @@ class AceBaseServer extends EventEmitter {
                     username: { code: 'invalid_username', message: 'Invalid username, must be at least 5 characters and can only contain lowercase characters a-z and 0-9' },
                     displayName: { code: 'invalid_display_name', message: 'Invalid display_name, must be at least 5 characters' },
                     password: { code: 'invalid_password', message: 'Invalid password, must be at least 8 characters and cannot contain spaces' },
+                    picture: { code: 'invalid_picture', message: 'Invalid picture, must be an object with url, width and height properties'},
                     settings: { code: 'invalid_settings', message: 'Invalid settings, must be an object and contain only string, number and/or boolean values. Additionaly, string values can have a maximum length of 250, and a maximum of 100 settings can be added' }
                 };
 
@@ -1547,6 +1575,9 @@ class AceBaseServer extends EventEmitter {
                     else if (details.display_name && !isValid.displayName(details.display_name)) {
                         err = validationErrors.displayName;
                     }
+                    else if (details.picture && !isValid.picture(details.picture)) {
+                        err = validationErrors.picture;
+                    }
                     else if (!isValid.settings(details.settings)) {
                         err = validationErrors.settings;
                     }
@@ -1569,12 +1600,13 @@ class AceBaseServer extends EventEmitter {
                             return;
                         }
                         user = snap.val();
-                        if (details.email !== user.email) {
+                        if (details.email && details.email !== user.email) {
                             user.email = details.email; 
                             user.email_verified = false; // TODO: send verification email
                         }
                         if (details.username) { updates.username = details.username; }
                         if (details.display_name) { updates.display_name = details.display_name; }
+                        if (details.picture) { updates.picture = details.picture; }
                         if (details.settings) {
                             if (typeof user.settings !== 'object') {
                                 user.settings = {};
@@ -1645,6 +1677,10 @@ class AceBaseServer extends EventEmitter {
                     try {
                         const providerName =  req.query.provider;
                         const callbackUrl = req.query.callbackUrl;
+                        const options = Object.keys(req.query).filter(key => key.startsWith('option_')).reduce((options, key) => {
+                            const name = key.slice(7);
+                            options[name] = req.query[key];
+                        }, {});
                         const signedInUid = req.user && req.user.uid;
                         const provider = this.authProviders[providerName];
                         if (!provider) {
@@ -1653,7 +1689,7 @@ class AceBaseServer extends EventEmitter {
                         // Create secure state so it cannot be tampered with. hash it with a server-only known salt: the generated admin password salt
                         await this.ready();
                         const state = createSignedPublicToken({ flow: 'redirect', provider: providerName, uid: signedInUid, callbackUrl }, _secureObjectsSalt);
-                        const clientAuthUrl = await provider.init({ redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin`, state });
+                        const clientAuthUrl = await provider.init({ redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${dbname}/signin`, state, options });
                         res.send({ redirectUrl: clientAuthUrl });
                     }
                     catch(err) {
@@ -1982,7 +2018,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '0.9',
+                    version: '1.5.0', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
@@ -2064,6 +2100,10 @@ class AceBaseServer extends EventEmitter {
                     }
                     // Add private paths to exclude
                     options.exclude = [...options.exclude || [], '__auth__', '__log__'];
+                }
+
+                if (this.config.transactionLoggingEnabled) {
+                    res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: ID.generate() }));
                 }
 
                 db.ref(path)
@@ -2279,12 +2319,12 @@ class AceBaseServer extends EventEmitter {
                 }
                 catch(err) {
                     if (err instanceof SchemaValidationError) {
-                        logRef.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
+                        logRef && logRef.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
                         res.status(422).send({ code: 'schema_validation_failed', message: err.message });
                     }
                     else {
                         this.debug.error(`failed to set "${path}":`, err);
-                        logRef.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
+                        logRef && logRef.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
                         sendError(res, err);
                     }
                 };
@@ -2425,6 +2465,39 @@ class AceBaseServer extends EventEmitter {
                 }
             });
 
+            app.get(`/sync/mutations/${dbname}`, async (req, res) => {
+                // Gets mutations for specific path(s) and event combinations since given cursor
+                if (!this.config.transactionLoggingEnabled) {
+                    return sendError(res, { code: 'no_transaction_logging', message: 'Transaction logging not enabled' });
+                }
+                try {
+                    const data = req.query;
+                    let targets = JSON.parse(data.for);
+                    if (targets.length === 0) {
+                        targets.push({ path: '', events: 'mutations' });
+                    }
+                    // Filter out any requested paths user does not have access to.
+                    targets = targets.filter(target => {
+                        let path = target.path;
+                        if (target.events.every(event => /^(?:notify_)?child_/.test(event))) { //if (!target.events.some(event => ['value','notify_value','mutations','mutated'].includes(event))) {
+                            // Only child_ events, check if they have access to children instead
+                            path = PathInfo.get(path).childPath('*');
+                        }
+                        return userHasAccess(req.user, path, false);
+                    });
+                    if (targets.length === 0) {
+                        return sendUnauthorizedError(res, 'not_authorized', 'User is not authorized to access this data');
+                    }
+
+                    const cursor = data.cursor;
+                    const compressed = data.compressed === 'true';
+                    const results = await db.api.getMutations({ for: targets, cursor, compressed });
+                    res.contentType('application/json').send(results);
+                }
+                catch(err) {
+                    sendError(res, err);
+                }
+            });
 
             const _transactions = new Map();
             app.post(`/transaction/${dbname}/start`, (req, res) => {
@@ -2554,6 +2627,21 @@ class AceBaseServer extends EventEmitter {
                 }
             };
 
+            this.shutdown = async () => {
+                this.debug.warn('shutting down server');
+                fs.unwatchFile(rulesFilePath);
+                await new Promise((resolve) => {
+                    server.close(resolve);
+                    clients.list.forEach(client => {
+                        client.socket.disconnect(true);
+                    });
+                });
+                this.debug.warn('closing database');
+                await db.close(); // TODO: Check what happens if shutdown was triggered by SIGINT. Maybe already closed?
+                this.debug.warn('shutdown complete');
+            };
+            process.on('SIGINT', () => this.shutdown());
+
             /** @type {Map<string, Client>} */
             // const clientsNew = new Map();
 
@@ -2622,11 +2710,13 @@ class AceBaseServer extends EventEmitter {
                     client.user = null;
                 });
 
-                socket.on("oauth2-signin", async providerName => {
+                socket.on("oauth2-signin", async request => {
+                    // acebase-client does not use socket oauth flow yet
                     try {
+                        const providerName = typeof request === 'string' ? request : request.provider;
                         const provider = this.authProviders[providerName];
                         const state = Buffer.from(JSON.stringify({ flow: 'socket', provider: providerName, client_id: client.id })).toString('base64');
-                        const clientAuthUrl = await provider.init({ redirectUrl: `${req.protocol}://${req.headers.host}/ouath2/${dbname}/signin`, state });
+                        const clientAuthUrl = await provider.init({ redirectUrl: `${req.protocol}://${req.headers.host}/ouath2/${dbname}/signin`, state, options: request.options });
                         socket.emit('oauth2-signin', { action: 'auth', url: clientAuthUrl });
                     }
                     catch(err) {
@@ -2690,7 +2780,7 @@ class AceBaseServer extends EventEmitter {
                             previous: previousValue
                         });
                         this.debug.verbose(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
-                        socket.emit("data-event", {
+                        socket.emit('data-event', {
                             subscr_path: subscriptionPath,
                             path,
                             event: data.event,
@@ -2863,6 +2953,16 @@ class AceBaseServer extends EventEmitter {
         catch(err) {
             throw new Error(`Failed to configure provider ${providerName}: ${err.message}`)
         }
+    }
+
+    /**
+    * Shuts down the server. Stops listening for incoming connections, breaks current connections and closes the database.
+    */
+    async shutdown() {
+        // Overridden by constructor once the server is started. 
+        // If this code executes, the server's not running yet.
+        await this.ready();
+        await this.shutdown(); // Now has new implementation
     }
 }
 
