@@ -1,6 +1,6 @@
 {
   "name": "acebase-server",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
   "main": "./src/index.js",
   "private": false,
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/acebase-server.js start default 0.0.0.0 3000",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "tsc --outDir ./src"
+    "compile": "tsc"
   },
   "keywords": [
     "database",
@@ -44,8 +44,8 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.8.3",
-    "acebase-core": "^1.6.2",
+    "acebase": "^1.9.0",
+    "acebase-core": "^1.7.0",
     "express": "^4.17.1",
     "socket.io": "^2.4.1"
   },
