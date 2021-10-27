@@ -64,6 +64,11 @@ declare namespace acebaseserver {
          * @param {(req: Express.Request, res: Express.Response)} handler 
          */
         extend(method:'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => any): void
+
+        /**
+         * Shuts down the server. Stops listening for incoming connections, breaks current connections and closes the database.
+         */
+        shutdown(): Promise<void>
     }
 
     interface IOAuthProviderSettings {
@@ -95,6 +100,8 @@ declare namespace acebaseserver {
         allowOrigin?: string
         /** Email settings that enable AceBaseServer to send e-mails, eg for welcoming new users, to reset passwords, notify of new sign ins etc */
         email?: AceBaseServerEmailSettings
+        /** Transaction logging settings. Warning: BETA stage, do NOT use in production yet */
+        transactions?: AceBaseServerTransactionLogSettings
     }
 
     interface AceBaseServerHttpsSettings {
@@ -131,6 +138,12 @@ declare namespace acebaseserver {
         username?: string
         password?: string
         secure?: boolean
+    }
+
+    interface AceBaseServerTransactionLogSettings {
+        log?: boolean;
+        maxAge?: number;
+        noWait?: boolean;        
     }
 
     interface AceBaseEmailRequest {
