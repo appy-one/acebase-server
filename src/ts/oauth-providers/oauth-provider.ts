@@ -19,7 +19,7 @@ export interface IOAuth2TokenResult {
     refresh_token?: string
 }
 export interface IOAuth2Provider {
-    init(options: { redirect_url: string, state?: string }): Promise<string>
+    init(info: { redirect_url: string, state?: string, options?: any }): Promise<string>
     getAccessToken(params: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult>
     getUserInfo(access_token: string): Promise<{ id: string, name: string, display_name: string, picture?: Array<{ width?: number, height?: number, url: string }>, email: string, email_verified: boolean, other?: { [key:string]: string|number|boolean } }>
 }
