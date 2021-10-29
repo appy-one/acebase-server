@@ -1391,8 +1391,16 @@ class AceBaseServer extends EventEmitter {
                     email(email) {
                         return /[a-z0-9_.+]+@([a-z0-9\-]+\.)+[a-z]{2,}/i.test(email);
                     },
+                    async newEmailAddress(email) {
+                        const exists = await authRef.query().filter('email', '==', email).exists();
+                        return !exists;
+                    },
                     username(username) {
                         return username !== 'admin' && typeof username === 'string' && username.length >= 5 && /^[a-z0-9]+$/.test(username);
+                    },
+                    async newUsername(username) {
+                        const exists = await authRef.query().filter('username', '==', username).exists();
+                        return !exists;
                     },
                     displayName(displayName) {
                         return typeof displayName === 'string' && displayName.length >= 5;
@@ -1417,13 +1425,16 @@ class AceBaseServer extends EventEmitter {
                 const validationErrors = {
                     email: { code: 'invalid_email', message: 'Invalid email address' },
                     username: { code: 'invalid_username', message: 'Invalid username, must be at least 5 characters and can only contain lowercase characters a-z and 0-9' },
+                    emailExists: { code: 'email_conflict', message: 'Account with email address exists already' },
+                    usernameExists: { code: 'username_conflict', message: 'Account with username exists already' },
+                    emailOrUsernameExists: { code: 'conflict', message: `Account with username and/or email already exists` },
                     displayName: { code: 'invalid_display_name', message: 'Invalid display_name, must be at least 5 characters' },
                     password: { code: 'invalid_password', message: 'Invalid password, must be at least 8 characters and cannot contain spaces' },
                     picture: { code: 'invalid_picture', message: 'Invalid picture, must be an object with url, width and height properties'},
                     settings: { code: 'invalid_settings', message: 'Invalid settings, must be an object and contain only string, number and/or boolean values. Additionaly, string values can have a maximum length of 250, and a maximum of 100 settings can be added' }
                 };
 
-                app.post(`/auth/${dbname}/signup`, (req, res) => {
+                app.post(`/auth/${dbname}/signup`, async (req, res) => {
                     if (!this.config.authentication.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
                         logRef.push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
                         res.statusCode = 403; // Forbidden
@@ -1443,8 +1454,14 @@ class AceBaseServer extends EventEmitter {
                     else if (details.email && !isValid.email(details.email)) {
                         err = validationErrors.email;
                     }
-                    else if (details.username && !isValid.username) {
+                    else if (details.email && !await isValid.newEmailAddress(details.email)) {
+                        err = validationErrors.emailExists;
+                    }
+                    else if (details.username && !isValid.username(details.username)) {
                         err = validationErrors.username;
+                    }
+                    else if (details.username && !await isValid.newUsername(details.username)) {
+                        err = validationErrors.usernameExists;
                     }
                     else if (!isValid.displayName(details.displayName)) {
                         err = validationErrors.displayName;
@@ -1455,36 +1472,20 @@ class AceBaseServer extends EventEmitter {
                     else if (!isValid.settings(details.settings)) {
                         err = validationErrors.settings;
                     }
-                    if (err) {
+                    
+                    if (err && [validationErrors.emailExists, validationErrors.usernameExists].includes(err)) {
+                        logRef.push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
+                        res.statusCode = 409; // conflict
+                        return res.send(validationErrors.emailOrUsernameExists);
+                    }
+                    else if (err) {
                         // Log failure
                         logRef.push({ action: 'signup', success: false, code: err.code, ip: req.ip, date: new Date() });
-
                         res.statusCode = 422; // Unprocessable Entity
-                        res.send(err);
-                        return;
+                        return res.send(err);
                     }
 
-                    // Check if user(s) with username and/or email don't already exist
-                    const promises = [];
-                    if (details.username) {
-                        let promise = authRef.query().filter('username', '==', details.username).get();
-                        promises.push(promise);
-                    }
-                    if (details.email) {
-                        let promise = authRef.query().filter('email', '==', details.email).get();
-                        promises.push(promise);
-                    }
-                    return Promise.all(promises).then(arr => {
-                        return arr.reduce((n, snaps) => n + snaps.length, 0);
-                    })
-                    .then(userCount => {
-                        if (userCount > 0) {
-                            logRef.push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
-                            res.statusCode = 409; // conflict
-                            res.send({ code: 'conflict', message: `Account with username and/or email already exists` });
-                            return;
-                        }
-
+                    try {
                         // Ok, create user
                         let pwd = createPasswordHash(details.password);
                         /** @type {DbUserAccountDetails} */
@@ -1504,52 +1505,50 @@ class AceBaseServer extends EventEmitter {
                             settings: details.settings || {}
                         };
 
-                        return authRef.push(user)
-                        .then(ref => {
-                            const uid = ref.key;
-                            user.uid = uid;
+                        const userRef = await authRef.push(user);
+                        const uid = userRef.key;
+                        user.uid = uid;
 
-                            // Log success
-                            logRef.push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid });
+                        // Log success
+                        logRef.push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid });
 
-                            // Cache the user
-                            _authCache.set(user.uid, user);
+                        // Cache the user
+                        _authCache.set(user.uid, user);
 
-                            // Request welcome e-mail to be sent
-                            const request = new AceBaseUserSignupEmailRequest({
-                                user: {
-                                    uid: user.uid,
-                                    username: user.username,
-                                    email: user.email,
-                                    displayName: user.display_name,
-                                    settings: user.settings
-                                },
-                                date: user.created,
-                                ip: user.created_ip,
-                                provider: 'acebase',
-                                activationCode: createSignedPublicToken({ uid: user.uid }, _secureObjectsSalt), // , email: user.email, code: user.email_verification_code
-                                emailVerified: false
-                            });
-
-                            this.config.email && this.config.email.send(request).catch(err => {
-                                logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
-                            });
-
-                            // Return the positive news
-                            const isAdmin = req.user && req.user.uid === 'admin';
-                            res.send({ 
-                                access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt),
-                                user: getPublicAccountDetails(user)
-                            });
+                        // Request welcome e-mail to be sent
+                        const request = new AceBaseUserSignupEmailRequest({
+                            user: {
+                                uid: user.uid,
+                                username: user.username,
+                                email: user.email,
+                                displayName: user.display_name,
+                                settings: user.settings
+                            },
+                            date: user.created,
+                            ip: user.created_ip,
+                            provider: 'acebase',
+                            activationCode: createSignedPublicToken({ uid: user.uid }, _secureObjectsSalt), // , email: user.email, code: user.email_verification_code
+                            emailVerified: false
                         });
-                    })
-                    .catch(err => {
+
+                        this.config.email && this.config.email.send(request).catch(err => {
+                            logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                        });
+
+                        // Return the positive news
+                        const isAdmin = req.user && req.user.uid === 'admin';
+                        res.send({ 
+                            access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt),
+                            user: getPublicAccountDetails(user)
+                        });
+                    }
+                    catch(err) {
                         logRef.push({ action: 'signup', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, username: details.username, email: details.email });
                         sendError(res, err);
-                    });
+                    }
                 });
 
-                app.post(`/auth/${dbname}/update`, (req, res) => {
+                app.post(`/auth/${dbname}/update`, async (req, res) => {
                     let details = req.body;
 
                     if (!req.user) {
@@ -1569,8 +1568,14 @@ class AceBaseServer extends EventEmitter {
                     if (details.email && !isValid.email(details.email)) {
                         err = validationErrors.email;
                     }
-                    else if (details.username && !isValid.username) {
+                    else if (details.email && !await isValid.newEmailAddress(details.email)) {
+                        err = validationErrors.emailExists;
+                    }
+                    else if (details.username && !isValid.username(details.username)) {
                         err = validationErrors.username;
+                    }
+                    else if (details.username && !await isValid.newUsername(details.username)) {
+                        err = validationErrors.usernameExists;
                     }
                     else if (details.display_name && !isValid.displayName(details.display_name)) {
                         err = validationErrors.displayName;
@@ -1604,9 +1609,9 @@ class AceBaseServer extends EventEmitter {
                             user.email = details.email; 
                             user.email_verified = false; // TODO: send verification email
                         }
-                        if (details.username) { updates.username = details.username; }
-                        if (details.display_name) { updates.display_name = details.display_name; }
-                        if (details.picture) { updates.picture = details.picture; }
+                        if (details.username) { user.username = details.username; }
+                        if (details.display_name) { user.display_name = details.display_name; }
+                        if (details.picture) { user.picture = details.picture; }
                         if (details.settings) {
                             if (typeof user.settings !== 'object') {
                                 user.settings = {};
@@ -2018,7 +2023,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '1.5.0', // TODO: Load from package.json
+                    version: '1.5.1', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
