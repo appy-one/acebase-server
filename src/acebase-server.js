@@ -2076,7 +2076,7 @@ class AceBaseServer extends EventEmitter {
                 res.send(info);
             });
 
-            app.get(`/data/${dbname}/*`, (req, res) => {
+            app.get(`/data/${dbname}/*`, async (req, res) => {
                 // Request data
                 const path = req.path.substr(dbname.length + 7); //.replace(/^\/+/g, '').replace(/\/+$/g, '');
                 if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
@@ -2107,25 +2107,25 @@ class AceBaseServer extends EventEmitter {
                     options.exclude = [...options.exclude || [], '__auth__', '__log__'];
                 }
 
-                if (this.config.transactionLoggingEnabled) {
-                    res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: ID.generate() }));
-                }
+                try {
+                    // const snap = await db.ref(path).get(options);
+                    // const value = snap.val(), context = snap.context();
+                    const { value, context } = await db.api.get(path, options);
+                    if (!this.config.transactionLoggingEnabled) {
+                        delete context.acebase_cursor;
+                    }
+                    const serialized = Transport.serialize(value);
 
-                db.ref(path)
-                .get(options) //.once("value")
-                .then(snap => {
-                    const ser = Transport.serialize(snap.val());
-                    const data = {
-                        exists: snap.exists(),
-                        val: ser.val,
-                        map: ser.map
-                    }         
-                    res.send(data);
-                })
-                .catch(err => {
-                    res.statusCode = 500;
-                    res.send(err);
-                });
+                    res.setHeader('AceBase-Context', JSON.stringify(context));
+                    res.send({
+                        exists: value !== null,
+                        val: serialized.val,
+                        map: serialized.map
+                    });
+                }
+                catch (err) {
+                    res.status(500).send(err);
+                }
             });
 
             app.get(`/reflect/${dbname}/*`, (req, res) => {
@@ -2335,7 +2335,7 @@ class AceBaseServer extends EventEmitter {
                 };
             });
 
-            app.post(`/query/${dbname}/*`, (req, res) => {
+            app.post(`/query/${dbname}/*`, async (req, res) => {
                 // Execute query
                 const path = req.path.substr(dbname.length + 8);
                 if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
@@ -2343,6 +2343,9 @@ class AceBaseServer extends EventEmitter {
                 }
 
                 const data = Transport.deserialize(req.body);
+                if (typeof data !== 'object' || typeof data.query !== 'object' || typeof data.options !== 'object') {
+                    return sendError(res, { code: 'invalid_request', message: 'Invalid query request' });
+                }
                 const query = data.query;
                 const options = data.options;
                 if (options.monitor === true) {
@@ -2366,14 +2369,21 @@ class AceBaseServer extends EventEmitter {
                     }
                     options.eventHandler = sendEvent;
                 }
-                return db.api.query(path, query, options) //query.get(options)
-                .then(results => {
+                try {
+                    const { results, context } = await db.api.query(path, query, options);
+                    if (!this.config.transactionLoggingEnabled) {
+                        delete context.acebase_cursor;
+                    }
                     const response = {
                         count: results.length,
                         list: results // []
                     };
+                    res.setHeader('AceBase-Context', JSON.stringify(context));
                     res.send(Transport.serialize(response));
-                });
+                }
+                catch(err) {
+                    sendError(res, { code: 'unknown', message: err.message });
+                }
             });
 
             app.get(`/index/${dbname}`, async (req, res) => {
@@ -2477,9 +2487,16 @@ class AceBaseServer extends EventEmitter {
                 }
                 try {
                     const data = req.query;
-                    let targets = JSON.parse(data.for);
+                    let targets = typeof data.path === 'string'
+                        ? [{ path: data.path, events: ['value'] }]
+                        : typeof data.for === 'string' 
+                            ? JSON.parse(data.for)
+                            : null;
+                    if (targets === null) {
+                        return sendError(res, { code: 'invalid_request', message: 'Invalid mutations request' });
+                    }
                     if (targets.length === 0) {
-                        targets.push({ path: '', events: 'mutations' });
+                        targets.push({ path: '', events: ['value'] });
                     }
                     // Filter out any requested paths user does not have access to.
                     targets = targets.filter(target => {
@@ -2494,10 +2511,55 @@ class AceBaseServer extends EventEmitter {
                         return sendUnauthorizedError(res, 'not_authorized', 'User is not authorized to access this data');
                     }
 
-                    const cursor = data.cursor;
-                    const compressed = data.compressed === 'true';
-                    const results = await db.api.getMutations({ for: targets, cursor, compressed });
-                    res.contentType('application/json').send(results);
+                    const { cursor, timestamp } = data;
+                    const result = await db.api.getMutations({ for: targets, cursor, timestamp });
+
+                    res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
+                    res.contentType('application/json');
+                    res.send(result.mutations);
+                }
+                catch(err) {
+                    sendError(res, err);
+                }
+            });
+
+            app.get(`/sync/changes/${dbname}`, async (req, res) => {
+                // Gets effective changes for specific path(s) and event combinations since given cursor
+                if (!this.config.transactionLoggingEnabled) {
+                    return sendError(res, { code: 'no_transaction_logging', message: 'Transaction logging not enabled' });
+                }
+                try {
+                    const data = req.query;
+                    let targets = typeof data.path === 'string'
+                        ? [{ path: data.path, events: ['value'] }]
+                        : typeof data.for === 'string' 
+                            ? JSON.parse(data.for)
+                            : null;
+                    if (targets === null) {
+                        return sendError(res, { code: 'invalid_request', message: 'Invalid mutations request' });
+                    }
+                    if (targets.length === 0) {
+                        targets.push({ path: '', events: ['value'] });
+                    }
+                    // Filter out any requested paths user does not have access to.
+                    targets = targets.filter(target => {
+                        let path = target.path;
+                        if (target.events.every(event => /^(?:notify_)?child_/.test(event))) { //if (!target.events.some(event => ['value','notify_value','mutations','mutated'].includes(event))) {
+                            // Only child_ events, check if they have access to children instead
+                            path = PathInfo.get(path).childPath('*');
+                        }
+                        return userHasAccess(req.user, path, false);
+                    });
+                    if (targets.length === 0) {
+                        return sendUnauthorizedError(res, 'not_authorized', 'User is not authorized to access this data');
+                    }
+
+                    const { cursor, timestamp } = data;
+                    const result = await db.api.getChanges({ for: targets, cursor, timestamp });
+
+                    res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
+                    res.contentType('application/json');
+                    res.send(result.changes);
                 }
                 catch(err) {
                     sendError(res, err);
@@ -2637,7 +2699,7 @@ class AceBaseServer extends EventEmitter {
                 fs.unwatchFile(rulesFilePath);
                 await new Promise((resolve) => {
                     server.close(resolve);
-                    clients.list.forEach(client => {
+                    clients.list.slice().forEach(client => {
                         client.socket.disconnect(true);
                     });
                 });
