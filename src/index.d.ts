@@ -4,7 +4,14 @@ import { AceBase } from 'acebase';
 declare namespace acebaseserver {
     class AceBaseServer {
         constructor(dbname: string, options?: AceBaseServerSettings)
-        ready(callback: () => void): Promise<void>
+
+        /**
+         * Wait for the server to be ready to accept incoming connections
+         * @param callback (optional) callback function that is called when ready. You can also use the returned promise
+         * @returns returns a promise that resolves when ready
+         */
+        ready(callback?: () => void): Promise<void>
+
         get url(): string
 
         /**
@@ -118,6 +125,8 @@ declare namespace acebaseserver {
         /** 'allow', 'deny' or 'auth' */
         defaultAccessRule?: string
         defaultAdminPassword?: string
+        separateDb?: boolean
+        /** @deprecated Misspelled, use separateDb instead */
         seperateDb?: boolean
     }
 
