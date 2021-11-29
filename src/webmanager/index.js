@@ -10,7 +10,8 @@ function connect(dbname, username, password) {
     let createNew = connection.db === null || connection.dbname !== dbname;
     if (createNew) {
         connection.db && connection.db.disconnect();
-        connection.db = new AceBaseClient({ dbname, host: location.hostname, port: location.port, https: location.protocol === 'https:', autoConnect: true });
+        let host = location.hostname, port = location.port, https = location.protocol === 'https:', autoConnect = true;
+        connection.db = new AceBaseClient({ dbname, host, port, https, autoConnect });
     }
     return connection.db.ready()
     .then(() => {
