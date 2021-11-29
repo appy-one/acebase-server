@@ -21,6 +21,12 @@ const options = { host, port, path };
 if (clusterPort > 0) {
     options.cluster = { enabled: true, port: clusterPort };
 }
+if (+getVariable('TXLOG', 0) === 1) {
+    options.transactions = {
+        log: true,
+        maxAge: +getVariable('TXDAYS', 30)
+    };
+}
 const server = new AceBaseServer(dbname, options);
 server.once("ready", () => {
     server.debug.log(`AceBase server running`);
