@@ -518,6 +518,7 @@ class AceBaseServer extends EventEmitter {
             res.header('Access-Control-Allow-Origin', options.allowOrigin !== '*' ? options.allowOrigin : (req.headers.origin || '*'));
             res.header('Access-Control-Allow-Methods', corsOptions.methods);
             res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders);
+            res.header('Access-Control-Expose-Headers', 'Date, AceBase-Context'); // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
             if (req.method === 'OPTIONS') {
                 res.status(200).end();
             }
