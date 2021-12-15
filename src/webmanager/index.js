@@ -276,7 +276,7 @@ function updateBrowsePath(path = '') {
                 return showError('node does not exist');
             }
             else if (info.children.list.length === 0) {
-                return showError('node has no children');
+                showError('node has no children');
             }
 
             if (skip === 0 && !info.children.more) {
