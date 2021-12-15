@@ -15,11 +15,21 @@ function getVariable(name, defaultValue) {
 const path = getVariable('DBPATH', '.');
 const dbname = getVariable('DBNAME', 'default');
 const host = getVariable('HOST', '0.0.0.0');
-const port = parseInt(getVariable('PORT', 3000));
-const clusterPort = parseInt(getVariable('CLUSTER_PORT', 0));
+const port = +getVariable('PORT', 3000);
+const ipcPort = +getVariable('IPC_PORT', 0);
 const options = { host, port, path };
-if (clusterPort > 0) {
-    options.cluster = { enabled: true, port: clusterPort };
+if (ipcPort > 0) {
+    const role = getVariable('IPC_ROLE');
+    if (!['master','worker'].includes(role)) {
+        throw new Error('IPC_ROLE must be either "master" or "worker"');
+    }
+    options.ipc = { 
+        host: getVariable('IPC_HOST'),
+        port: ipcPort,
+        ssl: +getVariable('IPC_SSL', 0) === 1,
+        token: getVariable('IPC_TOKEN'),
+        role
+    };
 }
 if (+getVariable('TXLOG', 0) === 1) {
     options.transactions = {
