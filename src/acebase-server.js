@@ -5,22 +5,6 @@ const { ID, Transport, DataSnapshot, PathInfo, Utils, DebugLogger, ColorStyle } 
 const fs = require('fs');
 const crypto = require('crypto');
 
-class AceBaseClusterSettings {
-    constructor(settings) {
-        this.enabled = typeof settings === "object";
-        this.isMaster = this.enabled && settings.isMaster;
-        this.master = this.enabled ? settings.master : process;
-        this.workers = this.enabled ? settings.workers : [process];
-    }
-}
-
-// class AceBaseClusterSettings {
-//     constructor(settings) {
-//         this.enabled = typeof settings === "object";
-//         this.port = this.enabled ? settings.port : 0;
-//     }
-// }
-
 class AceBaseServerHttpsSettings {
     /**
      * 
@@ -206,6 +190,15 @@ class AceBaseServerTransactionSettings {
     }
 }
 
+/**
+ * @typedef IPCClientSettings
+ * @property {string} [host='localhost'] IPC Server host to connect to. Default is `"localhost"`
+ * @property {number} port IPC Server port number
+ * @property {boolean} [ssl=false] Whether to use a secure connection to the server. Strongly recommended if `host` is not `"localhost"`. Default is `false`
+ * @property {string} [token] Token used in the IPC Server configuration (optional). The server will refuse connections using the wrong token.
+ * @property {'master'|'worker'} role Determines the role of this IPC client. Only 1 process can be assigned the 'master' role, all other processes must use the role 'worker'
+ */
+
 class AceBaseServerSettings {
 
     /**
@@ -221,6 +214,7 @@ class AceBaseServerSettings {
      * @param {AceBaseServerAuthenticationSettings} [settings.auth]
      * @param {AceBaseServerEmailSettings} [settings.email]
      * @param {AceBaseServerTransactionSettings} [settings.transactions]
+     * @param {IPCClientSettings} [settings.ipc]
      * 
      */
     constructor(settings) {
@@ -229,105 +223,17 @@ class AceBaseServerSettings {
         this.host = settings.host || "localhost";
         this.port = settings.port || 3000;
         this.path = settings.path || '.';
-        this.cluster = new AceBaseClusterSettings(settings.cluster);
         this.https = new AceBaseServerHttpsSettings(settings.https);
         this.authentication = new AceBaseServerAuthenticationSettings(settings.authentication);
         this.maxPayloadSize = settings.maxPayloadSize || '10mb';
         this.allowOrigin = settings.allowOrigin || '*';
         this.email = typeof settings.email === 'object' ? new AceBaseServerEmailSettings(settings.email) : null;
         this.transactions = new AceBaseServerTransactionSettings(settings.transactions);
+        this.ipc = settings.ipc;
     }
 }
 
 class AccessDeniedError extends Error { }
-
-class ClientSubscription {
-    constructor(obj) {
-        this.callback = obj.callback;
-        this.disconnectedCallback = null;
-        this.missedEvents = [];
-    }
-}
-class MissedClientEvent {
-    constructor(obj) {
-        this.time = Date.now();
-        this.event = obj.event;
-        this.subscriptionPath = obj.subscriptionPath;
-        this.path = obj.path;
-    }
-}
-class Client {
-    /**
-     * Not used - yet
-     * @param {object} obj 
-     * @param {AceBaseServer} obj.server
-     * @param {SocketIO.Socket} obj.socket
-     * @param {DbUserAccountDetails} obj.user
-     */
-    constructor(obj) {
-        this.server = obj.server;
-        this.socket = obj.socket;
-        this.id = this.socket.id;
-        this.user = obj.user;
-
-        /** @type {{ [path: string]: ClientSubscription }} */
-        this.subscriptions = {};
-        /** @type {MissedClientEvent[]} */
-        this.missedEvents = [];
-    }
-
-    subscribe(requestId, event, subscriptionPath) {
-        // Check if user has access
-        if (!this.server.userHasAccess(this.user, subscriptionPath, false)) {
-            logRef.push({ action: `subscribe`, success: false, code: `access_denied`, uid: this.user ? this.user.uid : '-', path: subscriptionPath });
-            this.socket.emit('result', {
-                success: false,
-                reason: `access_denied`,
-                req_id: requestId
-            });
-            return;
-        }
-
-        const callback = (err, path, currentValue, previousValue) => {
-            if (err) {
-                return;
-            }
-            if (!this.socket) {
-                // Client is currently disconnected. Keep track of missed events in case
-                // the client comes back again. 
-                // TODO: Move from memory to eventsDb after a while
-                this.missedEvents.push(new MissedClientEvent({ event, subscriptionPath, path, currentValue, previousValue }));
-                return;
-            }
-            if (!this.server.userHasAccess(this.user, path, false)) {
-                if (subscriptionPath.indexOf('*') < 0 && subscriptionPath.indexOf('$') < 0) {
-                    // Could potentially be very many callbacks, so
-                    // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
-                    // Only log when user subscribes again
-                    this.socket.emit('result', {
-                        success: false,
-                        reason: `access_denied`,
-                        req_id: requestId
-                    });
-                }
-                return;
-            }
-            let val = Transport.serialize({
-                current: currentValue,
-                previous: previousValue
-            });
-            this.server.verbose(`Sending data event "${event}" for path "/${path}" to client ${this.id}`);
-            this.socket.emit("data-event", {
-                subscr_path: subscriptionPath,
-                path,
-                event,
-                val
-            });
-        };
-
-    }
-}
-
 /**
  * @typedef {object} DbUserAccountDetails
  * @property {string} [uid] uid, not stored in database object (uid is the node's key)
@@ -528,8 +434,25 @@ class AceBaseServer extends EventEmitter {
         };
         app.use(corsHandler);
 
+        // TODO: determine max socket payload using options.maxPayloadSize which is now only used for json POST data
+        // const maxPayloadBytes = ((payloadStr) => {
+        //     const match = payloadStr.match(/^([0-9]+)(?:mb|kb|b)$/i);
+        //     if (!match) { return 10e7; } // Socket.IO 2.x default (100MB), 3.x default is 1MB (1e6)
+        //     const nr = +match[0], unit = match[1].toLowerCase();
+        //     switch (unit) {
+        //         case 'mb': return nr * 1e6;
+        //         case 'kb': return nr * 1e3;
+        //         case 'b': return nr;
+        //     }
+        // }, options.maxPayloadSize);
+
         const server = options.https.enabled ? require('https').createServer(options.https, app) : require('http').createServer(app);
         const io = require('socket.io')(server, {
+            // See https://socket.io/docs/v2/server-initialization/ and https://socket.io/docs/v3/server-initialization/
+            pingInterval: 5000,     // socket.io 2.x default is 25000
+            pingTimeout: 5000,      // socket.io 2.x default is 5000, 3.x default = 20000
+            maxHttpBufferSize: 10e7, // Socket is closed if sent message exceeds this. Socket.io 2.x default is 10e7 (100MB)
+
             // socket.io 2.x:
             handlePreflightRequest: corsHandler
             // socket.io 3+:
@@ -552,17 +475,18 @@ class AceBaseServer extends EventEmitter {
             }
         };
         this.url = this.config.url; // Is this used?
-        this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.colorize(ColorStyle.green)); //`« ${dbname} »`
+        this.debug = new DebugLogger(options.logLevel, `[${dbname}]`.colorize(ColorStyle.green));
         
         const dbOptions = {
             logLevel: options.logLevel,
             info: 'realtime database server',
-            storage: {
-                cluster: options.cluster,
+            // NEW: Allow storage setting like AceBaseLocalSettings - could allow using other db backend (typed, but undocumented)
+            storage: options.storage || {
                 path: options.path,
                 removeVoidProperties: true,
-                transactions: options.transactions
-            }
+            },
+            transactions: options.transactions,
+            ipc: options.ipc
         };
 
         const db = new AceBase(dbname, dbOptions);
@@ -617,7 +541,7 @@ class AceBaseServer extends EventEmitter {
 
             const setupRules = () => {
                 // Check if there is a rules file, load it or generate default
-                fs.unwatchFile(rulesFilePath); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
+                fs.unwatchFile(rulesFilePath, setupRules); // If function was triggered because of file change, stop listening now. Listener will be setup again at end of function
 
                 const defaultAccessRule = (def => {
                     switch (def) {
@@ -713,10 +637,7 @@ class AceBaseServer extends EventEmitter {
                 processRules('', accessRules.rules, []);
 
                 // Watch file for changes
-                fs.watchFile(rulesFilePath, (currStats, prevStats) => {
-                    // rules.json file changed, setup rules again
-                    setupRules();
-                });                
+                fs.watchFile(rulesFilePath, setupRules);                
             }
             setupRules();
 
@@ -2022,9 +1943,14 @@ class AceBaseServer extends EventEmitter {
                 }
             });
 
+            app.get(`/ping/${dbname}`, (req, res) => {
+                // For simple connectivity check
+                res.end('pong');
+            });
+
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '1.5.1', // TODO: Load from package.json
+                    version: '1.7.0', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
@@ -2697,7 +2623,7 @@ class AceBaseServer extends EventEmitter {
 
             this.shutdown = async () => {
                 this.debug.warn('shutting down server');
-                fs.unwatchFile(rulesFilePath);
+                fs.unwatchFile(rulesFilePath, setupRules);
                 await new Promise((resolve) => {
                     server.close(resolve);
                     clients.list.slice().forEach(client => {
@@ -2707,8 +2633,42 @@ class AceBaseServer extends EventEmitter {
                 this.debug.warn('closing database');
                 await db.close(); // TODO: Check what happens if shutdown was triggered by SIGINT. Maybe already closed?
                 this.debug.warn('shutdown complete');
+
+                // Emit events to let the outside world know we shut down. 
+                // This is especially important if this instance was running in a Node.js cluster: the process will
+                // not exit automatically after this shutdown because Node.js' IPC channel between worker and master is still open.
+                // By sending these events, the cluster manager can determine if it should (and when to) execute process.exit()
+                this.emit('shutdown'); // Emit on AceBaseServer instance
+                process.emit('acebase-server-shutdown');  // Emit on process
+                try {
+                    process.send && process.send('acebase-server-shutdown'); // Send to master process when running in a Node.js cluster
+                }
+                catch(err) {
+                    // IPC Channel has apparently been closed already
+                }
             };
             process.on('SIGINT', () => this.shutdown());
+
+            let paused = false;
+            this.pause = async () => {
+                if (paused) { throw new Error('Server is already paused'); }
+                server.close();
+                this.debug.warn(`Paused "${dbname}" database server at ${this.config.url}`);
+                this.emit('pause');
+                paused = true;             
+            }
+
+            this.resume = async () => {
+                if (!paused) { throw new Error('Server is not paused'); }
+                return new Promise(resolve => {
+                    server.listen(this.config.port, this.config.hostname, () => {
+                        this.debug.warn(`Resumed "${dbname}" database server at ${this.config.url}`);
+                        this.emit('resume');
+                        paused = false;
+                        resolve();
+                    });
+                })
+            }
 
             /** @type {Map<string, Client>} */
             // const clientsNew = new Map();
@@ -2848,6 +2808,7 @@ class AceBaseServer extends EventEmitter {
                             previous: previousValue
                         });
                         this.debug.verbose(`Sending data event "${data.event}" for path "/${path}" to client ${socket.id}`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
+                        // TODO: let large data events notify the client, then let them download the data manually so it doesn't have to be transmitted through the websocket
                         socket.emit('data-event', {
                             subscr_path: subscriptionPath,
                             path,
@@ -3050,7 +3011,6 @@ if (__filename.replace(/\\/g,"/").endsWith("/acebase-server.js") && process.argv
 module.exports = { 
     AceBaseServer, 
     AceBaseServerSettings, 
-    AceBaseClusterSettings,
     AceBaseEmailRequest,
     AceBaseUserSignupEmailRequest,
     AceBaseUserResetPasswordEmailRequest,
