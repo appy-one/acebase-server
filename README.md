@@ -41,6 +41,23 @@ const server = new AceBaseServer(dbname, settings);
 
 You can either pass ```certPath``` and ```keyPath```, or ```pfxPath``` and ```passphrase``` - depending on the type of certificate files you have.
 
+### Enable transaction logging
+(NEW, BETA)
+
+AceBase now supports transaction logging to facilitate sophisticated synchronization options and custom data recovery. Using cursors that indicate certain points in time, this allows for fast and easy synchronization of data between an AceBase server and multiple clients, or other server instances. This functionality is currently in BETA stage and will be tested extensively in the coming weeks. 
+
+To enable transaction logging on your database, add the `transactions` setting:
+```js
+const server = new AceBaseServer(dbname, { 
+    host: 'localhost', port: 443,
+    transactions: { 
+        log: true,      // Enable
+        maxAge: 30,     // Keep logs of last 30 days
+        noWait: false   // Data changes wait for log to be written
+    }
+};
+```
+
 ### Enable authentication
 
 Authentication settings determine who is allowed access to your server. By enabling authentication, the server will allow users to sign in (and signup) and authorization rules to be defined for data being read/written to the database.
@@ -58,22 +75,22 @@ const settings = {
 }
 ```
 
-The following ```authentication``` settings are available:
-- ```enabled```: whether to enable user authentication (default: ```true```)
-- ```allowUserSignup```: whether users can sign up for an account themselves, or if the admin has to (default: ```false```)
-- ```defaultAccessRule```: default authorization rule for read/write operations. Either ```deny```, ```allow``` or ```auth```. The first time the server is launched with authentication enabled, it will create a ```rules.json``` file that contains this access rule for any path. ```deny``` will deny all users (except admin) read/write access, ```allow``` will grant access to anyone, ```auth``` will grant access only to authenticated users (default: ```auth```)
-- ```defaultAdminPassword```: supply a default password for the admin account that will be used when it is created. If you do not supply this, a generated password will be used instead and displayed only once in the console output.
+The following `authentication` settings are available:
+- `enabled`: whether to enable user authentication (default: `true`)
+- `allowUserSignup`: whether users can sign up for an account themselves, or if the admin has to (default: `false`)
+- `defaultAccessRule`: default authorization rule for read/write operations. Either `deny`, `allow` or `auth`. The first time the server is launched with authentication enabled, it will create a *rules.json* file that contains this access rule for any path. `deny` will deny all users (except admin) read/write access, `allow` will grant access to anyone, `auth` will grant access only to authenticated users (default: `auth`)
+- `defaultAdminPassword`: supply a default password for the admin account that will be used when it is created. If you do not supply this, a generated password will be used instead and displayed only once in the console output.
 
 ### Setup authorization rules
 
-If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users read and/or write access to your data. These rules are identical to those used by [Firebase](https://firebase.google.com/docs/database/security/) (Note: ".read" and ".write" only, ".validate" might be implemented in the future, ".schema" implemented as alternative) and are saved in a file called _rules.json_ in your database directory. The default rules written to the file are determined by the ```defaultAccessRule``` authentication setting at the first server launch with ```authentication``` enabled.
+If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users read and/or write access to your data. These rules are identical to those used by [Firebase](https://firebase.google.com/docs/database/security/) (Note: ".read" and ".write" only, ".validate" might be implemented in the future, ".schema" implemented as alternative) and are saved in a file called _rules.json_ in your database directory. The default rules written to the file are determined by the `defaultAccessRule` authentication setting at the first server launch with `authentication` enabled.
 
-The default _rules.json_ file content is based on the value of the ```defaultAccessRule``` setting, possible values are:
- * ```"auth"```: Only allow authenticated users read/write access to the database
- * ```"allow"```: Allow anyone (including anonymous users) read/write access to the database
- * ```"deny"```: Deny anyone (except admin user) read/write access to the database
+The default _rules.json_ file content is based on the value of the `defaultAccessRule` setting, possible values are:
+ * `"auth"`: Only allow authenticated users read/write access to the database
+ * `"allow"`: Allow anyone (including anonymous users) read/write access to the database
+ * `"deny"`: Deny anyone (except admin user) read/write access to the database
 
-When ```defaultAccessRule: "auth"``` is used, it will generate the following _rules.json_ file:
+When `defaultAccessRule: "auth"` is used, it will generate the following _rules.json_ file:
 ```json
 {
     "rules": {
@@ -83,7 +100,7 @@ When ```defaultAccessRule: "auth"``` is used, it will generate the following _ru
 }
 ```
 
-When ```"allow"``` or ```"deny"``` is used, the ```".read"``` and ```".write"``` properties will be set to ```true``` or ```false``` respectively.
+When `"allow"` or `"deny"` is used, the `".read"` and `".write"` properties will be set to `true` or `false` respectively.
 
 If you want to further restrict what data users can access and/or write to (RECOMMENDED!), you could edit the file as such, granting users read/write access to their own user node:
 ```json
@@ -117,8 +134,8 @@ NOTE: Just like Firebase, access is denied by default when no rule is found for 
 ```
 Above rules enforces:
 * No read or write access to the root node or any child for anyone. (No rule has been set for those nodes, access will be denied)
-* Read access to all reviews for specific shops ('shop_reviews/shop1', 'shop_reviews/shop2') for anyone, including unauthenticated clients (```".read"``` rule is set to ```true```)
-* Write access to an authenticated user's own review for any shop. (```".write"``` rule is set to ```"auth.uid === $uid"```)
+* Read access to all reviews for specific shops ('shop_reviews/shop1', 'shop_reviews/shop2') for anyone, including unauthenticated clients (`".read"` rule is set to `true`)
+* Write access to an authenticated user's own review for any shop. (`".write"` rule is set to `"auth.uid === $uid"`)
 
 ### Schema validation
 
@@ -128,7 +145,7 @@ There are 2 ways to can add schemas:
 - In your `rules.json` file, see below.
 - Programmatically through `db.schema.set`. See the [AceBase documentation](https://github.com/appy-one/acebase#adding-schemas-to-enforce-data-rules) for more info.
 
-To ensure all users have a ```name``` (string), ```email``` (string) and ```language``` (either Dutch, English, German, French or Spanish), optionally a ```birthdate``` (Date) and ```address``` (custom object definition), add the following to your _rules.json_ file:
+To ensure all users have a `name` (string), `email` (string) and `language` (either Dutch, English, German, French or Spanish), optionally a `birthdate` (Date) and `address` (custom object definition), add the following to your _rules.json_ file:
 ```json
 {
     "rules": {
@@ -197,11 +214,11 @@ You can also decide to split the schema up into multiple levels:
 
 And, if you prefer, schema definitions can be defined as strings instead:
 ```json
-(...)
+{
     "address": {
         ".schema": "{ street: string, city: string, country: string, geo?: { lat: number, lon: number } }"
     }
-(...)
+}
 ```
 
 ## Sending user e-mails [NEW]
@@ -225,39 +242,36 @@ function sendRequestedEmail(request) {
 }
 ```
 
-Any links you would add to the e-mails you send out should point to your own website/app, where you would handle account verification / password resets through an ```AceBaseClient``` connected to your server:
+Any links you would add to the e-mails you send out should point to your own website/app, where you would handle account verification / password resets through an `AceBaseClient` connected to your server:
 
-```javascript
+```js
 const resetCode = 'weydgaed7gjsdhfjadbsfadsfasq3w7dtuqwebd'; // eg from your_reset_url?code=weydga...
 const newPassword = 'MyNewPassword'; // from user input on your page
-client.auth.resetPassword(resetCode, newPassword)
-.then(() => {
+try {
+    await client.auth.resetPassword(resetCode, newPassword);
     // User can now sign in with their new password
-})
-.catch(err => {
+}
+catch(err) {
     // Something went wrong
-})
+}
 ```
 
 OR, if you have direct access to your AceBaseServer instance from your website:
 
 ```javascript
-server.resetPassword(req.ip, resetCode, newPassword)
-.then(() => { ... });
+await server.resetPassword(req.ip, resetCode, newPassword);
 ```
 
 To verify a user's email address:
 ```javascript
 const verificationCode = 'weydgaed7gjsdhfjadbsfadsfasq3w7dtuqwebd'; // eg from your_verify_url?code=weydga...
-client.auth.verifyEmailAddress(verificationCode)
-.then(() => { ... })
+await client.auth.verifyEmailAddress(verificationCode);
 ```
 
 OR, directly on your server:
 
 ```javascript
-server.verifyEmailAddress(req.ip, verificationCode)
-.then(() => { ... });
+await server.verifyEmailAddress(req.ip, verificationCode);
 ```
 
 ### E-mail request examples
@@ -317,11 +331,11 @@ Request type *user_reset_password_success*:
 
 You can enable users to sign into your app through a third party login provider, such as Facebook, Google, Twitter etc. To enable this, follow these steps for each provider:
 
-* First, get ```client_id``` and ```client_secret``` API keys from the auth providers' developer environment. This will allow your app to use with the provider's auth API.
+* First, get `client_id` and `client_secret` API keys from the auth providers' developer environment. This will allow your app to use with the provider's auth API.
 
-* Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you add AceBase's callback URL in the provider's API settings: ```"https://your.acebase.server/oauth2/dbname/signin"``` (replace hostname and dbname to your server Url)
+* Most OAuth providers restrict authentication callback uri's to a predefined set of uris, so make sure you add AceBase's callback URL in the provider's API settings: `"https://your.acebase.server/oauth2/dbname/signin"` (replace hostname and dbname to your server Url)
 
-* Then, add your API keys to your ```AceBaseServer``` config with ```configAuthProvider```:
+* Then, add your API keys to your `AceBaseServer` config with `configAuthProvider`:
 
 ```javascript
 server.configAuthProvider('facebook', { client_id: '[your fb app_id]', client_secret: '[your fb app_secret]', scopes: [/* Any additional scopes, such as 'user_birthday' */] });
@@ -347,7 +361,7 @@ client.auth.finishAuthProviderSignIn(callbackResult)
 })
 ```
 
-The ```result``` object will also contain the provider's ```access_token``` and ```refresh_token``` in case you want to make custom calls to the provider's API. If you want to keep the provider's access_token active, you will have to call ```client.auth.refreshAuthProviderToken``` before it expires:
+The `result` object will also contain the provider's `access_token` and `refresh_token` in case you want to make custom calls to the provider's API. If you want to keep the provider's access_token active, you will have to call `client.auth.refreshAuthProviderToken` before it expires:
 
 ```javascript
 const keepAlive = (provider) => {
@@ -373,13 +387,13 @@ Currently implemented auth providers are:
 * Facebook*
 * Spotify
 
-*NOTE: Facebook access tokens are short-lived by default, but will be exchanged for a long-lived (60 day) access token upon refresh. If you need to keep the Facebook access token active, execute ```refreshAuthProviderToken``` immediately after ```finishAuthProviderSignIn```, and keep refreshing every time the user starts your app. Once a Facebook access token has expired, it cannot be refreshed and the user will have to sign in again.
+*NOTE: Facebook access tokens are short-lived by default, but will be exchanged for a long-lived (60 day) access token upon refresh. If you need to keep the Facebook access token active, execute `refreshAuthProviderToken` immediately after `finishAuthProviderSignIn`, and keep refreshing every time the user starts your app. Once a Facebook access token has expired, it cannot be refreshed and the user will have to sign in again.
 
 ## Add cloud functions to handle data changes
 
 You can add "cloud functions" to perform custom tasks upon data changes. You can do this in 2 ways:
 
-* In the same process you are running your ```AceBaseServer``` (requires server v1.1+). Make sure you run cpu heavy code in a separate worker thread to keep the server thread available for core tasks:
+* In the same process you are running your `AceBaseServer` (requires server v1.1+). Make sure you run cpu heavy code in a separate worker thread to keep the server thread available for core tasks:
 ```js
 const server = new AceBaseServer(dbname, settings);
 await server.ready();
@@ -411,7 +425,7 @@ db.ref('uploads/images').on('child_added', async snap => {
 
 ## Extending the server API
 
-You can add your own custom API functions to the server with the ```server.extend(method, path, handler)``` method:
+You can add your own custom API functions to the server with the `server.extend(method, path, handler)` method:
 
 ```javascript
 const server = new AceBaseServer(...);
@@ -458,6 +472,10 @@ client.callExtension('post', 'quotes/add', {
     // "thanks!"
 });
 ```
+
+## Running in a cluster
+
+It is possible to run your *AceBaseServer* in a cluster so you can utilize more than just the 1 CPU a Node.js application typically uses. To make sure all instances can read and write to the same database files safely they will have to be able to communicate with each other. This is done using a technique called interprocess communication (IPC). Node.js' built-in cluster functionality provides IPC channels to communicate between master and worker processes, but if you want to run a `pm2` cluster or want multiple instances running in the cloud, you'll have to use an external IPC server. See [AceBase IPC Server](https://github.com/appy-one/acebase-ipc-server) for more information about the different clustering solutions and code examples.
 
 ## Connecting to a server
 
