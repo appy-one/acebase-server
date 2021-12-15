@@ -74,8 +74,17 @@ declare namespace acebaseserver {
 
         /**
          * Shuts down the server. Stops listening for incoming connections, breaks current connections and closes the database.
+         * Is automatically executed when a "SIGINT" process event is received.
+         * 
+         * Once the shutdown procedure is completed, it emits a "shutdown" event on the server instance, "acebase-server-shutdown" event on the `process`, and sends an 'acebase-server-shutdown' IPC message if Node.js clustering is used.
+         * These events can be handled by cluster managing code to `kill` or `exit` the process safely.
          */
         shutdown(): Promise<void>
+
+        /** Temporarily stops the server from handling incoming connections, but keeps existing connections open */
+        pause(): Promise<void>
+        /** Resumes handling incoming connections */
+        resume(): Promise<void>
     }
 
     interface IOAuthProviderSettings {
@@ -109,6 +118,10 @@ declare namespace acebaseserver {
         email?: AceBaseServerEmailSettings
         /** Transaction logging settings. Warning: BETA stage, do NOT use in production yet */
         transactions?: AceBaseServerTransactionLogSettings
+        /** IPC settings for pm2 or cloud-based clusters. BETA stage, see https://github.com/appy-one/acebase-ipc-server */
+        ipc?: IPCClientSettings
+        /** Allows overriding of default storage settings used by the database. ALPHA stage */
+        storage?: any
     }
 
     interface AceBaseServerHttpsSettings {
@@ -154,7 +167,18 @@ declare namespace acebaseserver {
         maxAge?: number;
         noWait?: boolean;        
     }
-
+    interface IPCClientSettings {
+        /** IPC Server hostname. Default is "localhost" */
+        host?: string
+        /** IPC Server port */
+        port: number
+        /** IPC Server token needed to access the server. Only needed if the server does not use a token */
+        token?: string
+        /** Whether to use a secure connection to the IPC server, default is `false` */
+        ssl?: boolean
+        /** Role of the IPC Client. There can only be 1 `master`, all other need to be a `worker`. */
+        role: 'master'|'worker'
+    }
     interface AceBaseEmailRequest {
         readonly type: string
         readonly ip: string
