@@ -1015,6 +1015,7 @@ class AceBaseServer extends EventEmitter {
                 catch(err) {
                     this.debug.error(`Failed to parse AceBase-Context header: "${context}" in request at ${req.url} from client ${req.ip}`);
                 }
+                // console.log(`Received request on path ` + req.path);
                 next();
             });
 
@@ -1950,7 +1951,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '1.7.0', // TODO: Load from package.json
+                    version: '1.8.0', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
@@ -2121,43 +2122,77 @@ class AceBaseServer extends EventEmitter {
                 });
             });
 
-            app.get(`/export/${dbname}/*`, (req, res) => {
+            app.get(`/export/${dbname}/*`, async (req, res) => {
                 // Export API
-                const path = req.path.substr(dbname.length + 9);
+                const path = req.path.slice(dbname.length + 9);
                 if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
                     return;
                 }
                 const format = req.query.format || 'json';
+                const type_safe = req.query.type_safe !== '0';
 
-                const stream = {
-                    write(chunk) {
-                        res.write(chunk);
-
-                        // OLD: causes streaming issues
-                        // return new Promise((resolve, reject) => {
-                        //     res.write(chunk, err => {
-                        //         if (err) { reject(err); }
-                        //         else { resolve(); }
-                        //     });
-                        // });
+                const write = async (chunk) => {
+                    let ok = res.write(chunk);
+                    if (!ok) {
+                        await new Promise(resolve => res.once('drain', resolve));
                     }
                 };
 
                 const ref = db.ref(path);
                 res.setHeader('Content-Disposition', `attachment; filename=${ref.key || 'export'}.json`); // Will be treated as a download in browser
                 
-                ref.export(stream, { format })
-                .then(() => {
+                try {
+                    await ref.export(write, { format, type_safe });
+                }
+                catch (err) {
+                    this.debug.error(`Error exporting data for path "/${path}": `, err);
+                    if (!res.headersSent) {
+                        res.statusCode = 500;
+                        res.send(err);
+                    }
+                }
+                finally {
                     res.end();
-                })
-                .catch(err => {
-                    res.statusCode = 500;
-                    res.send(err);
-                })
-                .catch(err => {
-                    // Previous catch raised another exception. Happens when streaming already started: Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+                }
+            });
+
+            app.post(`/import/${dbname}/*`, async (req, res) => {
+                // Import API
+                const path = req.path.slice(dbname.length + 9);
+                if (!userHasAccess(req.user, path, false, denyDetails => sendUnauthorizedError(res, denyDetails.code, denyDetails.message))) {
+                    return;
+                }
+                const format = req.query.format || 'json';
+                const suppress_events = req.query.suppress_events === '1';
+
+                req.pause(); // Switch to non-flowing mode so we can use .read() upon request
+                let eof = false;
+                req.once('end', () => { eof = true; });
+                const read = async (length) => {
+                    let chunk = req.read();
+                    if (chunk === null && !eof) {
+                        await new Promise(resolve => req.once('readable', resolve)); 
+                        chunk = req.read();
+                    }
+                    console.log(`Received chunk: `, chunk);
+                    return chunk;
+                };
+
+                const ref = db.ref(path);                
+                try {
+                    await ref.import(read, { format, suppress_events });
+                    res.send({ success: true });
+                }
+                catch (err) {
+                    this.debug.error(`Error importing data for path "/${path}": `, err);
+                    if (!res.headersSent) {
+                        res.statusCode = 500;
+                        res.send({ success: false, reason: err.message });
+                    }
+                }
+                finally {
                     res.end();
-                });
+                }
             });
 
             app.get(`/exists/${dbname}/*`, (req, res) => {
@@ -2215,12 +2250,12 @@ class AceBaseServer extends EventEmitter {
                 }
                 catch(err) {
                     if (err instanceof SchemaValidationError) {
-                        logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
+                        logRef && logRef.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
                         res.status(422).send({ code: 'schema_validation_failed', message: err.message });
                     }
                     else {
                         this.debug.error(`failed to update "${path}":`, err);
-                        logRef.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message });
+                        logRef && logRef.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message });
                         sendError(res, err);
                     }
                 }
