@@ -1,0 +1,28 @@
+/auth/{dbname}/state:
+  tags:
+    - auth
+  get:
+    description: Gets current auth state
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: returns whether the request was authenticated and by which user (determined by the sent Authorization header)
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                signed_in:
+                  type: boolean
+                  example: true
+                user:
+                  $ref: '#/components/schemas/User'
+              required:
+                - signed_in

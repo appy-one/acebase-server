@@ -1,0 +1,129 @@
+/auth/{dbname}/signin:
+  tags:
+    - auth
+  post:
+    description: Signs in an existing user
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: sign in details
+      content:
+        'application/json':
+          schema:
+            oneOf:
+              - type: object
+                properties:
+                  client_id:
+                    description: ID of the connected websocket
+                    type: string
+                  method:
+                    description: Method of authentication (email)
+                    type: string
+                    value: email
+                  email:
+                    description: User email address
+                    type: string
+                  password:
+                    description: Password
+                    type: string
+                    format: password
+                required:
+                  - method
+                  - email
+                  - password
+                example:
+                  method: email
+                  email: user@example.com
+                  password: sup3rs3cr3t
+              - type: object
+                properties:
+                  client_id:
+                    description: ID of the connected websocket
+                    type: string
+                  method:
+                    description: Method of authentication (username)
+                    type: string
+                    value: username
+                  username:
+                    description: Username
+                    type: string
+                  password:
+                    description: Password
+                    type: string
+                    format: password
+                required:
+                  - method
+                  - username
+                  - password
+                example:
+                  method: username
+                  username: user
+                  password: sup3rs3cr3t
+              - type: object
+                properties:
+                  client_id:
+                    type: string
+                    description: ID of the connected websocket
+                  method:
+                    type: string
+                    value: token
+                    description: Method of authentication (token)
+                  token:
+                    type: string
+                    description: Previously acquired access token to sign in with
+                required:
+                  - method
+                  - token
+                example:
+                  method: token
+                  token: ewufh387f3fyubqwekrjbcqwkuiec7gq3euyfbqwkuyebqjk..
+    responses:
+      200:
+        description: When signin succeeds, it returns an object with the result
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                access_token:
+                  description: The access token that provides access to API calls that require authentication. This access token should be added to the Authorization header of those requests. The token is allowed to be cached by the client to sign in witht the token method later
+                  type: string
+                  example: ewufh387f3fyubqwekrjbcqwkuiec7gq3euyfbqwkuyebqjk..
+                user:
+                  $ref: '#/components/schemas/User'
+      401:
+        description: When the sent request details are incorrect, this "401 Unauthorized" is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: The exact error code
+                  enum: 
+                    - invalid_token
+                    - not_found
+                    - duplicate
+                    - token_mismatch
+                    - wrong_password
+                  example: not_found
+                message:
+                  type: string
+                  description: Description of the error
+                  example: Incorrect email
+              example:
+                code: wrong_password
+                message: Incorrect password
+      500:
+        description: An unenexpected error occurred on the server
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

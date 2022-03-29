@@ -1,0 +1,120 @@
+/auth/{dbname}/signup:
+  tags:
+    - auth
+  post:
+    description: Signs up a new user (must be enabled in the server config)
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: new user details
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                description: Requested username (optional if `email` provided)
+              email:
+                type: string
+                description: Email address (optional if `username` provided) 
+              displayName:
+                type: string
+                description: Name of the user for public displaying purposes. Consider this a real name, alias or handle
+              password:
+                type: string
+                format: password
+                description: Password to set for the account
+              settings:
+                type: object
+                otherProperties: true
+                desciption: (optional) miscellanious other info to store with the user account
+            required:
+              - username
+              - email
+              - displayName
+              - password
+            example:
+              email: user@example.com
+              displayName: Real Name
+              password: sup3rs3cr3t
+    responses:
+      200:
+        description: When signup succeeds, it returns an object with the result
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                access_token:
+                  description: The access token that provides access to API calls that require authentication. This access token should be added to the Authorization header of those requests. The token is allowed to be cached by the client to sign in witht the token method later
+                  type: string
+                  example: ewufh387f3fyubqwekrjbcqwkuiec7gq3euyfbqwkuyebqjk..
+                user:
+                  $ref: '#/components/schemas/User'
+      403:
+        description: If user signup is disabled in the server config, only the admin user can create new accounts and `"403 Forbidden"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: admin_only
+                message:
+                  type: string
+                  value: Only admin is allowed to create users
+              example:
+                code: admin_only
+                message: Only admin is allowed to create users
+      409:
+        description: An account with the same username or email address exists already
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: conflict
+                message:
+                  type: string
+                  value: Account with username and/or email already exists
+      422:
+        description: When the sent request details are incorrect, `"422 Unprocessable Entity"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: The exact error code
+                  enum: 
+                    - missing_details
+                    - invalid_email
+                    - invalid_username
+                    - invalid_display_name
+                    - invalid_password
+                    - invalid_settings
+                  example: missing_details
+                message:
+                  type: string
+                  description: Description of the error
+                  example: No username or email provided
+              example:
+                code: invalid_password
+                message: Invalid password, must be at least 8 characters and cannot contain spaces
+      500:
+        description: An unenexpected error occurred on the server
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

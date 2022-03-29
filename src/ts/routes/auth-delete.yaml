@@ -1,0 +1,77 @@
+/auth/{dbname}/delete:
+  tags:
+    - auth
+  post:
+    description: Deletes an existing user account
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: Account to delete
+      content:
+        'text/plain':
+          schema:
+            type: string
+            value: ''
+            example: ''
+            description: Empty content to delete signed in user account
+        'application/json':
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: (admin user only) to delete a specific user account, the target account `uid` must be passed with the request
+                example: jpx0k53u0002ecr7s354c51l
+    responses:
+      200:
+        description: When delete succeeds, it returns the string `"Farewell"`
+        content:
+          'text/plain':
+            schema:
+              type: text
+              value: Farewell
+              example: Farewell
+      401:
+        description: If this is an unauthenticated request (not signed in), `"401 Unauthorized"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: unauthenticated_delete
+                message:
+                  type: string
+                  value: You are not authorized to perform this operation, your attempt has been logged
+              example:
+                code: unauthenticated_delete
+                message: You are not authorized to perform this operation, your attempt has been logged
+      403:
+        description: If a non-admin user tries to update a user's account details, `"403 Forbidden"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: unauthorized_delete
+                message:
+                  type: string
+                  value: You are not authorized to perform this operation. This attempt has been logged.
+              example:
+                code: unauthorized_delete
+                message: You are not authorized to perform this operation. This attempt has been logged.
+      500:
+        description: An unenexpected error occurred on the server
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

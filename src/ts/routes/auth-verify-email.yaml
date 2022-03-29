@@ -1,0 +1,52 @@
+/auth/{dbname}/verify_email:
+  tags:
+    - auth
+  post:
+    description: Verifies an email address with a code sent through their email address
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: verification object
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                description: Verification code that was sent to the user's email address
+            required:
+              - code
+            example:
+              code: ewrg235235g23gwrvsdb34g524rvqewwrv425gervqew...
+    responses:
+      200:
+        description: If the email address is successfully verified, returns the string `"OK"`
+        content:
+          'text/plain':
+            schema:
+              type: 'string'
+              value: OK
+              example: OK
+              description: The string `"OK"`
+      401:
+        description: Returns a `"401 Bad Request"` if the code sent with the request is invalid
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_code
+                message: Invalid token
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

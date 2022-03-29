@@ -1,0 +1,131 @@
+/auth/{dbname}/update:
+  tags:
+    - auth
+  post:
+    description: Updates user account details
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: user details to update
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              uid:
+                type: string
+                description: (admin user only) to change a user's account settings, the target account `uid` must be passed with the request
+              is_disabled:
+                type: boolean
+                description: (admin user only) whether the target account should be disabled to enable/disable signin
+              email:
+                type: string
+                description: New email address
+              username:
+                type: string
+                description: New username
+              display_name:
+                type: string
+                description: Name of the user for public displaying purposes. Consider this a real name, alias or handle. (NOTE this property is called `displayName` in the signup endpoint, both will be allowed to be used from acebase-server v1.8.1)
+              picture:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  width:
+                    type: number
+                  height:
+                    type: number
+                example:
+                  url: https://my.profile.pic/me.jpg
+                  width: 500
+                  height: 500
+              settings:
+                type: object
+                otherProperties: true
+                desciption: (optional) miscellanious other info to store with the user account
+            required:
+              - username
+              - email
+              - displayName
+              - password
+    responses:
+      200:
+        description: When update succeeds, it returns an object with the new user details
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+      401:
+        description: If this is an unauthenticated request (not signed in), `"401 Unauthorized"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: unauthenticated_update
+                message:
+                  type: string
+                  value: Sign in to change details
+              example:
+                code: unauthenticated_update
+                message: Sign in to change details
+      403:
+        description: If a non-admin user tries to update a user's account details, `"403 Forbidden"` is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: unauthorized_update
+                message:
+                  type: string
+                  value: You are not authorized to perform this update. This attempt has been logged.
+              example:
+                code: unauthorized_update
+                message: You are not authorized to perform this update. This attempt has been logged.
+      422:
+        description: When the sent request details are incorrect, this "422 Unprocessable Entity" is returned
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: The exact error code
+                  enum: 
+                    - invalid_email
+                    - email_conflict
+                    - invalid_username
+                    - username_conflict
+                    - invalid_display_name
+                    - invalid_picture
+                    - invalid_settings
+                  example: missing_details
+                message:
+                  type: string
+                  description: Description of the error
+                  example: Account with email address exists already
+              example:
+                code: username_conflict
+                message: Account with username exists already
+      500:
+        description: An unenexpected error occurred on the server
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

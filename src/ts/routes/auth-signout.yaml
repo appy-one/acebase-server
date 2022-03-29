@@ -1,0 +1,45 @@
+/auth/{dbname}/signout:
+  tags:
+    - auth
+  post:
+    description: Signs in an existing user
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: Sign out details
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              client_id:
+                type: string
+                description: ID of the connected websocket
+              everywhere:
+                type: boolean
+                description: Whether the user should sign out on ALL clients
+            example:
+              client_id: x8WIv7-mJelg7on_ALbx
+              everywhere: false
+    responses:
+      200:
+        description: Returns `"Bye!"` if signout is successful
+        content:
+          'text/plain':
+            schema:
+              type: string
+              value: Bye!
+              example: Bye!
+      500:
+        description: Returns an object describing an unexpected error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+
