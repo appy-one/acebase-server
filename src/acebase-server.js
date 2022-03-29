@@ -1254,11 +1254,11 @@ class AceBaseServer extends EventEmitter {
                     if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
                         logRef.push({ action: 'change_password', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
                         res.status(400).send('Bad Request'); // Bad Request
-                        return;                    
+                        return;
                     }
-                    if (details.new_password.length < 8 || ~details.new_password.indexOf(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
+                    if (details.new_password.length < 8 || details.new_password.includes(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
                         logRef.push({ action: 'change_password', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
-                        err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
+                        const err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
                         res.status(422).send(err);// Unprocessable Entity
                         return;
                     }
@@ -1368,6 +1368,11 @@ class AceBaseServer extends EventEmitter {
                     // TODO: Rate-limit nr of signups per IP to prevent abuse
                     
                     const details = req.body;
+
+                    if (typeof details.displayName === 'undefined' && typeof details.display_name === 'string') {
+                        // Allow display_name to be sent also (which is used in update endpoint)
+                        details.displayName = details.display_name;
+                    }
 
                     // Check if sent details are ok
                     let err;
@@ -1486,6 +1491,11 @@ class AceBaseServer extends EventEmitter {
                         return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this update. This attempt has been logged.');
                     }
 
+                    if (typeof details.display_name === 'undefined' && typeof details.displayName === 'string') {
+                        // Allow displayName to be sent also (which is used in signup endpoint)
+                        details.display_name = details.displayName;
+                    }
+
                     // Check if sent details are ok
                     let err;
                     if (details.email && !isValid.email(details.email)) {
@@ -1580,13 +1590,13 @@ class AceBaseServer extends EventEmitter {
 
                     if (req.user.uid !== 'admin' && (details.uid !== req.user.uid || typeof details.is_disabled === 'boolean')) {
                         logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
-                        return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this operation, your attempt has been logged');
+                        return sendUnauthorizedError(res, 'unauthorized_delete', 'You are not authorized to perform this operation, your attempt has been logged');
                     }
 
                     const uid = details.uid || req.user.uid;
                     if (uid === 'admin') {
                         logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
-                        return sendUnauthorizedError(res, 'unauthorized_update', 'The admin account cannot be deleted, your attempt has been logged');
+                        return sendUnauthorizedError(res, 'unauthorized_delete', 'The admin account cannot be deleted, your attempt has been logged');
                     }
                     return authRef.child(uid)
                     .remove()
@@ -1863,7 +1873,11 @@ class AceBaseServer extends EventEmitter {
                                 expires_in: tokens.expires_in
                             },
                             access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, _secureObjectsSalt),
-                            user: getPublicAccountDetails(user)
+
+                            // Disabled sending user details because:
+                            // 1) they might be too big to send as redirect header, 
+                            // 2) client should verify the sent access token and get user details from the server
+                            // user: getPublicAccountDetails(user)
                         };
 
                         if (state.flow === 'socket') {
@@ -1910,6 +1924,13 @@ class AceBaseServer extends EventEmitter {
                 });
             }
 
+            // If environment is development, add API docs
+            if (process.env.NODE_ENV === 'development') {
+                this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
+                const addAPIDocsRoute = require('./routes/docs').default;
+                addAPIDocsRoute(app);
+            }
+
             const webManagerDir = `/webmanager/`;
             app.get('/', (req, res) => {
                 res.redirect(webManagerDir);
@@ -1921,24 +1942,6 @@ class AceBaseServer extends EventEmitter {
                     // Send default file
                     res.sendFile(__dirname + '/webmanager/index.html');
                 }
-                // else if (filePath === 'TEST') {
-                //     // apply test
-                //     let test;
-                //     if (req.query.type === 'update') {
-                //         let val = req.query.val;
-                //         if (val[0] === '{') { val = JSON.parse(val); }
-                //         test = db.ref(req.query.path || '').update(val);
-                //     }
-                //     else {
-                //         res.send('');
-                //     }
-                //     return test && test.then(() => {
-                //         res.send('ok');
-                //     })
-                //     .catch(err => { 
-                //         res.send('fail: ' + err.message);
-                //     });
-                // }
                 else {
                     res.sendFile(__dirname + '/webmanager/' + filePath);
                 }
@@ -1951,7 +1954,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '1.8.0', // TODO: Load from package.json
+                    version: '1.9.0', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
