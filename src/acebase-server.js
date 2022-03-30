@@ -1958,7 +1958,7 @@ class AceBaseServer extends EventEmitter {
 
             app.get(`/info/${dbname}`, (req, res) => {
                 const info = {
-                    version: '1.9.0', // TODO: Load from package.json
+                    version: '1.9.1', // TODO: Load from package.json
                     time: Date.now(), 
                     process: process.pid
                 };
