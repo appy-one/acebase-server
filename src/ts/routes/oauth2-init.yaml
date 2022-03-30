@@ -35,6 +35,13 @@
         schema:
           type: string
           example: true
+      - name: option_force_reauthentication
+        in: query
+        required: false
+        description: Example option, triggers Dropbox to force the user to sign in instead of using the currently signed in user
+        schema:
+          type: string
+          example: true
     responses:
       200:
         description: Returns a JSON object containing the redirectUrl to send the end user to
