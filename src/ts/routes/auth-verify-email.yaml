@@ -1,7 +1,8 @@
 /auth/{dbname}/verify_email:
-  tags:
-    - auth
   post:
+    tags:
+      - auth
+    summary: Verifies an email address
     description: Verifies an email address with a code sent through their email address
     parameters:
       - name: dbname

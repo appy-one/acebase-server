@@ -18,6 +18,13 @@ const addRoute = (app) => {
                     email: 'me@appy.one'
                 },
             },
+            tags: [{
+                    name: 'auth',
+                    description: 'User authentication endpoints'
+                }, {
+                    name: 'oauth2',
+                    description: 'User authentication using 3rd party OAuth2 providers'
+                }],
             components: {
                 securitySchemes: {
                     bearerAuth: {

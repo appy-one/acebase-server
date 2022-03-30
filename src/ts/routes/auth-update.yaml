@@ -1,7 +1,8 @@
 /auth/{dbname}/update:
-  tags:
-    - auth
   post:
+    tags:
+      - auth
+    summary: Update user details
     description: Updates user account details
     parameters:
       - name: dbname

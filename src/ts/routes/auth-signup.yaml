@@ -1,7 +1,8 @@
 /auth/{dbname}/signup:
-  tags:
-    - auth
   post:
+    tags:
+      - auth
+    summary: Create a new user
     description: Signs up a new user (must be enabled in the server config)
     parameters:
       - name: dbname

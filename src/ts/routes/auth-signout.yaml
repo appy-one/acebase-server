@@ -1,8 +1,9 @@
 /auth/{dbname}/signout:
-  tags:
-    - auth
   post:
-    description: Signs in an existing user
+    tags:
+      - auth
+    summary: Sign out current user
+    description: Signs out the currently signed in user
     parameters:
       - name: dbname
         in: path

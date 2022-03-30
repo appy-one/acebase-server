@@ -1,0 +1,56 @@
+/oauth2/{dbname}/init:
+  get:
+    tags:
+      - auth
+      - oauth2
+    summary: Starts an OAuth2 flow
+    description: Starts a 3rd party OAuth2 authentication flow. This allows a user to sign in (and sign up) using an external auth provider such as Facebook, Google etc. The client app has to call this endpoint to get an url to redirect the user to kick off the OAuth2 flow. If the client is already authenticated, the external account will be linked to the existing user. The provider used must have been added to the server configuration with `server.configAuthProvider(provider, config)`. In the Javascript client, this OAuth2 flow can be kicked off with `client.auth.startAuthProviderSignIn(provider, callbackUrl, options)` or (browser only) `client.auth.signInWithRedirect(provider)` which uses the current url as `callbackUrl`.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: provider
+        in: query
+        description: External OAuth2 provider name
+        required: true
+        schema:
+          type: string
+          example: facebook
+      - name: callbackUrl
+        in: query
+        description: The url to redirect the user to after they successfully authenticated, or canceled. If the signin is successful, this url is called with a `result` query parameter (eg `https://my.website.com/oauth2/callback?result=eufy3f73gfvjbwe314f...`) that can be used by the AceBase client to finish the OAuth2 flow with `client.auth.finishAuthProviderSignIn(result)`, or `client.auth.getRedirectResult()`. If the signin fails, this url will be called with query parameters `provider`, `error`, and optionally an additional `reason` and `description`, eg `https://my.website.com/oauth2/callback?error=canceled&reason=user_canceled&description=The+user+canceled+the+auth+request`
+        required: true
+        schema:
+          type: string
+          format: url
+          example: https://my.website.com/oauth2/callback
+      - name: option_[name]
+        in: query
+        description: Additional option to pass to the auth provider. For example `force_reauthentication` can be set for Dropbox by setting `option_force_reauthentication` to `true`
+        required: false
+        schema:
+          type: string
+          example: true
+    responses:
+      200:
+        description: Returns a JSON object containing the redirectUrl to send the end user to
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                redirectUrl:
+                  type: string
+              example:
+                redirectUrl: https://www.facebook.com/v7.0/dialog/oauth?response_type=code&client_id=[configured facebook client id]&scope=[configured scopes]&redirect_uri=[url set by AceBase]&state=[state set by AceBase]}
+      500:
+        description: If anything goes wrong on the server, it returns the actual error text in plain text
+        content:
+          'text/plain':
+            schema:
+              type: string
+              example: Some error text

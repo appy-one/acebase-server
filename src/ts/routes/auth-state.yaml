@@ -1,7 +1,8 @@
 /auth/{dbname}/state:
-  tags:
-    - auth
   get:
+    tags:
+      - auth
+    summary: Get authentication state
     description: Gets current auth state
     parameters:
       - name: dbname

@@ -1,7 +1,8 @@
 /auth/{dbname}/delete:
-  tags:
-    - auth
   post:
+    tags:
+      - auth
+    summary: Delete a user account
     description: Deletes an existing user account
     parameters:
       - name: dbname

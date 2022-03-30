@@ -1,7 +1,8 @@
 /auth/{dbname}/signin:
-  tags:
-    - auth
   post:
+    tags:
+      - auth
+    summary: Sign in a user
     description: Signs in an existing user
     parameters:
       - name: dbname

@@ -1,0 +1,65 @@
+/oauth2/{dbname}/refresh:
+  get:
+    tags:
+      - auth
+      - oauth2
+    summary: Refreshes an OAuth2 access token
+    description: Refreshes an OAuth2 provider's access token using the refresh token given by the auth provider at signin.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: provider
+        in: query
+        description: External OAuth2 provider name
+        required: true
+        schema:
+          type: string
+          example: facebook
+      - name: refresh_token
+        in: query
+        description: A refresh token from the OAuth2 signin result
+        required: true
+        schema:
+          type: string
+          example: erfiyh3rfig3fuyb3rjfg3u7refc...
+    responses:
+      200:
+        description: Returns a JSON object containing new access and refresh tokens and expiry information 
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Provider name
+                  example: facebook
+                access_token:
+                  type: string
+                  description: New access token
+                  example: fkw3ygfi74g25foli2n4vo7h2vto72g4...
+                refresh_token:
+                  type: string
+                  description: New refresh token
+                  example: 32lo548jnl34tv73h4l5nbb35ithn3jt...
+                expires_in:
+                  type: integer
+                  description: Amount of seconds these tokens remain valid. A new refresh will have to be done before they expire.
+                  example: 3600
+              example:
+                name: facebook
+                access_token: fkw3ygfi74g25foli2n4vo7h2vto72g4...
+                refresh_token: 32lo548jnl34tv73h4l5nbb35ithn3jt...
+                expires_in: 3600
+      500:
+        description: If anything goes wrong on the server, it returns the actual error text in plain text
+        content:
+          'text/plain':
+            schema:
+              type: string
+              example: Some error text
