@@ -1617,12 +1617,16 @@ class AceBaseServer extends EventEmitter {
                         const callbackUrl = req.query.callbackUrl;
                         const options = Object.keys(req.query).filter(key => key.startsWith('option_')).reduce((options, key) => {
                             const name = key.slice(7);
-                            options[name] = req.query[key];
+                            let value = req.query[key];
+                            if (['true','false'].includes(value)) { value = value === 'true'; }
+                            else if (/^\-?[0-9]+$/.test(value)) { value = parseInt(value); }
+                            options[name] = value;
+                            return options;
                         }, {});
                         const signedInUid = req.user && req.user.uid;
                         const provider = this.authProviders[providerName];
                         if (!provider) {
-                            throw new Error(`Provider ${provider} is not available, or not properly configured by the db admin`);
+                            throw new Error(`Provider ${providerName} is not available, or not properly configured by the db admin`);
                         }
                         // Create secure state so it cannot be tampered with. hash it with a server-only known salt: the generated admin password salt
                         await this.ready();
