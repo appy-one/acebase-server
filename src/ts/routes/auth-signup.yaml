@@ -32,6 +32,20 @@
                 type: string
                 format: password
                 description: Password to set for the account
+              picture:
+                type: object
+                description: Profile picture
+                properties:
+                  url:
+                    type: string
+                  width:
+                    type: number
+                  height:
+                    type: number
+                example:
+                  url: https://my.profile.pic/me.jpg
+                  width: 500
+                  height: 500
               settings:
                 type: object
                 otherProperties: true
@@ -105,6 +119,7 @@
                     - invalid_display_name
                     - invalid_password
                     - invalid_settings
+                    - invalid_picture
                   example: missing_details
                 message:
                   type: string
