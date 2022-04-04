@@ -31,11 +31,15 @@
               username:
                 type: string
                 description: New username
+              displayName:
+                type: string
+                description: Name of the user for public displaying purposes. Consider this a real name, alias or handle. (NOTE this property is equivalent to the deprecated `display_name`, both are allowed to be used from acebase-server v1.8.1)
               display_name:
                 type: string
-                description: Name of the user for public displaying purposes. Consider this a real name, alias or handle. (NOTE this property is called `displayName` in the signup endpoint, both will be allowed to be used from acebase-server v1.8.1)
+                description: Name of the user for public displaying purposes. Consider this a real name, alias or handle. (NOTE this property deprecated, use `displayName` instead)
               picture:
                 type: object
+                description: Profile picture
                 properties:
                   url:
                     type: string
@@ -98,6 +102,22 @@
               example:
                 code: unauthorized_update
                 message: You are not authorized to perform this update. This attempt has been logged.
+      404:
+        description: User account to update does not exist
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: user_not_found
+                message:
+                  type: string
+                  value: No user found with uid jld2cjxh0000qzrmn831i7rn
+              example:
+                code: user_not_found
+                message: No user found with uid jld2cjxh0000qzrmn831i7rn
       422:
         description: When the sent request details are incorrect, this "422 Unprocessable Entity" is returned
         content:
@@ -116,7 +136,7 @@
                     - invalid_display_name
                     - invalid_picture
                     - invalid_settings
-                  example: missing_details
+                  example: user_not_found
                 message:
                   type: string
                   description: Description of the error
