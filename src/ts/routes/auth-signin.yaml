@@ -75,15 +75,15 @@
                     type: string
                     value: token
                     description: Method of authentication (token)
-                  token:
+                  access_token:
                     type: string
                     description: Previously acquired access token to sign in with
                 required:
                   - method
-                  - token
+                  - access_token
                 example:
                   method: token
-                  token: ewufh387f3fyubqwekrjbcqwkuiec7gq3euyfbqwkuyebqjk..
+                  access_token: bewufh387f3fyubqwekrjbcqwkuiec7gq3euyfbqwkuyebqjk..
     responses:
       200:
         description: When signin succeeds, it returns an object with the result
