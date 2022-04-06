@@ -1,0 +1,198 @@
+import { AceBaseStorageSettings } from 'acebase';
+import * as fs from 'fs';
+import { AceBaseServerEmailSettings } from './email';
+
+export type AceBaseServerHttpsInitSettings = { 
+    enabled?: boolean;
+    keyPath?: string; 
+    certPath?: string
+    pfxPath?: string; 
+    passphrase?: string
+} & (
+    { keyPath: string; certPath: string } |
+    { pfxPath: string; passphrase: string  }
+)
+
+export class AceBaseServerHttpsSettings {
+    enabled: boolean = true;
+    key?: Buffer;
+    cert?: Buffer;
+    pfx?: Buffer;
+    passphrase?: string;
+
+    constructor(settings: AceBaseServerHttpsInitSettings) {
+        this.enabled = typeof settings === "object" && settings.enabled !== false;
+        if (!this.enabled) { return; }
+        if (settings.keyPath) {
+            this.key = fs.readFileSync(settings.keyPath);
+            this.cert = fs.readFileSync(settings.certPath);
+        }
+        else if (settings.pfxPath) {
+            this.pfx = fs.readFileSync(settings.pfxPath);
+            this.passphrase = settings.passphrase;
+        }
+    }
+}
+
+export enum AUTH_ACCESS_DEFAULT {
+    DENY_ALL = 'deny',
+    ALLOW_ALL = 'allow',
+    ALLOW_AUTHENTICATED = 'auth'    
+}
+
+export class AceBaseServerAuthenticationSettings {
+
+    /**
+     * If authorization is enabled, without authorization the entire db can be read and written to by anyone
+     */
+    readonly enabled: boolean = true;
+
+    /**
+     * If new users creation is allowed for anyone, or just the admin
+     */
+    readonly allowUserSignup: boolean = false;
+
+    /**
+     * How many new users per hour per IP address. not implemented yet
+     */
+    readonly newUserRateLimit: number = 0;
+
+    /**
+     * How many minutes before access tokens expire. 0 for no expiration. not implemented yet
+     */
+    readonly tokensExpire: number = 0;
+
+    /**
+     * When the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
+     */
+    readonly defaultAccessRule: AUTH_ACCESS_DEFAULT = AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
+
+    /**
+     * When the server runs for the first time, what password to use for the admin user. If not supplied, a generated password will be used and shown ONCE in the console output.
+     */
+    readonly defaultAdminPassword?: string;
+
+    /**
+     * Whether to use a separate database for auth and logging. 'v2' will store data in auth.db, which is NOT TESTED YET!
+     */
+    readonly separateDb: boolean|'v2' = false;
+
+    constructor(settings: Partial<AceBaseServerAuthenticationSettings>) {
+        if (typeof settings !== "object") { settings = {}; }
+        if (typeof settings.enabled === 'boolean') { this.enabled = settings.enabled; }
+        if (typeof settings.allowUserSignup === 'boolean') { this.allowUserSignup = settings.allowUserSignup; }
+        if (typeof settings.newUserRateLimit === 'number') { this.newUserRateLimit = settings.newUserRateLimit; }
+        if (typeof settings.tokensExpire === 'number') { this.tokensExpire = settings.tokensExpire; }
+        if (typeof settings.defaultAccessRule === 'string') { this.defaultAccessRule = settings.defaultAccessRule; }
+        if (typeof settings.defaultAdminPassword === 'string') { this.defaultAdminPassword = settings.defaultAdminPassword; }
+        if (typeof (settings as any).seperateDb === 'boolean') { this.separateDb = (settings as any).seperateDb; } // Handle previous _wrong_ spelling
+        if (typeof settings.separateDb === 'boolean') { this.separateDb = settings.separateDb; }
+    }
+
+    static ACCESS_DEFAULT = AUTH_ACCESS_DEFAULT;
+}
+
+/**
+ * TODO: Use AceBaseTransactionLogSettings from 'acebase/src/storage-acebase.js'
+ */
+export class AceBaseServerTransactionSettings {
+    /**
+     * Whether to enable transaction logging
+     */
+    log: boolean = false;
+
+    /**
+     * Max age in days to keep transactions in the log file
+     */
+    maxAge: number = 30;
+
+    /**
+     * Whether database write operations should not wait until transaction has been logged
+     */
+    noWait: boolean = false;
+
+    constructor(settings: Partial<AceBaseServerTransactionSettings>) {
+        if (typeof settings !== 'object') { return; }
+        if (typeof settings.log === 'boolean') { this.log = settings.log; }
+        if (typeof settings.maxAge === 'number') { this.maxAge = settings.maxAge; }
+        if (typeof settings.noWait === 'boolean') { this.noWait = settings.noWait; }
+    }
+}
+
+export interface IPCClientSettings {
+    /**
+     * IPC Server host to connect to. Default is `"localhost"`
+     */
+    host?: string;
+
+    /**
+     * IPC Server port number
+     */
+    port: number;
+
+    /**
+     * Whether to use a secure connection to the server. Strongly recommended if `host` is not `"localhost"`. Default is `false`
+     */
+    ssl?: boolean;
+
+    /**
+     * Token used in the IPC Server configuration (optional). The server will refuse connections using the wrong token.
+     */
+    token?: string;
+
+    /**
+     * Determines the role of this IPC client. Only 1 process can be assigned the 'master' role, all other processes must use the role 'worker'
+     */
+    role: 'master'|'worker';
+}
+
+export type AceBaseServerSettings = Partial<{
+    logLevel: 'verbose'|'log'|'warn'|'error';
+    host: string;
+    port: number;
+    path: string;
+    maxPayloadSize: string;
+    allowOrigin: string;
+    https: AceBaseServerHttpsInitSettings;
+    auth: Partial<AceBaseServerAuthenticationSettings>;
+    email: AceBaseServerEmailSettings;
+    transactions: Partial<AceBaseServerTransactionSettings>;
+    ipc: IPCClientSettings;
+    storage: AceBaseStorageSettings;
+}>//Partial<AceBaseServerConfig> & { https?: AceBaseServerHttpsInitSettings };
+
+export class AceBaseServerConfig {
+
+    readonly logLevel: 'verbose'|'log'|'warn'|'error' = 'log';
+    readonly host: string = 'localhost';
+    readonly port: number = 3000;
+    readonly path: string = '.';
+    readonly maxPayloadSize: string = '10mb';
+    readonly allowOrigin: string = '*';
+    readonly https: AceBaseServerHttpsSettings;
+    readonly auth: AceBaseServerAuthenticationSettings;
+    readonly email: AceBaseServerEmailSettings;
+    readonly transactions: AceBaseServerTransactionSettings;
+    readonly ipc: IPCClientSettings;
+
+    /** @deprecated alias for `auth` property */
+    get authentication() { return this.auth; }
+
+    readonly storage?: AceBaseStorageSettings;
+
+    constructor(settings: AceBaseServerSettings) {
+        if (typeof settings !== "object") { settings = {}; }
+        if (typeof settings.logLevel === 'string') { this.logLevel = settings.logLevel; }
+        if (typeof settings.host === 'string') { this.host = settings.host; }
+        if (typeof settings.port === 'number') { this.port = settings.port; }
+        if (typeof settings.path === 'string') { this.path = settings.path; }
+        this.https = new AceBaseServerHttpsSettings(settings.https);
+        this.auth = new AceBaseServerAuthenticationSettings(settings.auth);
+        if (typeof settings.maxPayloadSize === 'string') { this.maxPayloadSize = settings.maxPayloadSize; }
+        if (typeof settings.allowOrigin === 'string') { this.allowOrigin = settings.allowOrigin; }
+        if (typeof settings.email === 'object') { this.email = settings.email; }
+        this.transactions = new AceBaseServerTransactionSettings(settings.transactions);
+        this.ipc = settings.ipc;
+        if (typeof settings.storage === 'object') { this.storage = settings.storage; }
+    }
+}

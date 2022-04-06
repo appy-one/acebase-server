@@ -1,6 +1,7 @@
 import { RouteInitEnvironment } from './shared/env';
+import { addMiddleware as addBearerAuthMiddleware } from './middleware/user';
 import { addRoute as addStateRoute } from './auth-state';
-import { addRoute as addSignInRoute, addMiddleware as addBearerAuthMiddleware } from './auth-signin';
+import { addRoute as addSignInRoute } from './auth-signin';
 import { addRoute as addSignOutRoute } from './auth-signout';
 import { addRoute as addVerifyEmailRoute } from './auth-verify-email';
 import { addRoute as addResetPasswordRoute } from './auth-reset-password';
@@ -13,7 +14,7 @@ import { addRoute as addOAuth2SignInRoute } from './oauth2-signin';
 import { addRoute as addOAuth2RefreshRoute } from './oauth2-refresh';
 
 export const addAuthenticionRoutes = (env: RouteInitEnvironment) => {
-    if (!env.settings.authentication.enabled) {
+    if (!env.config.auth.enabled) {
         throw new Error('Authentication not enabled in the server settings');
     }
 

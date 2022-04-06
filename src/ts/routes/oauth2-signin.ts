@@ -14,6 +14,7 @@ export type ResponseBody = string | { code: 'admin_only', message: string };
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
+    
     env.app.get(`/oauth2/${env.db.name}/signin`, async (req: Request, res) => {
 
         // This is where the user is redirected to by the provider after signin or error
@@ -170,14 +171,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     provider: state.provider
                 };
 
-                env.settings.email?.send(request).catch(err => {
+                env.config.email?.send(request).catch(err => {
                     env.logRef.push({ action: 'oauth2_login_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
                 });                            
             }
             else if (snaps.length === 0) {
                 // User does not exist, create
 
-                if (!env.settings.authentication.allowUserSignup) {
+                if (!env.config.auth.allowUserSignup) {
                     env.logRef.push({ action: 'oauth2_signup', success: false, code: 'user_signup_disabled', provider: state.provider, email: user_details.email, date: new Date() });
                     res.statusCode = 403; // Forbidden
                     return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
@@ -230,7 +231,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     provider: state.provider
                 };
 
-                env.settings.email?.send(request).catch(err => {
+                env.config.email?.send(request).catch(err => {
                     env.logRef.push({ action: 'oauth2_signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
                 });
             }

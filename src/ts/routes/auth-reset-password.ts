@@ -64,7 +64,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 settings: user.settings
             }
         };
-        env.settings.email?.send(request);
+        env.config.email?.send(request);
         return user;
     };
 

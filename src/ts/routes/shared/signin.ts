@@ -7,7 +7,7 @@ import { decodePublicAccessToken } from "./tokens";
 export type SignInCredentials = 
     { method: 'access_token'; access_token: string } | 
     { method: 'email'; email: string; password: string } |
-    { method: 'username', username: string, password: string };
+    { method: 'account', username: string, password: string };
 
 export class SignInError extends Error {
     constructor(public code: string, message: string, public details: Object = {}) {
@@ -26,11 +26,12 @@ export class SignInError extends Error {
 export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, req: RouteRequest) => {
     try {
         const query = env.authRef.query();
+        let tokenDetails: ReturnType<typeof decodePublicAccessToken>;
         switch (credentials.method) {
             case 'access_token': {
                 try {
-                    var tokenDetails = decodePublicAccessToken(credentials.access_token, env.tokenSalt);
-                    query.filter('token', '==', tokenDetails.access_token);
+                    tokenDetails = decodePublicAccessToken(credentials.access_token, env.tokenSalt);
+                    query.filter('access_token', '==', tokenDetails.access_token);
                 }
                 catch (err) {
                     throw new SignInError('invalid_token', err.message);
@@ -41,7 +42,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
                 query.filter('email', '==', credentials.email);
                 break;
             }
-            case 'username': {
+            case 'account': {
                 query.filter('username', '==', credentials.username);
                 break;
             }

@@ -48,9 +48,9 @@
                     description: ID of the connected websocket
                     type: string
                   method:
-                    description: Method of authentication (username)
+                    description: Method of authentication (account)
                     type: string
-                    value: username
+                    value: account
                   username:
                     description: Username
                     type: string

@@ -35,7 +35,7 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/signup`, async (req: Request, res) => {
-        if (!env.settings.authentication.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
+        if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
             env.logRef.push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
             res.statusCode = 403; // Forbidden
             return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
@@ -140,7 +140,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 emailVerified: false
             };
 
-            env.settings.email?.send(request).catch(err => {
+            env.config.email?.send(request).catch(err => {
                 env.logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
             });
 
