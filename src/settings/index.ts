@@ -2,7 +2,7 @@ import { AceBaseStorageSettings } from 'acebase';
 import * as fs from 'fs';
 import { AceBaseServerEmailSettings } from './email';
 
-export type AceBaseServerHttpsInitSettings = { 
+export type AceBaseServerHttpsSettings = { 
     enabled?: boolean;
     keyPath?: string; 
     certPath?: string
@@ -10,17 +10,18 @@ export type AceBaseServerHttpsInitSettings = {
     passphrase?: string
 } & (
     { keyPath: string; certPath: string } |
-    { pfxPath: string; passphrase: string  }
+    { pfxPath: string; passphrase: string } |
+    {}
 )
 
-export class AceBaseServerHttpsSettings {
+export class AceBaseServerHttpsConfig {
     enabled: boolean = true;
     key?: Buffer;
     cert?: Buffer;
     pfx?: Buffer;
     passphrase?: string;
 
-    constructor(settings: AceBaseServerHttpsInitSettings) {
+    constructor(settings: AceBaseServerHttpsSettings) {
         this.enabled = typeof settings === "object" && settings.enabled !== false;
         if (!this.enabled) { return; }
         if (settings.keyPath) {
@@ -43,22 +44,22 @@ export enum AUTH_ACCESS_DEFAULT {
 export class AceBaseServerAuthenticationSettings {
 
     /**
-     * If authorization is enabled, without authorization the entire db can be read and written to by anyone
+     * Whether to enable authorization. Without authorization the entire db can be read and written to by anyone (not recommended 🤷🏼‍♂️)
      */
     readonly enabled: boolean = true;
 
     /**
-     * If new users creation is allowed for anyone, or just the admin
+     * Whether new users creation is allowed for anyone, or just the admin
      */
     readonly allowUserSignup: boolean = false;
 
     /**
-     * How many new users per hour per IP address. not implemented yet
+     * How many new users can sign up per hour per IP address. not implemented yet
      */
     readonly newUserRateLimit: number = 0;
 
     /**
-     * How many minutes before access tokens expire. 0 for no expiration. not implemented yet
+     * How many minutes before access tokens expire. 0 for no expiration. (not implemented yet)
      */
     readonly tokensExpire: number = 0;
 
@@ -88,8 +89,6 @@ export class AceBaseServerAuthenticationSettings {
         if (typeof (settings as any).seperateDb === 'boolean') { this.separateDb = (settings as any).seperateDb; } // Handle previous _wrong_ spelling
         if (typeof settings.separateDb === 'boolean') { this.separateDb = settings.separateDb; }
     }
-
-    static ACCESS_DEFAULT = AUTH_ACCESS_DEFAULT;
 }
 
 /**
@@ -147,19 +146,66 @@ export interface IPCClientSettings {
 }
 
 export type AceBaseServerSettings = Partial<{
+    /** 
+     * Level of messages logged to console 
+    */
     logLevel: 'verbose'|'log'|'warn'|'error';
+
+    /** 
+     * ip or hostname to start the server on 
+    */
     host: string;
+
+    /** 
+     * port number the server will be listening 
+     */
     port: number;
+
+    /** 
+     * target directory path to store/open the database. Default is '.' 
+     */
     path: string;
+
+    /** 
+     * Whether to use secure sockets layer (ssl) 
+     */
+    https: AceBaseServerHttpsSettings;
+
+    /** 
+     * settings that define if and how authentication is used 
+     */
+    authentication: Partial<AceBaseServerAuthenticationSettings>;
+
+    /** 
+     * maximum size to allow for posted data, eg for updating nodes. Default is '10mb' 
+     */
     maxPayloadSize: string;
+
+    /** 
+     * Value to use for Access-Control-Allow-Origin CORS header. Default is '*' 
+     */
     allowOrigin: string;
-    https: AceBaseServerHttpsInitSettings;
-    auth: Partial<AceBaseServerAuthenticationSettings>;
+
+    /** 
+     * Email settings that enable AceBaseServer to send e-mails, eg for welcoming new users, to reset passwords, notify of new sign ins etc 
+     */
     email: AceBaseServerEmailSettings;
+
+    /** 
+     * Transaction logging settings. Warning: BETA stage, do NOT use in production yet 
+     */
     transactions: Partial<AceBaseServerTransactionSettings>;
+
+    /** 
+     * IPC settings for pm2 or cloud-based clusters. BETA stage, see https://github.com/appy-one/acebase-ipc-server 
+     */
     ipc: IPCClientSettings;
+
+    /** 
+     * Allows overriding of default storage settings used by the database. ALPHA stage 
+     */
     storage: AceBaseStorageSettings;
-}>//Partial<AceBaseServerConfig> & { https?: AceBaseServerHttpsInitSettings };
+}>
 
 export class AceBaseServerConfig {
 
@@ -169,14 +215,11 @@ export class AceBaseServerConfig {
     readonly path: string = '.';
     readonly maxPayloadSize: string = '10mb';
     readonly allowOrigin: string = '*';
-    readonly https: AceBaseServerHttpsSettings;
+    readonly https: AceBaseServerHttpsConfig;
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
     readonly ipc: IPCClientSettings;
-
-    /** @deprecated alias for `auth` property */
-    get authentication() { return this.auth; }
 
     readonly storage?: AceBaseStorageSettings;
 
@@ -186,8 +229,8 @@ export class AceBaseServerConfig {
         if (typeof settings.host === 'string') { this.host = settings.host; }
         if (typeof settings.port === 'number') { this.port = settings.port; }
         if (typeof settings.path === 'string') { this.path = settings.path; }
-        this.https = new AceBaseServerHttpsSettings(settings.https);
-        this.auth = new AceBaseServerAuthenticationSettings(settings.auth);
+        this.https = new AceBaseServerHttpsConfig(settings.https);
+        this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);
         if (typeof settings.maxPayloadSize === 'string') { this.maxPayloadSize = settings.maxPayloadSize; }
         if (typeof settings.allowOrigin === 'string') { this.allowOrigin = settings.allowOrigin; }
         if (typeof settings.email === 'object') { this.email = settings.email; }
