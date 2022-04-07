@@ -1,13 +1,13 @@
 import type { HttpApp, Request } from './http';
 import type { AceBase, DataReference } from 'acebase';
-import type { AceBaseServerConfig } from '../../settings';
+import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
 import type { ConnectedClient } from './clients';
 import type { DebugLogger, SimpleCache } from 'acebase-core';
-import type { IOAuth2Provider } from '../../oauth-providers/oauth-provider';
+import type { IOAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
-import type { PathBasedRules } from '../../rules';
+import type { PathBasedRules } from '../rules';
 import { Api } from 'acebase-core/src/api';
 
 export interface RouteInitEnvironment {

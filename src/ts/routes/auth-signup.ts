@@ -1,11 +1,11 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { AceBaseUser, DbUserAccountDetails, getPublicAccountDetails, UserProfilePicture } from './schema/user';
-import { emailExistsError, emailOrUsernameExistsError, invalidDisplayNameError, invalidEmailError, invalidPasswordError, invalidPictureError, invalidSettingsError, invalidUsernameError, isValidDisplayName, isValidEmail, isValidNewEmailAddress, isValidNewUsername, isValidPassword, isValidPicture, isValidSettings, isValidUsername, usernameExistsError } from './shared/validate';
-import { createPasswordHash } from './shared/password';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { AceBaseUser, DbUserAccountDetails, getPublicAccountDetails, UserProfilePicture } from '../schema/user';
+import { emailExistsError, emailOrUsernameExistsError, invalidDisplayNameError, invalidEmailError, invalidPasswordError, invalidPictureError, invalidSettingsError, invalidUsernameError, isValidDisplayName, isValidEmail, isValidNewEmailAddress, isValidNewUsername, isValidPassword, isValidPicture, isValidSettings, isValidUsername, usernameExistsError } from '../shared/validate';
+import { createPasswordHash } from '../shared/password';
 import { ID } from 'acebase-core';
-import { AceBaseUserSignupEmailRequest } from './shared/email';
-import { createPublicAccessToken, createSignedPublicToken } from './shared/tokens';
-import { sendUnexpectedError } from './shared/error';
+import { AceBaseUserSignupEmailRequest } from '../shared/email';
+import { createPublicAccessToken, createSignedPublicToken } from '../shared/tokens';
+import { sendUnexpectedError } from '../shared/error';
 
 export class SignupError extends Error { 
     constructor(public code: 'admin_only'|'conflict'|'email_conflict'|'username_conflict'|'missing_details'|'invalid_email'|'invalid_username'|'invalid_display_name'|'invalid_password'|'invalid_picture'|'invalid_settings', message: string) {

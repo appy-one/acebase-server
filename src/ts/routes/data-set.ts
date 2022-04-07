@@ -1,7 +1,7 @@
 import { SchemaValidationError } from 'acebase';
 import { Transport } from 'acebase-core';
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { sendError, sendUnauthorizedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendError, sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = null;

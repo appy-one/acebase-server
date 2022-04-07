@@ -1,4 +1,4 @@
-import { AceBaseEmailRequest } from '../routes/shared/email';
+import { AceBaseEmailRequest } from '../shared/email';
 
 export interface AceBaseServerEmailServerSettings {
     host: string;

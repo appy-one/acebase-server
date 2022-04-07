@@ -1,7 +1,7 @@
 import { AceBase } from 'acebase';
 import { DebugLogger, PathInfo } from 'acebase-core';
 import * as fs from 'fs';
-import { DbUserAccountDetails } from './routes/schema/user';
+import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT } from './settings';
 
 type PathRuleFunction = ((env: any) => boolean) & { getText(): string };

@@ -1,4 +1,4 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { readFileSync } from 'fs';
 import path = require('path');
 

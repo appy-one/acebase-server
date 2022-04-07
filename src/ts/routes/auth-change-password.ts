@@ -1,9 +1,9 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { DbUserAccountDetails } from './schema/user';
-import { sendBadRequestError, sendUnexpectedError } from './shared/error';
-import { createPasswordHash, getOldPasswordHash, getPasswordHash } from './shared/password';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { DbUserAccountDetails } from '../schema/user';
+import { sendBadRequestError, sendUnexpectedError } from '../shared/error';
+import { createPasswordHash, getOldPasswordHash, getPasswordHash } from '../shared/password';
 import { ID } from 'acebase-core';
-import { createPublicAccessToken } from './shared/tokens';
+import { createPublicAccessToken } from '../shared/tokens';
 
 export class ChangePasswordError extends Error { 
     constructor(public code: 'unknown_uid'|'wrong_password'|'wrong_access_token', message: string) {

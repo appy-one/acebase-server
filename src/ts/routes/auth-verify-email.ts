@@ -1,7 +1,7 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { DbUserAccountDetails } from './schema/user';
-import { parseSignedPublicToken } from './shared/tokens';
-import { sendBadRequestError, sendUnexpectedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { DbUserAccountDetails } from '../schema/user';
+import { parseSignedPublicToken } from '../shared/tokens';
+import { sendBadRequestError, sendUnexpectedError } from '../shared/error';
 
 export class VerifyEmailError extends Error { 
     constructor(public code: 'invalid_code'|'unknown_user', message: string) {

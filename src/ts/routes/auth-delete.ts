@@ -1,5 +1,5 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
 export class DeleteError extends Error { 
     constructor(public code: 'unauthenticated_delete'|'unauthorized_delete', message: string) {

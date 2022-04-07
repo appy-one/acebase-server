@@ -1,6 +1,6 @@
 import { ID, Transport } from 'acebase-core';
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { sendUnauthorizedError, sendUnexpectedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
 export type StartRequestQuery = null;
 export type StartRequestBody = {

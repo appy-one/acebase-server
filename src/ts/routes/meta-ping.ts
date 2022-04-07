@@ -1,4 +1,4 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 
 export type RequestQuery = null;
 export type RequestBody = null;

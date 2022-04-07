@@ -1,9 +1,9 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { DbUserAccountDetails } from './schema/user';
-import { parseSignedPublicToken } from './shared/tokens';
-import { sendBadRequestError, sendUnexpectedError } from './shared/error';
-import { createPasswordHash } from './shared/password';
-import { AceBaseUserResetPasswordSuccessEmailRequest } from './shared/email';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { DbUserAccountDetails } from '../schema/user';
+import { parseSignedPublicToken } from '../shared/tokens';
+import { sendBadRequestError, sendUnexpectedError } from '../shared/error';
+import { createPasswordHash } from '../shared/password';
+import { AceBaseUserResetPasswordSuccessEmailRequest } from '../shared/email';
 
 export class ResetPasswordError extends Error { 
     constructor(public code: 'invalid_code'|'unknown_user'|'password_requirement_mismatch', message: string) {

@@ -1,7 +1,7 @@
 import { ValueChange } from 'acebase-core/src/api';
 import { PathInfo } from 'acebase-core';
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { sendBadRequestError, sendError, sendUnauthorizedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = {
     path?: string;

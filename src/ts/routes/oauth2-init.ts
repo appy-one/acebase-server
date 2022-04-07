@@ -1,5 +1,5 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { createSignedPublicToken } from './shared/tokens';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { createSignedPublicToken } from '../shared/tokens';
 
 export type RequestQuery = { provider: string; callbackUrl: string; [option_name: string]: string };
 export type RequestBody = null;

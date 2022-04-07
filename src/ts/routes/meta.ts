@@ -1,4 +1,4 @@
-import type { RouteInitEnvironment } from './shared/env';
+import type { RouteInitEnvironment } from '../shared/env';
 import addInfoRoute from './meta-info';
 import addPingRoute from './meta-ping';
 import addStatsRoute from './meta-stats';

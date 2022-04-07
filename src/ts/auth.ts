@@ -1,8 +1,8 @@
 import { ColorStyle, SimpleCache } from "acebase-core";
 import { randomBytes } from "crypto";
-import { DbUserAccountDetails } from "./routes/schema/user";
-import { RouteInitEnvironment } from "./routes/shared/env";
-import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from "./routes/shared/password";
+import { DbUserAccountDetails } from "./schema/user";
+import { RouteInitEnvironment } from "./shared/env";
+import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from "./shared/password";
 
 export const setupAuthentication = async (env: RouteInitEnvironment) => {
 

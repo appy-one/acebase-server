@@ -1,6 +1,6 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { DbUserAccountDetails } from './schema/user';
-import { sendUnexpectedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { DbUserAccountDetails } from '../schema/user';
+import { sendUnexpectedError } from '../shared/error';
 
 export type RequestQuery = {};
 export type RequestBody = { client_id?: string } & {

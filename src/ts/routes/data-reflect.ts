@@ -1,6 +1,6 @@
 import { IReflectionChildrenInfo, IReflectionNodeInfo, PathInfo } from 'acebase-core';
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { sendUnauthorizedError } from './shared/error';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = { type: 'info'|'children'; impersonate?: string };
 export type RequestBody = null;

@@ -1,5 +1,5 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { AceBaseUser, getPublicAccountDetails } from './schema/user';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { AceBaseUser, getPublicAccountDetails } from '../schema/user';
 
 export type RequestQuery = {};
 export type RequestBody = {};

@@ -1,5 +1,5 @@
 import path = require("path");
-import { RouteInitEnvironment } from "./shared/env";
+import { RouteInitEnvironment } from "../shared/env";
 
 export const addRoutes = (env: RouteInitEnvironment) => {
 

@@ -1,8 +1,8 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { AceBaseUser, getPublicAccountDetails } from './schema/user';
-import { sendNotAuthenticatedError, sendUnexpectedError } from './shared/error';
-import { createPublicAccessToken } from './shared/tokens';
-import { signIn, SignInCredentials } from './shared/signin';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { AceBaseUser, getPublicAccountDetails } from '../schema/user';
+import { sendNotAuthenticatedError, sendUnexpectedError } from '../shared/error';
+import { createPublicAccessToken } from '../shared/tokens';
+import { signIn, SignInCredentials } from '../shared/signin';
 
 export type RequestQuery = {};
 export type RequestBody = { client_id?: string } & (

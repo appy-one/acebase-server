@@ -1,5 +1,4 @@
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { AceBaseUser, getPublicAccountDetails } from './schema/user';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 
 export type RequestQuery = { provider: string; refresh_token: string };
 export type RequestBody = null;

@@ -1,9 +1,9 @@
 import { DataSnapshot, ID } from 'acebase-core';
-import { DbUserAccountDetails } from './schema/user';
-import { AceBaseUserSignInEmailRequest, AceBaseUserSignupEmailRequest } from './shared/email';
-import { RouteInitEnvironment, RouteRequest } from './shared/env';
-import { createPasswordHash, generatePassword } from './shared/password';
-import { createPublicAccessToken, createSignedPublicToken, parseSignedPublicToken } from './shared/tokens';
+import { DbUserAccountDetails } from '../schema/user';
+import { AceBaseUserSignInEmailRequest, AceBaseUserSignupEmailRequest } from '../shared/email';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { createPasswordHash, generatePassword } from '../shared/password';
+import { createPublicAccessToken, createSignedPublicToken, parseSignedPublicToken } from '../shared/tokens';
 
 const socketSignInSuccess = `<html><script>window.close()</script><body>Signed in succesfully. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const socketSignInFailed = `<html><script>window.close()</script><body>Failed to sign in. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
