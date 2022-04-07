@@ -15,7 +15,7 @@ function getVariable(name: string, defaultValue?: any) {
 
 const path = getVariable('DBPATH', '.');
 const dbname = getVariable('DBNAME', 'default');
-const host = getVariable('HOST', '0.0.0.0');
+const host = getVariable('HOST', 'localhost'); // '0.0.0.0'
 const port = +getVariable('PORT', 3000);
 const ipcPort = +getVariable('IPC_PORT', 0);
 const options: AceBaseServerSettings = { host, port, path };
@@ -41,4 +41,5 @@ if (+getVariable('TXLOG', 0) === 1) {
 const server = new AceBaseServer(dbname, options);
 server.once("ready", () => {
     server.debug.log(`AceBase server running`);
+    process.send?.('ready'); // When using pm2, you can use --wait-ready flag (see https://pm2.keymetrics.io/docs/usage/signals-clean-restart/)
 });
