@@ -4,7 +4,7 @@ import * as swaggerJsdoc from 'swagger-jsdoc';
 import * as swaggerUi from 'swagger-ui-express';
 // import config from '../config';
 
-const yamlPath = path.resolve(__dirname, '../../src/ts/routes/*.yaml');
+const yamlPath = path.resolve(__dirname, '../../src/routes/*.yaml'); // (coming from dist/routes/docs.js)
 // console.log(`Using path ${yamlPath} for Swagger documentation`);
 
 export const addRoute = (app: Express) => {
