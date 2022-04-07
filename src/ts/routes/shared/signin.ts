@@ -29,6 +29,9 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         let tokenDetails: ReturnType<typeof decodePublicAccessToken>;
         switch (credentials.method) {
             case 'access_token': {
+                if (typeof credentials.access_token !== 'string') {
+                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
+                }
                 try {
                     tokenDetails = decodePublicAccessToken(credentials.access_token, env.tokenSalt);
                     query.filter('access_token', '==', tokenDetails.access_token);
@@ -39,10 +42,16 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
                 break;
             }
             case 'email': {
+                if (typeof credentials.email !== 'string' || typeof credentials.password !== 'string') {
+                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
+                }
                 query.filter('email', '==', credentials.email);
                 break;
             }
             case 'account': {
+                if (typeof credentials.username !== 'string' || typeof credentials.password !== 'string') {
+                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
+                }
                 query.filter('username', '==', credentials.username);
                 break;
             }
