@@ -25,6 +25,9 @@ export const addRoute = (app: Express) => {
             }, {
                 name: 'oauth2',
                 description: 'User authentication using 3rd party OAuth2 providers'
+            }, {
+                name: 'data',
+                description: 'Data manipulation and query endpoints'
             }],
             components: {
                 securitySchemes: {
