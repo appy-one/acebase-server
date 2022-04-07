@@ -2,12 +2,13 @@
   "name": "acebase-server",
   "version": "1.9.1",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "private": false,
   "repository": "github:appy-one/acebase-server",
   "scripts": {
-    "start": "node src/acebase-server.js start default 0.0.0.0 3000",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/start.js DBNAME=default HOST=localhost PORT=3000",
+    "test": "npm run compile && set NODE_ENV=development && npm run start",
     "compile": "tsc"
   },
   "keywords": [
@@ -52,6 +53,7 @@
   "devDependencies": {
     "@types/express": "^4.17.13",
     "@types/node": "^14.0.14",
+    "@types/socket.io": "^2.1.13",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.3.0"
   }
