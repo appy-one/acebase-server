@@ -4,13 +4,13 @@
         "lib": ["ES2017"],
         "module": "CommonJS",
         "listEmittedFiles": true,
-        "rootDir": "./src/ts",
+        "rootDir": "./src",
         "outDir": "./dist",
         "sourceMap": true,
         "declaration": true,
     },
     "include": [
-        "./src/ts"
+        "./src"
     ],
     "exclude": [
         "node_modules"
