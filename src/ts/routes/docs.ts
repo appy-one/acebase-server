@@ -4,6 +4,9 @@ import * as swaggerJsdoc from 'swagger-jsdoc';
 import * as swaggerUi from 'swagger-ui-express';
 // import config from '../config';
 
+const yamlPath = path.resolve(__dirname, '../../src/ts/routes/*.yaml');
+// console.log(`Using path ${yamlPath} for Swagger documentation`);
+
 export const addRoute = (app: Express) => {
     // Generate docs from all yaml files
     const options:swaggerJsdoc.Options = {
@@ -93,7 +96,7 @@ export const addRoute = (app: Express) => {
                 { bearerAuth: [] } 
             ],
         },
-        apis: [path.resolve(__dirname, '../ts/routes/*.yaml')]
+        apis: [yamlPath]
     };
 
     const swaggerDocs = swaggerJsdoc(options);
