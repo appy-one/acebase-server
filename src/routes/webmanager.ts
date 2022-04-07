@@ -13,7 +13,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     // Serve static files from webmanager directory
     env.app.get(`${webManagerDir}*`, (req, res) => {
         const filePath = req.path.slice(webManagerDir.length);
-        const assetsPath = path.resolve(__dirname, '../webmanager');
+        const assetsPath = path.resolve(__dirname, '../../webmanager');
         if (filePath.length === 0) {
             // Send default file
             res.sendFile(assetsPath + '/index.html');
