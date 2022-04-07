@@ -1,7 +1,8 @@
 import * as socketIO from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
-import { IncomingMessage, ServerResponse } from 'http';
+import { IncomingMessage } from 'http';
 import { WebSocketManager } from './manager';
+import { getCorsHeaders, getCorsOptions } from '../middleware/cors';
 
 export type SocketType = socketIO.Socket;
 export class SocketIOManager extends WebSocketManager<socketIO.Socket> {
@@ -18,31 +19,8 @@ export class SocketIOManager extends WebSocketManager<socketIO.Socket> {
 
 export const createServer = (env: RouteInitEnvironment) => {
     
-    const options = env.config;
-
-    const corsOptions = {
-        origin: options.allowOrigin === '*' ? true : options.allowOrigin.split(/,\s*/),
-        methods: 'GET,PUT,POST,DELETE,OPTIONS',
-        allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context'
-    };
-
-    // When updating socket.io to 3+, use this for cors instead:
-    // const cors = require('cors');
-    // env.app.use(cors(corsOptions));
-
-    // With socket.io 2.x:
-    const corsHandler = (req: IncomingMessage, res: ServerResponse) => {
-        res.writeHead(200, {
-            'Access-Control-Allow-Origin': options.allowOrigin !== '*' ? options.allowOrigin : (req.headers.origin || '*'),
-            'Access-Control-Allow-Methods': corsOptions.methods,
-            'Access-Control-Allow-Headers': corsOptions.allowedHeaders,
-            'Access-Control-Expose-Headers': 'Date, AceBase-Context'  // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
-        });
-        res.end();
-    };
-    env.app.use(corsHandler);
     
-    // TODO: determine max socket payload using options.maxPayloadSize which is now only used for json POST data
+    // TODO: determine max socket payload using env.config.maxPayloadSize which is now only used for json POST data
     // const maxPayloadBytes = ((payloadStr) => {
     //     const match = payloadStr.match(/^([0-9]+)(?:mb|kb|b)$/i);
     //     if (!match) { return 10e7; } // Socket.IO 2.x default (100MB), 3.x default is 1MB (1e6)
@@ -52,9 +30,9 @@ export const createServer = (env: RouteInitEnvironment) => {
     //         case 'kb': return nr * 1e3;
     //         case 'b': return nr;
     //     }
-    // }, options.maxPayloadSize);
+    // }, env.config.maxPayloadSize);
     const maxPayloadBytes = 10e7; // Socket is closed if sent message exceeds this. Socket.io 2.x default is 10e7 (100MB)
-        
+
     const server = socketIO(env.server, {
         // See https://socket.io/docs/v2/server-initialization/ and https://socket.io/docs/v3/server-initialization/
         pingInterval: 5000,     // socket.io 2.x default is 25000
@@ -62,10 +40,14 @@ export const createServer = (env: RouteInitEnvironment) => {
         maxHttpBufferSize: maxPayloadBytes,
 
         // socket.io 2.x:
-        handlePreflightRequest: corsHandler
+        handlePreflightRequest: (req, res) => {
+            const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
+            res.writeHead(200, headers);
+            res.end();
+        }
 
-        // socket.io 3+:
-        // cors: corsOptions
+        // socket.io 3+ uses cors package:
+        // cors: getCorsOptions(env.config.allowOrigin)
     });
 
     // Setup event emitter for communication with consuming server
@@ -84,7 +66,7 @@ export const createServer = (env: RouteInitEnvironment) => {
         socket.on('signin', accessToken => manager.emit('signin', { socket, socket_id: socket.id, data: { accessToken } }));
         socket.on('signout', data => manager.emit('signout', { socket, socket_id: socket.id, data }));
         socket.on('oauth2-signin', data => {
-            data.server = { protocol, host, port };
+            data.server = { protocol, host, port }; // Add server info - event handler needs that to contruct callback url for OAuth2 provider
             manager.emit('oauth2-signin', { socket, socket_id: socket.id, data });
         });
         socket.on('subscribe', data => manager.emit('subscribe', { socket, socket_id: socket.id, data }));

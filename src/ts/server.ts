@@ -12,12 +12,14 @@ import { IOAuth2Provider } from './oauth-providers/oauth-provider';
 import { PathBasedRules } from './rules';
 import { DbUserAccountDetails } from './routes/schema/user';
 import { Api } from 'acebase-core/src/api';
+import addCorsMiddleware from './routes/middleware/cors';
 import addAuthenticionRoutes from './routes/auth';
 import setupAuthentication from './auth';
 import addDataRoutes from './routes/data';
 import addDocsRoute from './routes/docs';
 import addWebManagerRoutes from './routes/webmanager';
 import addMetadataRoutes from './routes/meta';
+import add404Middleware from './routes/middleware/404';
 
 type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: 'data'|'transaction'|'auth'|'log' };
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -146,6 +148,9 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.verifyEmailAddress = verifyEmailAddress;
         }
 
+        // Add CORS middleware
+        addCorsMiddleware(routeEnv);
+
         // Add metadata endpoints
         addMetadataRoutes(routeEnv);
 
@@ -156,7 +161,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         addWebManagerRoutes(routeEnv);
 
         // If environment is development, add API docs
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV?.trim?.() === 'development') {
             this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
             addDocsRoute(app);
         }
@@ -168,6 +173,9 @@ export class AceBaseServer extends SimpleEventEmitter {
         
         // Create websocket server
         addWebsocketServer(routeEnv);
+
+        // Last but not least, add 404 handler
+        add404Middleware(routeEnv);
 
         // Start listening
         server.listen(config.port, config.host, () => {
