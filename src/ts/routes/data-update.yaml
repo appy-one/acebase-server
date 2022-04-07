@@ -1,0 +1,90 @@
+/data/{dbname}/{path}:
+  post:
+    tags:
+      - data
+    summary: Update the value of a path
+    description: Updates the stored value of a path in the database. If the value is an object, only the given properties are overwritten
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: path
+        description: database path
+        required: true
+        schema:
+          type: string
+          example: collection/child/property
+      - name: AceBase-Context
+        in: header
+        description: Contextual info about the database operation. This info is included in event notifications sent to clients watching data at this or child paths
+        schema:
+          type: object
+          otherProperties: true
+          example: {}
+    requestBody:
+      description: serialized value to store in the database
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              val:
+                oneOf:
+                  - type: string
+                  - type: number
+                  - type: integer
+                  - type: boolean
+                  - type: object
+                  - type: array
+                description: Any value (serialized for transport)
+              map:
+                oneOf:
+                  - type: string
+                  - type: object
+                description: If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"`), or an object with deep property mappings for an object value in `val`
+            example:
+              val: { accessed: '2022-04-07T10:44:53Z' }
+              map: { 'accessed': 'date' }
+    responses:
+      200:
+        description: returns whether the database operation succeeded
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to write to the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      422:
+        description: Returns a "422" if schema validation for the sent value failed.
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  value: schema_validation_failed
+                message:
+                  type: string
+              example:
+                code: schema_validation_failed
+                message: Property at path "path/property" is of the wrong type
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

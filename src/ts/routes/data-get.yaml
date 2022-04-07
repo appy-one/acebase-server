@@ -21,7 +21,7 @@
           example: collection/child/property
     responses:
       200:
-        description: returns whether the target path exists in the database
+        description: returns the serialized value of the target path, and whether it exists in the database
         content:
           'application/json':
             schema:
@@ -38,14 +38,18 @@
                     - type: boolean
                     - type: object
                     - type: array
-                  description: Any value (possibly serialized for transport)
+                  description: Any value (serialized for transport)
                   example: { name: 'Ewout', stats: { points: 238421, lastSeen: '2022-04-07T10:44:53Z' } }
                 map:
                   oneOf:
                     - type: string
+                      example: 'date'
                     - type: object
-                  description: If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"`), or an object with deep property mappings for an object value in `val`
-                  example: { 'stats/lastSeen': 'date' }
+                      example: { 'stats/lastSeen': 'date' }
+                  description: If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"` or `"binary"`), or an object with deep property mappings for an object value in `val`
+              example:
+                val: '2022-04-07T16:36:21Z'
+                map: 'date'
       403:
         description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
         content:
