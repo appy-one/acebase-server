@@ -1,0 +1,23 @@
+/ping/{dbname}:
+  get:
+    tags:
+    - metadata
+    summary: Ping the server
+    description: Ping endpoint to test connectivity with the server. Returns `"pong"`
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: Returns the string `"pong"`
+        content:
+          'text/plain':
+            schema:
+              type: string
+              value: pong
+              example: pong

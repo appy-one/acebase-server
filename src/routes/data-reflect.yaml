@@ -1,0 +1,124 @@
+/reflect/{dbname}/{path}:
+  get:
+    tags:
+      - data
+    summary: Reflection
+    description: Gets information about a node and/or its children without loading any values. When signed in as the admin user, it is possible to include security info (read/write access rights) for an impersonated user
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: path
+        description: database path
+        required: true
+        schema:
+          type: string
+          example: collection/child/property
+      - name: type
+        in: query
+        description: reflection type
+        required: true
+        schema:
+          type: string
+          enum: 
+          - info
+          - children
+        example: info
+      - name: include_child_count
+        in: query
+        required: false
+        description: if type is 'info', whether to include the child count
+        schema:
+          type: boolean
+          example: false
+      - name: child_limit
+        in: query
+        required: false
+        description: (for paging) if type is 'info', the max number of children to reflect. To skip previously acquired children, use in combination with `skip` or `from`
+        schema:
+          type: integer
+          example: 10
+      - name: child_skip
+        in: query
+        required: false
+        description: (for paging) if type is 'info', the number of children to skip
+        schema:
+          type: integer
+          example: 0
+      - name: child_from
+        in: query
+        required: false
+        description: (for paging) if type is 'info', the last child in previous reflection results to start enumerating
+        schema:
+          oneOf:
+          - type: string
+            description: key of the last enumerated child
+          - type: number
+            description: index of the last enumerated child
+      - name: limit
+        in: query
+        required: false
+        description: (for paging) if type is 'children', the max number of children to reflect. To skip previously acquired children, use in combination with `skip` or `from`
+        schema:
+          type: integer
+          example: 10
+      - name: skip
+        in: query
+        required: false
+        description: (for paging) if type is 'children', the number of children to skip
+        schema:
+          type: integer
+          example: 0
+      - name: from
+        in: query
+        required: false
+        description: (for paging) if type is 'children', the last child in previous reflection results to start enumerating
+        schema:
+          oneOf:
+          - type: string
+            description: key of the last enumerated child
+          - type: number
+            description: index of the last enumerated child
+      - name: impersonate
+        in: query
+        description: uid of the user to add access rights information for
+        required: false
+        schema:
+          type: string
+    responses:
+      200:
+        description: Returns requested reflection info for the target path
+        content:
+          'application/json':
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ReflectionNodeInfo'
+                  description: If reflection type is 'info'
+                - type: object
+                  description: If reflection type is 'children'
+                  properties:
+                    more:
+                      type: boolean
+                      description: If there are more children
+                      example: true
+                    list:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ReflectionNodeInfo'
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

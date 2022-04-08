@@ -1,0 +1,41 @@
+/info/{dbname}:
+  get:
+    tags:
+    - metadata
+    summary: Get server info
+    description: Returns info about the server, such as version, current date/time and process id. When signed in as the admin user, info about the platform, cpu, memory, and network will also be included
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: Returns server information
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                version:
+                  type: string
+                  example: 1.10.0
+                  summary: server version number
+                time:
+                  type: number
+                  example: 868
+                  summary: unix timestamp (seconds since Jan 1, 1970)
+                process:
+                  type: integer
+                  example: 465
+                  summary: process number
+      500:
+        description: Returns the server error
+        content:
+          'text/plain':
+            schema:
+              type: string
+              example: Some error message

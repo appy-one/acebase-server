@@ -1,0 +1,41 @@
+/stats/{dbname}:
+  get:
+    tags:
+    - metadata
+    summary: Get basic database statistics
+    description: Returns basic statistics about the database
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: Returns basic database statistics
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                writes:
+                  type: integer
+                  example: 154
+                reads:
+                  type: integer
+                  example: 868
+                bytesRead:
+                  type: integer
+                  example: 78480
+                bytesWritten:
+                  type: integer
+                  example: 12560
+      500:
+        description: Returns the server error
+        content:
+          'text/plain':
+            schema:
+              type: string
+              example: Some error message
