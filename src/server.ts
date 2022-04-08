@@ -20,6 +20,7 @@ import addDocsRoute from './routes/docs';
 import addWebManagerRoutes from './routes/webmanager';
 import addMetadataRoutes from './routes/meta';
 import add404Middleware from './middleware/404';
+import addSwaggerMiddleware from './middleware/swagger';
 
 type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: 'data'|'transaction'|'auth'|'log' };
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -179,17 +180,18 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Add metadata endpoints
         addMetadataRoutes(routeEnv);
 
+        // If environment is development, add API docs
+        if (process.env.NODE_ENV?.trim?.() === 'development') {
+            this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
+            addDocsRoute(routeEnv);
+            addSwaggerMiddleware(routeEnv);
+        }
+
         // Add data endpoints
         addDataRoutes(routeEnv);
 
         // Add webmanager endpoints
         addWebManagerRoutes(routeEnv);
-
-        // If environment is development, add API docs
-        if (process.env.NODE_ENV?.trim?.() === 'development') {
-            this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-            addDocsRoute(app);
-        }
 
         // Allow adding custom routes
         this.extend = (method: 'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => any) => {
@@ -248,13 +250,17 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.debug.log(`Server has ${connections} connections`);
 
             await new Promise((resolve) => {
-                const interval = setInterval(async () => {
-                    const connections = await getConnectionsCount();
-                    this.debug.log(`Server still has ${connections} connections`);
-                }, 5000);
-                interval.unref();
+                // const interval = setInterval(async () => {
+                //     const connections = await getConnectionsCount();
+                //     this.debug.log(`Server still has ${connections} connections`);
+                // }, 5000);
+                // interval.unref();
 
                 server.close(resolve);
+
+                // If for some reason connection aren't broken in time - do proceed with shutdown sequence
+                const timeout = setTimeout(resolve, 5000);
+                timeout.unref();
 
                 console.log(`Closing ${clients.size} websocket connections`);
                 clients.forEach((client, id) => {
