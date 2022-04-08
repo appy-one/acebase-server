@@ -88,6 +88,45 @@ export const addRoute = (app: Express) => {
                             code: { type: 'string', value: 'unknown', description: 'The string `"unknown"`' },
                             message: { type: 'string', description: 'The server error message' }
                         }
+                    },
+                    SchemaValidationError: {
+                        type: 'object',
+                        properties: {
+                            code: { type: 'string', value: 'schema_validation_failed', description: 'The string `"schema_validation_failed"`' },
+                            message: { type: 'string', description: 'The server error message', example: 'Property at path "path/property" is of the wrong type' }
+                        }
+                    },
+                    SerializedValue: {
+                        type: 'object',
+                        properties: {
+                            val: {
+                                description: 'Any value (serialized for transport)',
+                                oneOf: [
+                                    { type: 'string' },
+                                    { type: 'number' },
+                                    { type: 'integer' },
+                                    { type: 'boolean' },
+                                    { type: 'object' },
+                                    { type: 'array' }
+                                ],
+                                example: '2022-04-07T16:36:21Z',
+                                required: true
+                            },
+                            map: {
+                                description: 'If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"` or `"binary"`), or an object with deep property mappings for an object value in `val`',
+                                oneOf: [
+                                    { type: 'string', example: 'date' },
+                                    { type: 'object', example: { 'stats/created': 'date' } }
+                                ],
+                                example: 'date',
+                                required: false
+                            }
+                        },
+                        required: ['val'],
+                        example: {
+                            val: { name: 'My todo list', stats: { size: 216, created: '2022-04-07T15:11:42Z', modified: '2022-03-08T12:24:05Z' } },
+                            map: { 'stats/created': 'date', 'stats/modified': 'date' } 
+                        }
                     }
                 }
             },

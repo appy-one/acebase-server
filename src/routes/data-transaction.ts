@@ -1,25 +1,28 @@
+import { SchemaValidationError } from 'acebase';
 import { ID, Transport } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
+import { sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
+export const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
+
+export type ApiTransactionDetails = {
+    id: string;
+    value: {
+        map?: any;
+        val: any;
+    };
+};
 export type StartRequestQuery = null;
 export type StartRequestBody = {
     path: string;
 };
-export type StartResponseBody = { id: string; value: { map: any; val: any } }   // 200
-    | { code: string, message: string }                                         // 403 
-    | { code: 'unexpected', message: string };                                  // 500
+export type StartResponseBody = ApiTransactionDetails   // 200
+    | { code: string, message: string }              // 403 
+    | { code: 'unexpected', message: string };       // 500
 export type StartRequest = RouteRequest<any, StartResponseBody, StartRequestBody, StartRequestQuery>;
 
 export type FinishRequestQuery = null;
-export type FinishRequestBody = {
-    path: string;
-    id: string;
-    value: {
-        map: any;
-        val: any;
-    }
-};
+export type FinishRequestBody = ApiTransactionDetails & { path: string };
 export type FinishResponseBody = 'done'     // 200
     | 'transaction not found'               // 410
     | { code: string, message: string }     // 403
@@ -27,10 +30,11 @@ export type FinishResponseBody = 'done'     // 200
 
 export type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
 
+type Transaction = { id: string; started: number; path: string; context: any; finish?: (val?: any) => Promise<any>; timeout: NodeJS.Timeout };
 
 export const addRoutes = (env: RouteInitEnvironment) => {
 
-    const _transactions = new Map<string, { id: string; started: number; path: string; context: any; finish?: (val: any) => Promise<any> }>();
+    const _transactions = new Map<string, Transaction>();
 
     // Start transaction endpoint:
     env.app.post(`/transaction/${env.db.name}/start`, (req: StartRequest, res) => {
@@ -41,17 +45,22 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         }
 
         // Start transaction
-        const tx = {
+        const tx: Transaction = {
             id: ID.generate(),
             started: Date.now(),
             path: data.path,
             context: req.context,
-            finish: undefined
+            finish: undefined,
+            timeout: setTimeout(() => {
+                _transactions.delete(tx.id);
+                tx.finish();  // Finish without value cancels the transaction
+            }, TRANSACTION_TIMEOUT_MS) 
         };
         _transactions.set(tx.id, tx);
 
         try {
             env.debug.verbose(`Transaction ${tx.id} starting...`);
+
             // const ref = db.ref(tx.path);
             const donePromise = env.db.api.transaction(tx.path, val => {
                 env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
@@ -59,6 +68,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
                 const promise = new Promise((resolve) => {
                     tx.finish = (val: any) => {
                         env.debug.verbose(`Transaction ${tx.id} finishing with value: `, val);
+                        _transactions.delete(tx.id);
                         resolve(val);
                         return donePromise;
                     };
@@ -68,6 +78,8 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             }, { context: tx.context });
         }
         catch (err) {
+            env.debug.error(`failed to start transaction on "${tx.path}":`, err);
+            env.logRef?.push({ action: 'tx_start', success: false, code: err.code ?? 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
             sendUnexpectedError(res, err);
         }
     });
@@ -77,14 +89,15 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         const data = req.body;
 
         const tx = _transactions.get(data.id);
-        if (!tx) {
+        if (!tx || tx.path !== data.path) {
             res.statusCode = 410; // Gone
             res.send(`transaction not found`);
             return;
         }
-        _transactions.delete(data.id);
+        clearTimeout(tx.timeout);
+        _transactions.delete(tx.id);
 
-        const access = env.rules.userHasAccess(req.user, data.path, true);
+        const access = env.rules.userHasAccess(req.user, tx.path, true);
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -92,12 +105,26 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         // Finish transaction
         try {
             const newValue = Transport.deserialize(data.value);
+
+            if (tx.path === '' && req.user?.uid !== 'admin' && newValue !== null && typeof newValue === 'object') {
+                // Non-admin user: remove any private properties from the update object
+                Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
+            }
+    
             await tx.finish(newValue);
             res.send('done');
         }
         catch (err) {
-            res.statusCode = 500;
-            res.send(err.message);
+            tx.finish(); // Finish without value cancels the transaction
+            if (err instanceof SchemaValidationError) {
+                env.logRef?.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
+                res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else {
+                env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);
+                env.logRef?.push({ action: 'tx_finish', success: false, code: 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
+                sendError(res, err);
+            }
         }
     });    
 

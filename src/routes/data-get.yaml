@@ -21,35 +21,25 @@
           example: collection/child/property
     responses:
       200:
-        description: returns the serialized value of the target path, and whether it exists in the database
+        description: Returns the serialized value of the target path, and whether it exists in the database
         content:
           'application/json':
             schema:
-              type: object
-              properties:
-                exists:
-                  type: boolean
-                  example: true
-                val:
-                  oneOf:
-                    - type: string
-                    - type: number
-                    - type: integer
-                    - type: boolean
-                    - type: object
-                    - type: array
-                  description: Any value (serialized for transport)
-                  example: { name: 'Ewout', stats: { points: 238421, lastSeen: '2022-04-07T10:44:53Z' } }
-                map:
-                  oneOf:
-                    - type: string
-                      example: 'date'
-                    - type: object
-                      example: { 'stats/lastSeen': 'date' }
-                  description: If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"` or `"binary"`), or an object with deep property mappings for an object value in `val`
+              required:
+              - val
+              - exists
+              allOf:
+              - type: object
+                properties:
+                  exists:
+                    type: boolean
+                    description: indicates if the path exists (when `false`, `val` property will be `null`)
+                    example: true
+              - $ref: '#/components/schemas/SerializedValue'
               example:
-                val: '2022-04-07T16:36:21Z'
-                map: 'date'
+                exists: true
+                val: { name: 'My todo list', stats: { size: 216, created: '2022-04-07T15:11:42Z', modified: '2022-03-08T12:24:05Z' } }
+                map: { 'stats/created': 'date', 'stats/modified': 'date' } 
       403:
         description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
         content:

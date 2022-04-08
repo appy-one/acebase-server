@@ -31,25 +31,7 @@
       content:
         'application/json':
           schema:
-            type: object
-            properties:
-              val:
-                oneOf:
-                  - type: string
-                  - type: number
-                  - type: integer
-                  - type: boolean
-                  - type: object
-                  - type: array
-                description: Any value (serialized for transport)
-              map:
-                oneOf:
-                  - type: string
-                  - type: object
-                description: If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"`), or an object with deep property mappings for an object value in `val`
-            example:
-              val: { accessed: '2022-04-07T10:44:53Z' }
-              map: { 'accessed': 'date' }
+            $ref: '#/components/schemas/SerializedValue'
     responses:
       200:
         description: returns whether the database operation succeeded
@@ -62,26 +44,17 @@
                   type: boolean
                   example: true
       403:
-        description: Returns a "403 Forbidden" if the signed in user is not allowed to write to the target path
+        description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
         content:
           'application/json':
             schema:
               $ref: '#/components/schemas/Error'
       422:
-        description: Returns a "422" if schema validation for the sent value failed.
+        description: Returns "422 Unprocessable Entity" if schema validation for the sent value failed.
         content:
           'application/json':
             schema:
-              type: object
-              properties:
-                code:
-                  type: string
-                  value: schema_validation_failed
-                message:
-                  type: string
-              example:
-                code: schema_validation_failed
-                message: Property at path "path/property" is of the wrong type
+              $ref: '#/components/schemas/SchemaValidationError'
       500:
         description: An unexpected error occurred
         content:

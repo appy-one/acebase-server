@@ -25,7 +25,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const data = req.body;
             const val = Transport.deserialize(data);
 
-            if (path === '' && req.user?.uid !== 'admin' && typeof val === 'object') {
+            if (path === '' && req.user?.uid !== 'admin' && val !== null && typeof val === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(val).filter(key => key.startsWith('__')).forEach(key => delete val[key]);
             }
@@ -44,12 +44,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
         catch(err) {
             if (err instanceof SchemaValidationError) {
-                env.logRef?.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason });
+                env.logRef?.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
             else {
                 env.debug.error(`failed to set "${path}":`, err);
-                env.logRef?.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message });
+                env.logRef?.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
                 sendError(res, err);
             }
         };

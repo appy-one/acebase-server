@@ -229,6 +229,8 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         acknowlegdeRequest(event.socket, event.data.req_id);
     });
 
+    const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
+
     serverManager.on('transaction-start', event => {
         // Start transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-start');
@@ -241,7 +243,12 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             started: Date.now(),
             path: data.path,
             context: data.context,
-            finish: undefined
+            finish: undefined,
+            timeout: setTimeout(() => {
+                delete client.transactions[tx.id];
+                tx.finish(); // Finish without value cancels the transaction
+                serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
+            }, TRANSACTION_TIMEOUT_MS)
         };
 
         if (!env.rules.userHasAccess(client.user, data.path, true)) {
@@ -254,9 +261,10 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
 
         // Start transaction
         env.debug.verbose(`Transaction ${tx.id} starting...`);
-        // const ref = db.ref(tx.path);
+
         const donePromise = env.db.api.transaction(tx.path, val => {
             env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
+
             const currentValue = Transport.serialize(val);
             const promise = new Promise((resolve) => {
                 tx.finish = (val?: any) => {
@@ -265,36 +273,41 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
                     return donePromise;
                 };
             });
+
             serverManager.send(event.socket, 'tx_started', { id: tx.id, value: currentValue });
             return promise;
         }, { context: tx.context });
     });
 
-    serverManager.on('transaction-finish', event => {
+    serverManager.on('transaction-finish', async event => {
         // Finish transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-finish');
         if (!client) { return; }
 
         const data = event.data;
         const tx = client.transactions[data.id];
-        delete client.transactions[data.id];
 
         try {
-            if (!tx) {
+            if (!tx || data.path !== tx.path) {
                 throw new Error('transaction_not_found'); 
             }
+            
+            clearTimeout(tx.timeout);
+            delete client.transactions[data.id];
+
             if (!env.rules.userHasAccess(client.user, data.path, true)) {
                 throw new Error('access_denied');
             }
+
             const newValue = Transport.deserialize(data.value);
-            tx.finish(newValue)
-            .then(res => {
+            try {
+                await tx.finish(newValue);
                 env.debug.verbose(`Transaction ${tx.id} finished`);
                 serverManager.send(event.socket, 'tx_completed', { id: tx.id });
-            })
-            .catch(err => {
+            }
+            catch (err) {
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message });
-            });
+            }
         }
         catch (err) {
             serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message, data });

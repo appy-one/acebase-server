@@ -26,7 +26,7 @@ export type RequestBody = {
     };
 } & (
     // Allow both spellings of display name. display_name is used in the db, displayName in public user detail server responses.
-    // displayName is prefered and documented in the OpenAPI docs
+    // displayName is preferred and documented in the OpenAPI docs
     { displayName: string; } | { display_name: string; }
 );
 
