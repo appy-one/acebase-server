@@ -1,13 +1,14 @@
-import { Express } from 'express';
 import path = require('path');
 import * as swaggerJsdoc from 'swagger-jsdoc';
 import * as swaggerUi from 'swagger-ui-express';
+import { RouteInitEnvironment } from '../shared/env';
 // import config from '../config';
 
 const yamlPath = path.resolve(__dirname, '../../src/routes/*.yaml'); // (coming from dist/routes/docs.js)
 // console.log(`Using path ${yamlPath} for Swagger documentation`);
 
-export const addRoute = (app: Express) => {
+export const addRoute = (env: RouteInitEnvironment) => {
+    
     // Generate docs from all yaml files
     const options:swaggerJsdoc.Options = {
         definition: {
@@ -31,6 +32,12 @@ export const addRoute = (app: Express) => {
             }, {
                 name: 'data',
                 description: 'Data manipulation and query endpoints'
+            }, {
+                name: 'indexes',
+                description: 'Index management endpoints'
+            }, {
+                name: 'metadata',
+                description: 'Metadata endpoints'
             }],
             components: {
                 securitySchemes: {
@@ -127,6 +134,71 @@ export const addRoute = (app: Express) => {
                             val: { name: 'My todo list', stats: { size: 216, created: '2022-04-07T15:11:42Z', modified: '2022-03-08T12:24:05Z' } },
                             map: { 'stats/created': 'date', 'stats/modified': 'date' } 
                         }
+                    },
+                    ReflectionNodeInfo: {
+                        type: 'object',
+                        required: ['key', 'exists', 'type'],
+                        properties: {
+                            key: {
+                                description: 'Key or index of the node',
+                                oneOf: [{
+                                    type: 'string',
+                                    description: 'key of the node',
+                                    example: 'jld2cjxh0000qzrmn831i7rn'
+                                }, {
+                                    type: 'number',
+                                    description: 'index of the node (parent node is an array)',
+                                    example: 12
+                                }]
+                            },
+                            exists: {
+                                type: 'boolean',
+                                description: 'whether the target path exists',
+                                example: true
+                            },
+                            type: {
+                                type: 'string',
+                                enum: ['unknown','object','array','number','boolean','string','date','binary','reference'],
+                                description: 'data type of the target path'
+                            },
+                            value: {
+                                oneOf: [ { type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'array' }, { type: 'object' } ],
+                                description: `target node's stored value if it is a boolean, number or date, a small string or binary value (less than configured max inline value size), or an empty object or array`
+                            },
+                            address: {
+                                type: 'object',
+                                description: 'The physical location of the node in the database',
+                                required: ['pageNr', 'recordNr'],
+                                properties: {
+                                    pageNr: { type: 'integer' },
+                                    recordNr: { type: 'integer' }
+                                }
+                            },
+                            children: {
+                                type: 'object',
+                                description: `Information about the node's children (if requested)`,
+                                required: ['more', 'list'],
+                                properties: {
+                                    count: {
+                                        type: 'integer',
+                                        description: 'The total number of children',
+                                        example: 2865
+                                    },
+                                    more: {
+                                        type: 'boolean',
+                                        description: 'If there are more children than the ones in list',
+                                        example: true
+                                    },
+                                    list: {
+                                        type: 'array',
+                                        description: 'Reflection info about the requested children',
+                                        items: {
+                                            $ref: '#/components/schemas/ReflectionNodeInfo'
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -139,7 +211,7 @@ export const addRoute = (app: Express) => {
     };
 
     const swaggerDocs = swaggerJsdoc(options);
-    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+    env.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 };
 
 export default addRoute;
