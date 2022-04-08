@@ -1,0 +1,59 @@
+/transaction/{dbname}/start:
+  post:
+    tags:
+      - data
+    summary: Starts a transaction on a path
+    description: Starts a transaction on a path in the database by returning its current value, locking it until the _finish_ endpoint is called. NOTE this API endpoint is also available through the websocket connection, which is the preferred method. This API endpoint is provided for clients not supporting websockets, and those that don't have a websocket connection by choice or because of network limitations.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: AceBase-Context
+        in: header
+        description: Contextual info about the database operation. This info is included in event notifications sent to clients watching data at this or child paths
+        schema:
+          type: object
+          otherProperties: true
+          example: {}
+    requestBody:
+      description: path to start the transaction on
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              path:
+                type: string
+                description: database path
+            example:
+              path: collection/child/property
+    responses:
+      200:
+        description: returns an object with the transaction id, and the current (serialized) value of the given path
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: transaction id
+                  example: jld2cjxh0000qzrmn831i7rn
+                value:
+                  $ref: '#/components/schemas/SerializedValue'
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to write to the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

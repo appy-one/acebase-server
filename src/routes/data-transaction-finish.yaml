@@ -1,0 +1,67 @@
+/transaction/{dbname}/finish:
+  post:
+    tags:
+      - data
+    summary: Finishes a transaction on a path
+    description: Finishes a transaction on a path in the database by overwriting it with a new value. NOTE this API endpoint is also available through the websocket connection, which is the preferred method. This API endpoint is provided for clients not supporting websockets, and those that don't have a websocket connection by choice or because of network limitations.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: details
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                description: transaction id returned by the _start_ endpoint
+                example: jld2cjxh0000qzrmn831i7rn
+              path:
+                type: string
+                description: the same path used in the _start_ endpoint call
+                example: collection/child/property
+              value:
+                $ref: '#/components/schemas/SerializedValue'
+    responses:
+      200:
+        description: If successful returns the string `"done"`
+        content:
+          'text/plain':
+            schema:
+              type: string
+              value: done
+              example: done
+              description: the string `"done"`
+      403:
+        description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      410:
+        description: Returns "410 Gone" if the specified transaction was not found, timed out, or the path does not match with the one provided in the _start_ endpoint.
+        content:
+          'text/plain':
+            schema:
+              type: string
+              value: transaction not found
+              example: transaction not found
+      422:
+        description: Returns "422 Unprocessable Entity" if schema validation for the sent value failed.
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/SchemaValidationError'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'
