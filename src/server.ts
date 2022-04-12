@@ -1,4 +1,3 @@
-// import { EventEmitter } from 'events';
 import { ColorStyle, DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
 import { createApp } from './shared/http';
@@ -12,6 +11,7 @@ import { IOAuth2Provider } from './oauth-providers/oauth-provider';
 import { PathBasedRules } from './rules';
 import { DbUserAccountDetails } from './schema/user';
 import { Api } from 'acebase-core/src/api';
+import addConnectionMiddleware from './middleware/connection';
 import addCorsMiddleware from './middleware/cors';
 import addAuthenticionRoutes from './routes/auth';
 import setupAuthentication from './auth';
@@ -164,6 +164,9 @@ export class AceBaseServer extends SimpleEventEmitter {
             rules
         };
 
+        // Add connection middleware
+        const killConnections = addConnectionMiddleware(routeEnv);
+
         if (config.auth.enabled) {
             // Setup auth database
             await setupAuthentication(routeEnv);
@@ -249,17 +252,25 @@ export class AceBaseServer extends SimpleEventEmitter {
             const connections = await getConnectionsCount();
             this.debug.log(`Server has ${connections} connections`);
 
-            await new Promise((resolve) => {
+            await new Promise<void>((resolve) => {
                 // const interval = setInterval(async () => {
                 //     const connections = await getConnectionsCount();
                 //     this.debug.log(`Server still has ${connections} connections`);
                 // }, 5000);
                 // interval.unref();
 
-                server.close(resolve);
+                server.close(err => {
+                    if (err) { console.error(`server.close() error: ${err.message}`); }
+                    else { console.log(`server.close() success`); }
+                    resolve();
+                });
 
                 // If for some reason connection aren't broken in time - do proceed with shutdown sequence
-                const timeout = setTimeout(resolve, 5000);
+                const timeout = setTimeout(() => {
+                    console.warn(`server.close() timed out, there are still open connections`);
+                    killConnections();
+                    // resolve();
+                }, 5000);
                 timeout.unref();
 
                 console.log(`Closing ${clients.size} websocket connections`);
