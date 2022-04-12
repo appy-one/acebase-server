@@ -1,0 +1,105 @@
+/index/{dbname}/create:
+  post:
+    tags:
+    - data
+    - indexes
+    summary: Creates an index
+    description: Creates a new index in the database if it does not exist already. (admin only)
+    parameters:
+    - name: dbname
+      in: path
+      description: name of the database
+      required: true
+      schema:
+        type: string
+        example: mydb
+    requestBody:
+      description: request
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              path:
+                type: string
+                description: path of the collection to index, can contain wildcards and variables such as * and $name
+                example: books
+                examples:
+                  simple:
+                    summary: Simple path
+                    value: books
+                  wildcard:
+                    summary: path with a wildcard to index scattered data
+                    value: users/*/reservations
+                  variable:
+                    summary: path with a variable (same as *) to index scattered data
+                    value: hotels/$id/reviews
+                required: true
+              key:
+                type: string
+                description: key (property) to index for each item in the collection, can contain a nested target path
+                example: title
+                examples:
+                - title
+                - text
+                - content/title
+                - content/stats/size
+                required: true
+              options:
+                type: object
+                description: Additional options
+                properties:
+                  'type':
+                    type: string
+                    enum:
+                    - normal
+                    - array
+                    - fulltext
+                    - geo
+                    description: type of index to create
+                  include:
+                    type: array
+                    items: 
+                      type: string
+                    example:
+                    - year
+                    - rating
+                    description: Additional keys to include in the index
+                  rebuild:
+                    type: boolean
+                    example: false
+                    description: Whether to reuild the index if it exists already
+                  textLocale:
+                    type: string
+                    example: en-us
+                    description: If the indexed values are strings, which default locale to use
+                  config:
+                    type: object
+                    description: additional configuration for special indexes, see documentation
+                    properties:
+                      see_docs:
+                        description: See documentation for config options. Note that you can't create fulltext indexes with custom callack functions through the API; those need to be created in your code at the server.
+                        example: (See documentation for config options, many require server-side execution)
+    responses:
+      200:
+        description: returned when the index was created successfully
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+      403:
+        description: Returns "403 Forbidden" if the signed in user is not admin
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

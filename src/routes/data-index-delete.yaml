@@ -1,0 +1,51 @@
+/index/{dbname}/delete:
+  post:
+    tags:
+    - data
+    - indexes
+    summary: Removes an index
+    description: Removes an index from the database
+    parameters:
+    - name: dbname
+      in: path
+      description: name of the database
+      required: true
+      schema:
+        type: string
+        example: mydb
+    requestBody:
+      description: request
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              fileName:
+                type: string
+                description: The name of the target index file to delete
+            required:
+            - action
+            - filePath
+    responses:
+      200:
+        description: Returned when the index is deleted successfully
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+      403:
+        description: Returns "403 Forbidden" if the signed in user is not admin
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

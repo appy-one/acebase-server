@@ -1,0 +1,80 @@
+/index/{dbname}:
+  get:
+    tags:
+      - data
+      - indexes
+    summary: Get indexes in the database
+    description: Gets a list of indexes created in the database (admin only)
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: Returns an array of indexes in the database
+        content:
+          'application/json':
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    description: path of the indexed collection 
+                    example: books
+                  key:
+                    type: string
+                    description: key (property) of the indexed items in the collection
+                    example: title
+                  caseSensitive:
+                    type: boolean
+                    description: Whether the values are indexed with case sensitivity or not (applies to string values only)
+                    example: false
+                  textLocale:
+                    type: string
+                    description: Locale of the indexed string values
+                    example: en-us
+                  includeKeys:
+                    type: array
+                    description: keys (properties) whose values are included in the index
+                    items:
+                      type: string
+                    example:
+                    - rating
+                    - year
+                  indexMetadataKeys:
+                    type: array
+                    description: Any additional info that is being stored with the items. Eg for fulltext indexes, it contains the word count and location
+                    items:
+                      type: string
+                  type:
+                    type: string
+                    description: Type of index
+                    enum:
+                    - normal
+                    - array
+                    - fulltext
+                    - geo
+                  fileName:
+                    type: string
+                    description: name of the index file on disk
+                  description:
+                    type: string
+                    description: description of the index
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not admin
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

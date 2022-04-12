@@ -11,8 +11,9 @@ import addExportDataRoute from './data-export';
 import addQueryRoute from './data-query';
 
 // Indexes:
-import addListIndexesRoute from './data-indexes-list';
-import addCreateIndexRoute from './data-index';
+import addListIndexesRoute from './data-index-list';
+import addCreateIndexRoute from './data-index-create';
+import addDeleteIndexRoute from './data-index-delete';
 
 // Schemas:
 import addListSchemasRoute from './data-schemas-list';
@@ -55,11 +56,10 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     // Add query endpoint
     addQueryRoute(env);
 
-    // Add get indexes endpoint
-    addListIndexesRoute(env);
-
-    // Add create index endpoint
-    addCreateIndexRoute(env);
+    // Add index endpoints:
+    addListIndexesRoute(env);       // list indexes
+    addCreateIndexRoute(env);       // create index
+    addDeleteIndexRoute(env);       // delete index
 
     // Add list schemas endpoint
     addListSchemasRoute(env);

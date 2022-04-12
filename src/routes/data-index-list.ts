@@ -1,10 +1,20 @@
-import { DataIndex } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendError, sendUnauthorizedError } from '../shared/error';
 
+export interface PublicDataIndex {
+    path: string;
+    key: string;
+    caseSensitive: boolean;
+    textLocale: string;
+    includeKeys: string[];
+    indexMetadataKeys: string[];
+    type: "normal" | "array" | "fulltext" | "geo";
+    fileName: string;
+    description: string;
+};
 export type RequestQuery = null;
 export type RequestBody = null;
-export type ResponseBody = DataIndex[] | { code: string; message: string };
+export type ResponseBody = PublicDataIndex[] | { code: string; message: string };
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
@@ -17,7 +27,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         try {
             const indexes = await env.db.indexes.get();
-            res.contentType('application/json').send(indexes);
+            res.contentType('application/json').send(indexes.map(index => {
+                const { path, key, caseSensitive, textLocale, includeKeys, indexMetadataKeys, type, fileName, description } = index;
+                return { path, key, caseSensitive, textLocale, includeKeys, indexMetadataKeys, type, fileName, description };
+            }));
         }
         catch (err) {
             sendError(res, err);
