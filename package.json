@@ -2,14 +2,25 @@
   "name": "acebase-server",
   "version": "1.9.1",
   "description": "AceBase realtime database server (webserver endpoint to allow remote connections)",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "types": "./dist/types/index.d.ts",
   "private": false,
   "repository": "github:appy-one/acebase-server",
   "scripts": {
-    "start": "node dist/start.js DBNAME=default HOST=localhost PORT=3000",
-    "test": "npm run compile && set NODE_ENV=development && npm run start",
-    "compile": "tsc"
+    "start": "node dist/cjs/start.js DBNAME=default HOST=localhost PORT=3000",
+    "test": "set NODE_ENV=development && npm run start",
+    "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && echo Done!",
+    "build:clean": "rm -fr dist/*",
+    "build:esm": "tsc -p tsconfig.json && npx tsc-esm-fix ---target='dist/esm'",
+    "build:cjs": "tsc -p tsconfig-cjs.json",
+    "build:packages": "bash ./create-package-files"
   },
   "keywords": [
     "database",
@@ -45,8 +56,8 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.15.3",
-    "acebase-core": "^1.13.1",
+    "acebase": "file:../acebase",
+    "acebase-core": "file:../acebase-core",
     "express": "^4.17.1",
     "socket.io": "^2.4.1"
   },
@@ -55,6 +66,7 @@
     "@types/node": "^14.0.14",
     "@types/socket.io": "^2.1.13",
     "swagger-jsdoc": "^6.1.0",
-    "swagger-ui-express": "^4.3.0"
+    "swagger-ui-express": "^4.3.0",
+    "tsc-esm-fix": "^2.12.4"
   }
 }
