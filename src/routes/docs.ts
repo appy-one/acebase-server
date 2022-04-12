@@ -1,10 +1,12 @@
-import path = require('path');
 import * as swaggerJsdoc from 'swagger-jsdoc';
-import * as swaggerUi from 'swagger-ui-express';
+const createSwaggerDocs = (swaggerJsdoc as any).default ?? swaggerJsdoc; // ESM and CJS compatible approach
+import * as _swaggerUi from 'swagger-ui-express';
+const swaggerUi = (_swaggerUi as any).default ?? _swaggerUi; // ESM and CJS compatible approach
 import { RouteInitEnvironment } from '../shared/env';
-// import config from '../config';
+import { packageRootPath } from '../shared/rootpath';
+import { join as joinPaths } from 'path';
 
-const yamlPath = path.resolve(__dirname, '../../src/routes/*.yaml'); // (coming from dist/routes/docs.js)
+const yamlPath = joinPaths(packageRootPath, '/src/routes/*.yaml');
 // console.log(`Using path ${yamlPath} for Swagger documentation`);
 
 export const addRoute = (env: RouteInitEnvironment) => {
@@ -210,7 +212,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         apis: [yamlPath]
     };
 
-    const swaggerDocs = swaggerJsdoc(options);
+    const swaggerDocs = createSwaggerDocs(options);
     env.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 };
 
