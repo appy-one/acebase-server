@@ -1,5 +1,5 @@
 import { AceBaseStorageSettings } from 'acebase';
-import * as fs from 'fs';
+import { readFileSync } from 'fs';
 import { AceBaseServerEmailSettings } from './email';
 
 export type AceBaseServerHttpsSettings = { 
@@ -25,11 +25,11 @@ export class AceBaseServerHttpsConfig {
         this.enabled = typeof settings === "object" && settings.enabled !== false;
         if (!this.enabled) { return; }
         if (settings.keyPath) {
-            this.key = fs.readFileSync(settings.keyPath);
-            this.cert = fs.readFileSync(settings.certPath);
+            this.key = readFileSync(settings.keyPath);
+            this.cert = readFileSync(settings.certPath);
         }
         else if (settings.pfxPath) {
-            this.pfx = fs.readFileSync(settings.pfxPath);
+            this.pfx = readFileSync(settings.pfxPath);
             this.passphrase = settings.passphrase;
         }
     }

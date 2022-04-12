@@ -1,18 +1,21 @@
 import * as socketIO from 'socket.io';
+const createSocketIOServer = (socketIO as any).default ?? socketIO; // ESM and CJS compatible approach
+
+import type { Socket } from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
 import { IncomingMessage } from 'http';
 import { WebSocketManager } from './manager';
 import { getCorsHeaders, getCorsOptions } from '../middleware/cors';
 
-export type SocketType = socketIO.Socket;
-export class SocketIOManager extends WebSocketManager<socketIO.Socket> {
+export type SocketType = Socket;
+export class SocketIOManager extends WebSocketManager<Socket> {
     constructor() {
         super('Socket.IO');
     }
-    disconnect(socket: socketIO.Socket) {
+    disconnect(socket: Socket) {
         socket.disconnect(true);
     }
-    send(socket: socketIO.Socket, event: string, message?: any) {
+    send(socket: Socket, event: string, message?: any) {
         socket.emit(event, message);
     }
 }
@@ -33,7 +36,7 @@ export const createServer = (env: RouteInitEnvironment) => {
     // }, env.config.maxPayloadSize);
     const maxPayloadBytes = 10e7; // Socket is closed if sent message exceeds this. Socket.io 2.x default is 10e7 (100MB)
 
-    const server = socketIO(env.server, {
+    const server = createSocketIOServer(env.server, {
         // See https://socket.io/docs/v2/server-initialization/ and https://socket.io/docs/v3/server-initialization/
         pingInterval: 5000,     // socket.io 2.x default is 25000
         pingTimeout: 5000,      // socket.io 2.x default is 5000, 3.x default = 20000

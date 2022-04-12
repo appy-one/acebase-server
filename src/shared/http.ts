@@ -1,6 +1,7 @@
-export { Request, Response } from 'express';
+import type { Socket } from 'socket.io';
+export type { Express, Request, Response } from 'express';
 import * as express from 'express';
-import { Socket} from 'socket.io';
+const createExpress = (express as any).default ?? express; // ESM and CJS compatible approach
 
 export type HttpApp = express.Express;
 export type HttpSocket = Socket;
@@ -11,7 +12,7 @@ export type HttpSocket = Socket;
  * @returns 
  */
 export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: string }) => {
-    const app = express();
+    const app = createExpress();
 
     // When behind a trusted proxy server, req.ip and req.hostname will be set the right way
     app.set('trust proxy', settings.trustProxy);

@@ -1,4 +1,4 @@
-import * as https from 'https';
+import { request } from 'https';
 export interface SimpleFetchResponse {
     readonly status: number;
     readonly headers: { get(name: string): string }
@@ -15,7 +15,7 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
     return new Promise((resolve, reject) => {
         const method = options?.method || 'GET';
         const headers = options?.headers;
-        const req = https.request(url, { method, headers }, res => {
+        const req = request(url, { method, headers }, res => {
             
             // res.setEncoding('binary'); // will result in strings!!!! 
             const ready = new Promise<Buffer>((resolve, reject) => {
