@@ -1,6 +1,7 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { readFileSync } from 'fs';
-import path = require('path');
+import { packageRootPath } from '../shared/rootpath';
+import { join as joinPaths } from 'path';
 
 export type RequestQuery = null;
 export type RequestBody = null;
@@ -14,7 +15,7 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 export const addRoute = (env: RouteInitEnvironment) => {
 
     // Read server version from package.json
-    const filePath = path.resolve(__dirname, '../../package.json');
+    const filePath = joinPaths(packageRootPath, '/package.json');
     const json = readFileSync(filePath, 'utf-8');
     const packageInfo = JSON.parse(json);
 

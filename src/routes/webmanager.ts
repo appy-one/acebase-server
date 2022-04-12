@@ -1,5 +1,6 @@
-import path = require("path");
 import { RouteInitEnvironment } from "../shared/env";
+import { packageRootPath } from "../shared/rootpath";
+import { join as joinPaths } from 'path'
 
 export const addRoutes = (env: RouteInitEnvironment) => {
 
@@ -13,13 +14,13 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     // Serve static files from webmanager directory
     env.app.get(`${webManagerDir}*`, (req, res) => {
         const filePath = req.path.slice(webManagerDir.length);
-        const assetsPath = path.resolve(__dirname, '../../webmanager');
+        const assetsPath = joinPaths(packageRootPath, '/webmanager');
         if (filePath.length === 0) {
             // Send default file
-            res.sendFile(assetsPath + '/index.html');
+            res.sendFile(joinPaths(assetsPath, '/index.html'));
         }
         else {
-            res.sendFile(assetsPath + '/' + filePath);
+            res.sendFile(joinPaths(assetsPath, '/', filePath));
         }
     });    
 
