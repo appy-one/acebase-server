@@ -1,13 +1,16 @@
 {
     "compilerOptions": {
-        "target": "ES2017",
-        "lib": ["ES2017"],
-        "module": "CommonJS",
+        "lib": ["esnext"],
         "listEmittedFiles": true,
         "rootDir": "./src",
-        "outDir": "./dist",
         "sourceMap": true,
         "declaration": true,
+        "declarationDir": "./dist/types",
+        "module": "es2020",
+        "outDir": "./dist/esm",
+        "moduleResolution": "node",
+        "target": "es2020",
+        "pretty": true
     },
     "include": [
         "./src"
