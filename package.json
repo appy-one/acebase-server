@@ -67,6 +67,7 @@
     "@types/socket.io": "^2.1.13",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.3.0",
-    "tsc-esm-fix": "^2.12.4"
+    "tsc-esm-fix": "^2.12.4",
+    "typescript": "^4.6.3"
   }
 }
