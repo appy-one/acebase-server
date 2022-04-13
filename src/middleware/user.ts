@@ -35,7 +35,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
             if (!req.user) {
                 // Query database to get user for this token
                 try {
-                    await signIn({ method: 'access_token', access_token: token }, env, req);
+                    await signIn({ method: 'private_token', access_token: tokenDetails.access_token }, env, req);
                 }
                 catch (err) {
                     return sendNotAuthenticatedError(res, err.code, err.message);
