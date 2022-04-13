@@ -39,7 +39,7 @@ export const signIn = async (credentials, env, req) => {
                 if (typeof credentials.access_token !== 'string') {
                     throw new SignInError('invalid_details', 'sign in request has invalid arguments');
                 }
-                query.filter('access_token', '==', tokenDetails.access_token);
+                query.filter('access_token', '==', credentials.access_token);
                 break;
             }
             case 'email': {
