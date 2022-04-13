@@ -23,7 +23,7 @@ exports.getCorsOptions = getCorsOptions;
 const getCorsHeaders = (allowedOrigins, currentOrigin) => {
     const corsOptions = (0, exports.getCorsOptions)(allowedOrigins);
     const origins = typeof corsOptions.origin === 'boolean'
-        ? corsOptions.origin ? currentOrigin : ''
+        ? corsOptions.origin ? currentOrigin !== null && currentOrigin !== void 0 ? currentOrigin : '*' : ''
         : corsOptions.origin instanceof Array ? corsOptions.origin.join(',') : corsOptions.origin;
     return {
         'Access-Control-Allow-Origin': origins,
@@ -35,11 +35,15 @@ const getCorsHeaders = (allowedOrigins, currentOrigin) => {
 exports.getCorsHeaders = getCorsHeaders;
 const addMiddleware = (env) => {
     env.app.use((req, res, next) => {
-        if (req.method !== 'OPTIONS') {
-            return next();
-        }
         const headers = (0, exports.getCorsHeaders)(env.config.allowOrigin, req.headers.origin);
-        res.writeHead(200, headers).end();
+        for (let name in headers) {
+            res.setHeader(name, headers[name]);
+        }
+        if (req.method === 'OPTIONS') {
+            // Return 200 OK
+            return res.status(200).end();
+        }
+        next();
     });
 };
 exports.addMiddleware = addMiddleware;

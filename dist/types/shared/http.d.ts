@@ -11,4 +11,4 @@ export declare type HttpSocket = Socket;
 export declare const createApp: (settings: {
     trustProxy: boolean;
     maxPayloadSize: string;
-}) => any;
+}) => express.Express;

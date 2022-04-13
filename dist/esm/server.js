@@ -14,7 +14,6 @@ import addDataRoutes from './routes/data.js';
 import addDocsRoute from './routes/docs.js';
 import addWebManagerRoutes from './routes/webmanager.js';
 import addMetadataRoutes from './routes/meta.js';
-import add404Middleware from './middleware/404.js';
 import addSwaggerMiddleware from './middleware/swagger.js';
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 export class AceBaseServerNotReadyError extends Error {
@@ -117,6 +116,8 @@ export class AceBaseServer extends SimpleEventEmitter {
         };
         // Add connection middleware
         const killConnections = addConnectionMiddleware(routeEnv);
+        // Add CORS middleware
+        addCorsMiddleware(routeEnv);
         if (config.auth.enabled) {
             // Setup auth database
             await setupAuthentication(routeEnv);
@@ -125,8 +126,6 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.resetPassword = resetPassword;
             this.verifyEmailAddress = verifyEmailAddress;
         }
-        // Add CORS middleware
-        addCorsMiddleware(routeEnv);
         // Add metadata endpoints
         addMetadataRoutes(routeEnv);
         // If environment is development, add API docs
@@ -141,12 +140,15 @@ export class AceBaseServer extends SimpleEventEmitter {
         addWebManagerRoutes(routeEnv);
         // Allow adding custom routes
         this.extend = (method, ext_path, handler) => {
-            app[method.toLowerCase()](`/ext/${db.name}/${ext_path}`, handler);
+            const route = `/ext/${db.name}/${ext_path}`;
+            this.debug.log(`Extending server: `, method, route);
+            routeEnv.app[method.toLowerCase()](route, handler);
         };
         // Create websocket server
         addWebsocketServer(routeEnv);
         // Last but not least, add 404 handler
-        add404Middleware(routeEnv);
+        // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
+        // add404Middleware(routeEnv);
         // Start listening
         server.listen(config.port, config.host, () => {
             // Ready!!

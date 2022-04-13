@@ -26,7 +26,6 @@ const data_1 = require("./routes/data");
 const docs_1 = require("./routes/docs");
 const webmanager_1 = require("./routes/webmanager");
 const meta_1 = require("./routes/meta");
-const _404_1 = require("./middleware/404");
 const swagger_1 = require("./middleware/swagger");
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 class AceBaseServerNotReadyError extends Error {
@@ -134,6 +133,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             };
             // Add connection middleware
             const killConnections = (0, connection_1.default)(routeEnv);
+            // Add CORS middleware
+            (0, cors_1.default)(routeEnv);
             if (config.auth.enabled) {
                 // Setup auth database
                 yield (0, auth_2.default)(routeEnv);
@@ -142,8 +143,6 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 this.resetPassword = resetPassword;
                 this.verifyEmailAddress = verifyEmailAddress;
             }
-            // Add CORS middleware
-            (0, cors_1.default)(routeEnv);
             // Add metadata endpoints
             (0, meta_1.default)(routeEnv);
             // If environment is development, add API docs
@@ -158,12 +157,15 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             (0, webmanager_1.default)(routeEnv);
             // Allow adding custom routes
             this.extend = (method, ext_path, handler) => {
-                app[method.toLowerCase()](`/ext/${db.name}/${ext_path}`, handler);
+                const route = `/ext/${db.name}/${ext_path}`;
+                this.debug.log(`Extending server: `, method, route);
+                routeEnv.app[method.toLowerCase()](route, handler);
             };
             // Create websocket server
             (0, websocket_1.addWebsocketServer)(routeEnv);
             // Last but not least, add 404 handler
-            (0, _404_1.default)(routeEnv);
+            // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
+            // add404Middleware(routeEnv);
             // Start listening
             server.listen(config.port, config.host, () => {
                 // Ready!!

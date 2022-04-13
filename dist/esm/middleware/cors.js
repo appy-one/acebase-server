@@ -19,7 +19,7 @@ export const getCorsOptions = (allowedOrigins) => {
 export const getCorsHeaders = (allowedOrigins, currentOrigin) => {
     const corsOptions = getCorsOptions(allowedOrigins);
     const origins = typeof corsOptions.origin === 'boolean'
-        ? corsOptions.origin ? currentOrigin : ''
+        ? corsOptions.origin ? currentOrigin ?? '*' : ''
         : corsOptions.origin instanceof Array ? corsOptions.origin.join(',') : corsOptions.origin;
     return {
         'Access-Control-Allow-Origin': origins,
@@ -30,11 +30,15 @@ export const getCorsHeaders = (allowedOrigins, currentOrigin) => {
 };
 export const addMiddleware = (env) => {
     env.app.use((req, res, next) => {
-        if (req.method !== 'OPTIONS') {
-            return next();
-        }
         const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
-        res.writeHead(200, headers).end();
+        for (let name in headers) {
+            res.setHeader(name, headers[name]);
+        }
+        if (req.method === 'OPTIONS') {
+            // Return 200 OK
+            return res.status(200).end();
+        }
+        next();
     });
 };
 export default addMiddleware;
