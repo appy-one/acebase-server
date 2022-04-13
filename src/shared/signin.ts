@@ -5,7 +5,8 @@ import { createPasswordHash, getOldPasswordHash, getPasswordHash } from "./passw
 import { decodePublicAccessToken } from "./tokens";
 
 export type SignInCredentials = 
-    { method: 'access_token'; access_token: string } | 
+    { method: 'token'; access_token: string } | 
+    { method: 'private_token'; access_token: string } | 
     { method: 'email'; email: string; password: string } |
     { method: 'account', username: string, password: string };
 
@@ -28,7 +29,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         const query = env.authRef.query();
         let tokenDetails: ReturnType<typeof decodePublicAccessToken>;
         switch (credentials.method) {
-            case 'access_token': {
+            case 'token': {
                 if (typeof credentials.access_token !== 'string') {
                     throw new SignInError('invalid_details', 'sign in request has invalid arguments');
                 }
@@ -39,6 +40,14 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
                 catch (err) {
                     throw new SignInError('invalid_token', err.message);
                 }
+                break;
+            }
+            case 'private_token': {
+                // Method used internally: uses the access token extracted from a public access token (see tokenDetails.access_token in above 'token' case)
+                if (typeof credentials.access_token !== 'string') {
+                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
+                }
+                query.filter('access_token', '==', tokenDetails.access_token);
                 break;
             }
             case 'email': {
@@ -75,10 +84,11 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         if (user.is_disabled === true) {
             throw new SignInError('account_disabled', 'Your account has been disabled. Contact your database administrator');
         }
-        if (credentials.method === 'access_token' && tokenDetails.uid !== user.uid) {
+        if (credentials.method === 'token' && tokenDetails.uid !== user.uid) {
             throw new SignInError('token_mismatch', 'Sign in again');
         }
-        if (credentials.method !== 'access_token') {
+        if (credentials.method === 'account' || credentials.method === 'email') {
+            // Check password
             let hash = user.password_salt ? getPasswordHash(credentials.password, user.password_salt) : getOldPasswordHash(credentials.password);
             if (user.password !== hash) {
                 throw new SignInError('wrong_password', 'Incorrect password');
@@ -94,7 +104,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
             last_signin_ip: req.ip
         };
         
-        if (credentials.method !== 'access_token') {
+        if ('password' in credentials) {
             if (!user.password_salt) {
                 // OLD md5 password hash, convert to new salted hash
                 let pwd = createPasswordHash(credentials.password);
