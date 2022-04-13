@@ -20,5 +20,5 @@ export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: strin
     // Parse json request bodies
     app.use(express.json({ limit: settings.maxPayloadSize })); // , extended: true ?
 
-    return app;
+    return app as HttpApp;
 }
