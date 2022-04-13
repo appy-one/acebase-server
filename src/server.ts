@@ -167,6 +167,9 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Add connection middleware
         const killConnections = addConnectionMiddleware(routeEnv);
 
+        // Add CORS middleware
+        addCorsMiddleware(routeEnv);
+
         if (config.auth.enabled) {
             // Setup auth database
             await setupAuthentication(routeEnv);
@@ -176,9 +179,6 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.resetPassword = resetPassword;
             this.verifyEmailAddress = verifyEmailAddress;
         }
-
-        // Add CORS middleware
-        addCorsMiddleware(routeEnv);
 
         // Add metadata endpoints
         addMetadataRoutes(routeEnv);
@@ -198,14 +198,17 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Allow adding custom routes
         this.extend = (method: 'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => any) => {
-            app[method.toLowerCase()](`/ext/${db.name}/${ext_path}`, handler);
-        }
+            const route = `/ext/${db.name}/${ext_path}`;
+            this.debug.log(`Extending server: `, method, route);
+            routeEnv.app[method.toLowerCase()](route, handler);
+        };
         
         // Create websocket server
         addWebsocketServer(routeEnv);
 
         // Last but not least, add 404 handler
-        add404Middleware(routeEnv);
+        // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
+        // add404Middleware(routeEnv);
 
         // Start listening
         server.listen(config.port, config.host, () => {
