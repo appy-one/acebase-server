@@ -64,11 +64,11 @@
                     example:
                     - year
                     - rating
-                    description: Additional keys to include in the index
+                    description: Additional keys to include in the index. Speeds up sorting on these columns when the index is used (and dramatically increases query speed when .take(n) is used in addition)
                   rebuild:
                     type: boolean
                     example: false
-                    description: Whether to reuild the index if it exists already
+                    description: Whether to rebuild the index if it exists already
                   textLocale:
                     type: string
                     example: en-us
