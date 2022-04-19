@@ -1,16 +1,20 @@
 import { SchemaValidationError } from 'acebase';
 import { ID, Transport } from 'acebase-core';
+import { SerializedValue } from 'acebase-core/types/transport';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
+import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
 export const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
 
+export class DataTransactionError extends Error { 
+    constructor(public code: 'invalid_serialized_value', message: string) {
+        super(message);
+    }
+}
+
 export type ApiTransactionDetails = {
     id: string;
-    value: {
-        map?: any;
-        val: any;
-    };
+    value: SerializedValue;
 };
 export type StartRequestQuery = null;
 export type StartRequestBody = {
@@ -24,8 +28,8 @@ export type StartRequest = RouteRequest<any, StartResponseBody, StartRequestBody
 export type FinishRequestQuery = null;
 export type FinishRequestBody = ApiTransactionDetails & { path: string };
 export type FinishResponseBody = 'done'     // 200
+    | { code: string, message: string }     // 400, 403
     | 'transaction not found'               // 410
-    | { code: string, message: string }     // 403
     | string                                // 500
 
 export type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
@@ -104,6 +108,9 @@ export const addRoutes = (env: RouteInitEnvironment) => {
 
         // Finish transaction
         try {
+            if (typeof data.value?.val === 'undefined' || !['string','object','undefined'].includes(typeof data.value?.map)) {
+                throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const newValue = Transport.deserialize(data.value);
 
             if (tx.path === '' && req.user?.uid !== 'admin' && newValue !== null && typeof newValue === 'object') {
@@ -119,6 +126,10 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             if (err instanceof SchemaValidationError) {
                 env.logRef?.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else if (err instanceof DataTransactionError) {
+                env.logRef?.push({ action: 'tx_finish', success: false, code: err.code, path: tx.path, ip: req.ip, uid: req.user?.uid ?? null });
+                sendBadRequestError(res, err);
             }
             else {
                 env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);

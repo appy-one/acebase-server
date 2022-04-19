@@ -1,13 +1,22 @@
 import { SchemaValidationError } from 'acebase';
 import { Transport } from 'acebase-core';
+import { SerializedValue } from 'acebase-core/types/transport';
+import { RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
+export class SetDataError extends Error { 
+    constructor(public code: 'invalid_serialized_value', message: string) {
+        super(message);
+    }
+}
 export type RequestQuery = null;
-export type RequestBody = null;
-export type ResponseBody = {
-    success: boolean;
-} | { code: 'schema_validation_failed', message: string };
+export type RequestBody = SerializedValue; // { val: any; map?: string|Record<string, 'date'|'binary'|'reference'|'regexp'|'array'> };
+export type ResponseBody = { success: true }                    // 200
+    | { code: 'invalid_serialized_value', message: string }     // 400
+    | { code: RuleValidationFailCode, message: string }         // 403
+    | { code: 'schema_validation_failed', message: string }     // 422
+    | { code: string, message: string }                         // 500
 
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
@@ -23,6 +32,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         try {
             const data = req.body;
+            if (typeof data?.val === 'undefined' || !['string','object','undefined'].includes(typeof data?.map)) {
+                throw new SetDataError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const val = Transport.deserialize(data);
 
             if (path === '' && req.user?.uid !== 'admin' && val !== null && typeof val === 'object') {
@@ -46,6 +58,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
             if (err instanceof SchemaValidationError) {
                 env.logRef?.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else if (err instanceof SetDataError) {
+                env.logRef?.push({ action: 'set_data', success: false, code: err.code, path, ip: req.ip, uid: req.user?.uid ?? null });
+                sendBadRequestError(res, err);
             }
             else {
                 env.debug.error(`failed to set "${path}":`, err);

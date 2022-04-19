@@ -1,14 +1,11 @@
 import { Transport } from 'acebase-core';
+import { SerializedValue } from 'acebase-core/types/transport';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = { include?: string; exclude?: string; child_objects?: boolean };
 export type RequestBody = null;
-export type ResponseBody = {
-    exists: boolean,
-    val: any,
-    map: any
-};
+export type ResponseBody = SerializedValue & { exists: boolean };
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
