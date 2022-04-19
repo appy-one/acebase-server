@@ -9,13 +9,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addRoute = void 0;
+exports.addRoute = exports.SetDataError = void 0;
 const acebase_1 = require("acebase");
 const acebase_core_1 = require("acebase-core");
 const error_1 = require("../shared/error");
+class SetDataError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
+exports.SetDataError = SetDataError;
 const addRoute = (env) => {
     env.app.put(`/data/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         // Set data
         const path = req.path.slice(env.db.name.length + 7);
         const access = env.rules.userHasAccess(req.user, path, true);
@@ -24,6 +31,9 @@ const addRoute = (env) => {
         }
         try {
             const data = req.body;
+            if (typeof (data === null || data === void 0 ? void 0 : data.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof (data === null || data === void 0 ? void 0 : data.map))) {
+                throw new SetDataError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const val = acebase_core_1.Transport.deserialize(data);
             if (path === '' && ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin' && val !== null && typeof val === 'object') {
                 // Non-admin user: remove any private properties from the update object
@@ -44,9 +54,13 @@ const addRoute = (env) => {
                 (_b = env.logRef) === null || _b === void 0 ? void 0 : _b.push({ action: 'set_data', success: false, code: 'schema_validation_failed', path, error: err.reason, ip: req.ip, uid: (_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== null && _d !== void 0 ? _d : null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
+            else if (err instanceof SetDataError) {
+                (_e = env.logRef) === null || _e === void 0 ? void 0 : _e.push({ action: 'set_data', success: false, code: err.code, path, ip: req.ip, uid: (_g = (_f = req.user) === null || _f === void 0 ? void 0 : _f.uid) !== null && _g !== void 0 ? _g : null });
+                (0, error_1.sendBadRequestError)(res, err);
+            }
             else {
                 env.debug.error(`failed to set "${path}":`, err);
-                (_e = env.logRef) === null || _e === void 0 ? void 0 : _e.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message, ip: req.ip, uid: (_g = (_f = req.user) === null || _f === void 0 ? void 0 : _f.uid) !== null && _g !== void 0 ? _g : null });
+                (_h = env.logRef) === null || _h === void 0 ? void 0 : _h.push({ action: 'set_data', success: false, code: 'unknown_error', path, error: err.message, ip: req.ip, uid: (_k = (_j = req.user) === null || _j === void 0 ? void 0 : _j.uid) !== null && _k !== void 0 ? _k : null });
                 (0, error_1.sendError)(res, err);
             }
         }

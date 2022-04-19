@@ -1,7 +1,13 @@
 import { SchemaValidationError } from 'acebase';
 import { ID, Transport } from 'acebase-core';
-import { sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error.js';
+import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error.js';
 export const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
+export class DataTransactionError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
 export const addRoutes = (env) => {
     const _transactions = new Map();
     // Start transaction endpoint:
@@ -65,6 +71,9 @@ export const addRoutes = (env) => {
         }
         // Finish transaction
         try {
+            if (typeof data.value?.val === 'undefined' || !['string', 'object', 'undefined'].includes(typeof data.value?.map)) {
+                throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const newValue = Transport.deserialize(data.value);
             if (tx.path === '' && req.user?.uid !== 'admin' && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
@@ -78,6 +87,10 @@ export const addRoutes = (env) => {
             if (err instanceof SchemaValidationError) {
                 env.logRef?.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else if (err instanceof DataTransactionError) {
+                env.logRef?.push({ action: 'tx_finish', success: false, code: err.code, path: tx.path, ip: req.ip, uid: req.user?.uid ?? null });
+                sendBadRequestError(res, err);
             }
             else {
                 env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);

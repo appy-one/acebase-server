@@ -38,6 +38,9 @@ const addRoute = (env) => {
                     name: 'indexes',
                     description: 'Index management endpoints'
                 }, {
+                    name: 'schemas',
+                    description: 'Data schema management endpoints'
+                }, {
                     name: 'metadata',
                     description: 'Metadata endpoints'
                 }],
@@ -101,7 +104,7 @@ const addRoute = (env) => {
                     SchemaValidationError: {
                         type: 'object',
                         properties: {
-                            code: { type: 'string', value: 'schema_validation_failed', description: 'The string `"schema_validation_failed"`' },
+                            code: { type: 'string', description: 'The string `"schema_validation_failed"`', example: 'schema_validation_failed' },
                             message: { type: 'string', description: 'The server error message', example: 'Property at path "path/property" is of the wrong type' }
                         }
                     },
@@ -161,11 +164,13 @@ const addRoute = (env) => {
                             type: {
                                 type: 'string',
                                 enum: ['unknown', 'object', 'array', 'number', 'boolean', 'string', 'date', 'binary', 'reference'],
-                                description: 'data type of the target path'
+                                description: 'data type of the target path',
+                                example: 'object'
                             },
                             value: {
                                 oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'array' }, { type: 'object' }],
-                                description: `target node's stored value if it is a boolean, number or date, a small string or binary value (less than configured max inline value size), or an empty object or array`
+                                description: `target node's stored value if it is a boolean, number or date, a small string or binary value (less than configured max inline value size), or an empty object or array`,
+                                example: {}
                             },
                             address: {
                                 type: 'object',
@@ -196,9 +201,33 @@ const addRoute = (env) => {
                                         description: 'Reflection info about the requested children',
                                         items: {
                                             $ref: '#/components/schemas/ReflectionNodeInfo'
-                                        }
+                                        },
+                                        example: [{
+                                                key: 'name',
+                                                type: 'string',
+                                                value: 'My name'
+                                            }]
                                     }
                                 }
+                            }
+                        },
+                        example: {
+                            key: 'jld2cjxh0000qzrmn831i7rn',
+                            exists: true,
+                            type: 'object',
+                            address: { pageNr: 0, recordNr: 234 },
+                            children: {
+                                count: 2865,
+                                more: true,
+                                list: [{
+                                        key: 'l260qein000009jy3yjig8h9',
+                                        type: 'object',
+                                        address: { pageNr: 1, recordNr: 25 }
+                                    }, {
+                                        key: 'l260rp5b000109jy98ykf7x2',
+                                        type: 'object',
+                                        address: { pageNr: 1, recordNr: 54 }
+                                    }]
                             }
                         }
                     }

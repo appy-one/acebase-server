@@ -2,9 +2,10 @@ import { AceBase } from 'acebase';
 import { DebugLogger } from 'acebase-core';
 import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT } from './settings';
+export declare type RuleValidationFailCode = 'rule' | 'no_rule' | 'private' | 'exception';
 declare type HasAccessResult = {
     allow: boolean;
-    code?: string;
+    code?: RuleValidationFailCode;
     message?: string;
     rule?: string | boolean;
     rulePath?: string;
@@ -13,7 +14,7 @@ declare type HasAccessResult = {
     allow: true;
 } | {
     allow: false;
-    code: string;
+    code: RuleValidationFailCode;
     message: string;
     rule?: string | boolean;
     rulePath?: string;

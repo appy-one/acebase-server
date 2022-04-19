@@ -9,11 +9,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addRoutes = exports.TRANSACTION_TIMEOUT_MS = void 0;
+exports.addRoutes = exports.DataTransactionError = exports.TRANSACTION_TIMEOUT_MS = void 0;
 const acebase_1 = require("acebase");
 const acebase_core_1 = require("acebase-core");
 const error_1 = require("../shared/error");
 exports.TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
+class DataTransactionError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
+exports.DataTransactionError = DataTransactionError;
 const addRoutes = (env) => {
     const _transactions = new Map();
     // Start transaction endpoint:
@@ -63,7 +70,7 @@ const addRoutes = (env) => {
     });
     // Finish transaction endpoint:
     env.app.post(`/transaction/${env.db.name}/finish`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         const data = req.body;
         const tx = _transactions.get(data.id);
         if (!tx || tx.path !== data.path) {
@@ -79,8 +86,11 @@ const addRoutes = (env) => {
         }
         // Finish transaction
         try {
+            if (typeof ((_a = data.value) === null || _a === void 0 ? void 0 : _a.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_b = data.value) === null || _b === void 0 ? void 0 : _b.map))) {
+                throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const newValue = acebase_core_1.Transport.deserialize(data.value);
-            if (tx.path === '' && ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin' && newValue !== null && typeof newValue === 'object') {
+            if (tx.path === '' && ((_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== 'admin' && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
@@ -90,12 +100,16 @@ const addRoutes = (env) => {
         catch (err) {
             tx.finish(); // Finish without value cancels the transaction
             if (err instanceof acebase_1.SchemaValidationError) {
-                (_b = env.logRef) === null || _b === void 0 ? void 0 : _b.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: (_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== null && _d !== void 0 ? _d : null });
+                (_d = env.logRef) === null || _d === void 0 ? void 0 : _d.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: (_f = (_e = req.user) === null || _e === void 0 ? void 0 : _e.uid) !== null && _f !== void 0 ? _f : null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else if (err instanceof DataTransactionError) {
+                (_g = env.logRef) === null || _g === void 0 ? void 0 : _g.push({ action: 'tx_finish', success: false, code: err.code, path: tx.path, ip: req.ip, uid: (_j = (_h = req.user) === null || _h === void 0 ? void 0 : _h.uid) !== null && _j !== void 0 ? _j : null });
+                (0, error_1.sendBadRequestError)(res, err);
             }
             else {
                 env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);
-                (_e = env.logRef) === null || _e === void 0 ? void 0 : _e.push({ action: 'tx_finish', success: false, code: 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: (_g = (_f = req.user) === null || _f === void 0 ? void 0 : _f.uid) !== null && _g !== void 0 ? _g : null });
+                (_k = env.logRef) === null || _k === void 0 ? void 0 : _k.push({ action: 'tx_finish', success: false, code: 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: (_m = (_l = req.user) === null || _l === void 0 ? void 0 : _l.uid) !== null && _m !== void 0 ? _m : null });
                 (0, error_1.sendError)(res, err);
             }
         }

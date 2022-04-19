@@ -19,6 +19,7 @@ const data_index_delete_1 = require("./data-index-delete");
 const data_schemas_list_1 = require("./data-schemas-list");
 const data_schema_get_1 = require("./data-schema-get");
 const data_schema_set_1 = require("./data-schema-set");
+const data_schema_test_1 = require("./data-schema-test");
 // Sycnronization:
 const data_sync_mutations_1 = require("./data-sync-mutations");
 const data_sync_changes_1 = require("./data-sync-changes");
@@ -47,12 +48,11 @@ const addRoutes = (env) => {
     (0, data_index_list_1.default)(env); // list indexes
     (0, data_index_create_1.default)(env); // create index
     (0, data_index_delete_1.default)(env); // delete index
-    // Add list schemas endpoint
-    (0, data_schemas_list_1.default)(env);
-    // Add get schema endpoint
-    (0, data_schema_get_1.default)(env);
-    // add set schema endpoint
-    (0, data_schema_set_1.default)(env);
+    // Add schema endpoints:
+    (0, data_schemas_list_1.default)(env); // list all
+    (0, data_schema_get_1.default)(env); // get schema
+    (0, data_schema_set_1.default)(env); // set schema
+    (0, data_schema_test_1.default)(env); // test
     // Add sync mutations endpoint
     (0, data_sync_mutations_1.default)(env);
     // add sync changes endpoint

@@ -1,6 +1,12 @@
 import { SchemaValidationError } from 'acebase';
 import { Transport } from 'acebase-core';
-import { sendError, sendUnauthorizedError } from '../shared/error.js';
+import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error.js';
+export class UpdateDataError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
 export const addRoute = (env) => {
     env.app.post(`/data/${env.db.name}/*`, async (req, res) => {
         // update data
@@ -11,6 +17,9 @@ export const addRoute = (env) => {
         }
         try {
             const data = req.body;
+            if (typeof data?.val === 'undefined' || !['string', 'object', 'undefined'].includes(typeof data?.map)) {
+                throw new UpdateDataError('invalid_serialized_value', 'The sent value is not properly serialized');
+            }
             const val = Transport.deserialize(data);
             if (path === '' && req.user?.uid !== 'admin' && val !== null && typeof val === 'object') {
                 // Non-admin user: remove any private properties from the update object
@@ -30,6 +39,10 @@ export const addRoute = (env) => {
             if (err instanceof SchemaValidationError) {
                 env.logRef?.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
+            }
+            else if (err instanceof UpdateDataError) {
+                env.logRef?.push({ action: 'update_data', success: false, code: err.code, path, ip: req.ip, uid: req.user?.uid ?? null });
+                sendBadRequestError(res, err);
             }
             else {
                 env.debug.error(`failed to update "${path}":`, err);
