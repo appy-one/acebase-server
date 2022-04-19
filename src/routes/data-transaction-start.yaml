@@ -14,10 +14,9 @@
           example: mydb
       - name: AceBase-Context
         in: header
-        description: Contextual info about the database operation. This info is included in event notifications sent to clients watching data at this or child paths
+        description: Contextual info about the database operation (must be valid JSON). This info is included in event notifications sent to clients watching data at this or child paths
         schema:
-          type: object
-          otherProperties: true
+          type: string
           example: {}
     requestBody:
       description: path to start the transaction on

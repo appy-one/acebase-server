@@ -21,10 +21,9 @@
           example: collection/child/property
       - name: AceBase-Context
         in: header
-        description: Contextual info about the database operation. This info is included in event notifications sent to clients watching data at this or child paths
+        description: Contextual info about the database operation (must be valid JSON). This info is included in event notifications sent to clients watching data at this or child paths
         schema:
-          type: object
-          otherProperties: true
+          type: string
           example: {}
     requestBody:
       description: serialized value to store in the database
@@ -34,7 +33,7 @@
             $ref: '#/components/schemas/SerializedValue'
     responses:
       200:
-        description: returns whether the database operation succeeded
+        description: Returns "200 OK" when the database operation succeeded
         content:
           'application/json':
             schema:
@@ -43,6 +42,15 @@
                 success:
                   type: boolean
                   example: true
+      400:
+        description: Returns "400 Bad Request" if the sent value is incorrect
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_serialized_value
+                message: The sent value is not properly serialized
       403:
         description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
         content:

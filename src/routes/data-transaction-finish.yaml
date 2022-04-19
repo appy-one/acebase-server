@@ -13,7 +13,7 @@
           type: string
           example: mydb
     requestBody:
-      description: details
+      description: transaction details and the new value to store
       content:
         'application/json':
           schema:
@@ -39,6 +39,15 @@
               value: done
               example: done
               description: the string `"done"`
+      400:
+        description: Returns "400 Bad Request" if the sent value is incorrect
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+              example:
+                code: invalid_serialized_value
+                message: The sent value is not properly serialized
       403:
         description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
         content:
