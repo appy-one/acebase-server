@@ -1,0 +1,60 @@
+/schema/{dbname}/test:
+  post:
+    tags:
+      - data
+      - schemas
+    summary: Test a data schema
+    description: Tests an existing data schema in the database, or a given custom schema.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    requestBody:
+      description: details about the data and schema to test
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              path:
+                type: string
+                description: database path to the given value
+                example: collection/item
+              value:
+                $ref: '#/components/schemas/SerializedValue'
+              partial:
+                type: boolean
+                description: Whether to only test passed data (`update` db operation), or to validate the value against the entire schema (`set` db operation). Update operations allow required children in the schema not to be present in the passed value.
+                example: false
+              schema:
+                type: string
+                description: When given, tests this schema definition against the passed value instead of ones defined in the database
+                example: "{ name: string, stats?: { size: number, created: Date, modified: Date, deleted?: Date } }"
+            required:
+            - path
+            - value
+            - partial
+    responses:
+      200:
+        description: Returns an object that indicates whether the value successfully validated against schema
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                ok:
+                  type: boolean
+                  example: false
+                reason:
+                  type: string
+                  example: path "books/book1/title" must be typeof string
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'
