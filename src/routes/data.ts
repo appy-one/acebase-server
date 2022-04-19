@@ -19,6 +19,7 @@ import addDeleteIndexRoute from './data-index-delete';
 import addListSchemasRoute from './data-schemas-list';
 import addGetSchemaRoute from './data-schema-get';
 import addSetSchemaRoute from './data-schema-set';
+import addTestSchemaRoute from './data-schema-test';
 
 // Sycnronization:
 import addSyncMutationsRoute from './data-sync-mutations';
@@ -61,14 +62,11 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     addCreateIndexRoute(env);       // create index
     addDeleteIndexRoute(env);       // delete index
 
-    // Add list schemas endpoint
-    addListSchemasRoute(env);
-
-    // Add get schema endpoint
-    addGetSchemaRoute(env);
-
-    // add set schema endpoint
-    addSetSchemaRoute(env);
+    // Add schema endpoints:
+    addListSchemasRoute(env);   // list all
+    addGetSchemaRoute(env);     // get schema
+    addSetSchemaRoute(env);     // set schema
+    addTestSchemaRoute(env);    // test
 
     // Add sync mutations endpoint
     addSyncMutationsRoute(env);
