@@ -14,7 +14,9 @@ type PathRules = {} & {
 type RulesData = {
     rules: PathRules;
 }
-type HasAccessResult = { allow: boolean; code?: string; message?: string; rule?: string|boolean; rulePath?: string; details?: any } & ({ allow: true } | { allow: false; code: string; message: string; rule?: string|boolean; rulePath?: string; details?: any });
+export type RuleValidationFailCode = 'rule'|'no_rule'|'private'|'exception';
+// type HasAccessResult = { allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any };
+type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: any } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any });
 
 export class PathBasedRules {
 
@@ -130,7 +132,7 @@ export class PathBasedRules {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
-        const allow: { allow: true } = { allow: true };
+        const allow: HasAccessResult = { allow: true };
         if (!this.authEnabled) {
             // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
             return allow;
