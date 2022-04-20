@@ -21,6 +21,7 @@ import addWebManagerRoutes from './routes/webmanager';
 import addMetadataRoutes from './routes/meta';
 import add404Middleware from './middleware/404';
 import addSwaggerMiddleware from './middleware/swagger';
+import addCacheMiddleware from './middleware/cache';
 
 type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: 'data'|'transaction'|'auth'|'log' };
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -169,6 +170,9 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Add CORS middleware
         addCorsMiddleware(routeEnv);
+
+        // Add cache middleware
+        addCacheMiddleware(routeEnv);
 
         if (config.auth.enabled) {
             // Setup auth database
