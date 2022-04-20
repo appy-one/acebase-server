@@ -17,11 +17,12 @@ export type RequestBody = {
             order: Array<{ key: string, ascending: boolean }>;
         };
         /** client's query id for realtime event notifications through the websocket */
-        query_id: string;
+        query_id?: string;
         /** client's socket id for realtime event notifications through websocket */
-        client_id: string;
+        client_id?: string;
         options: {
-            monitor: boolean|{ add: boolean; change: boolean; remove: boolean };
+            snapshots?: boolean;
+            monitor?: boolean|{ add: boolean; change: boolean; remove: boolean };
             include?: string[];
             exclude?: string[];
             child_objects?: boolean;
@@ -90,7 +91,6 @@ export const addRoute = (env: RouteInitEnvironment) => {
             sendError(res, { code: 'unknown', message: err.message });
         }
     });
-
 
 };
 
