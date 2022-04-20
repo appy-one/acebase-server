@@ -1,0 +1,64 @@
+/export/{dbname}/{path}:
+  get:
+    tags:
+      - data
+    summary: Export (stream) the value of a path
+    description: Exports the value of a path in the database by streaming its content in a serialized format
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: path
+        description: database path
+        required: true
+        schema:
+          type: string
+          example: collection
+      - name: format
+        in: query
+        description: desired output format. Only `json` is currently supported
+        schema:
+          type: string
+          enum:
+          - json
+          example: json
+      - name: type_safe
+        in: query
+        description: Whether to add type information for data that has no native JSON representation (such as dates, binary data etc)
+        schema:
+          type: string
+          enum:
+          - 0
+          - 1
+          example: 1
+    responses:
+      200:
+        description: Streams the data of requested path in the requested format. In the browser, this will trigger a file download.
+        headers:
+          'Content-Disposition': 
+            description: Tells the browser to download the data as a file
+            schema:
+              type: string
+              example: attachment; filename=[target_key].json
+        content:
+          'text/plain':
+            schema:
+              type: object
+              example: {"l27mgh8r000009mhh84jdp9c":{"name":"My todo list","stats":{"size":216,"created":{".type":"Date",".val":"2022-04-07T15:11:42.000Z"},"modified":{".type":"Date",".val":"2022-03-08T12:24:05.000Z"}}},"l27mhwz2000109mh11yi7rbo":{"name":"Another child"},"l27mjf9k000209mhafylc3eo":{"name":"And another.."}}
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'
