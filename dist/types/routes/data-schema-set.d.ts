@@ -1,7 +1,7 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare type RequestQuery = null;
 export declare type RequestBody = {
-    action: 'set';
+    action?: 'set';
     path: string;
     schema: string | Object;
 };

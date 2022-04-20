@@ -12,12 +12,13 @@ export const addRoute = (env) => {
         definition: {
             openapi: '3.0.0',
             info: {
-                title: 'AceBase Server API',
-                description: 'AceBase Server API',
-                version: '1.0.0',
+                title: 'AceBase Server',
+                description: 'AceBase Server API endpoint documentation and test environment. This documentation is available on the server because it is running in development mode. To disable this, set your NODE_ENV environment variable to production. Many endpoints require you to authenticate using Bearer authentication. Use the _/auth/{dbname}/signin_ endpoint to obtain an access token, then click the _Authorize_ button and paste your token into the input field. For more information about AceBase, see GitHub',
+                version: '1.10.0',
                 contact: {
-                    name: 'Ewout Stortenbeker',
-                    email: 'me@appy.one'
+                    name: 'AceBase API Support',
+                    email: 'me@appy.one',
+                    url: 'https://github.com/appy-one/acebase-server'
                 },
                 // servers: [`http://${config.server.host}:${config.server.port}`]
             },

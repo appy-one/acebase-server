@@ -15,6 +15,7 @@ import addDocsRoute from './routes/docs.js';
 import addWebManagerRoutes from './routes/webmanager.js';
 import addMetadataRoutes from './routes/meta.js';
 import addSwaggerMiddleware from './middleware/swagger.js';
+import addCacheMiddleware from './middleware/cache.js';
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
@@ -118,6 +119,8 @@ export class AceBaseServer extends SimpleEventEmitter {
         const killConnections = addConnectionMiddleware(routeEnv);
         // Add CORS middleware
         addCorsMiddleware(routeEnv);
+        // Add cache middleware
+        addCacheMiddleware(routeEnv);
         if (config.auth.enabled) {
             // Setup auth database
             await setupAuthentication(routeEnv);

@@ -27,6 +27,7 @@ const docs_1 = require("./routes/docs");
 const webmanager_1 = require("./routes/webmanager");
 const meta_1 = require("./routes/meta");
 const swagger_1 = require("./middleware/swagger");
+const cache_1 = require("./middleware/cache");
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
@@ -135,6 +136,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             const killConnections = (0, connection_1.default)(routeEnv);
             // Add CORS middleware
             (0, cors_1.default)(routeEnv);
+            // Add cache middleware
+            (0, cache_1.default)(routeEnv);
             if (config.auth.enabled) {
                 // Setup auth database
                 yield (0, auth_2.default)(routeEnv);

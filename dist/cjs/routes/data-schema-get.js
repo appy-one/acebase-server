@@ -20,7 +20,14 @@ const addRoute = (env) => {
         try {
             const path = req.path.slice(env.db.name.length + 9);
             const schema = yield env.db.schema.get(path);
-            res.contentType('application/json').send(schema);
+            if (!schema) {
+                return res.status(410).send('Not Found');
+            }
+            res.contentType('application/json').send({
+                path: schema.path,
+                schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
+                text: schema.text
+            });
         }
         catch (err) {
             (0, error_1.sendError)(res, err);

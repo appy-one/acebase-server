@@ -19,7 +19,11 @@ const addRoute = (env) => {
         }
         try {
             const schemas = yield env.db.schema.all();
-            res.contentType('application/json').send(schemas);
+            res.contentType('application/json').send(schemas.map(schema => ({
+                path: schema.path,
+                schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
+                text: schema.text
+            })));
         }
         catch (err) {
             (0, error_1.sendError)(res, err);

@@ -19,13 +19,8 @@ const addRoute = (env) => {
         }
         try {
             const data = req.body;
-            if (data.action === 'set') {
-                const { path, schema } = data;
-                yield env.db.schema.set(path, schema);
-            }
-            else {
-                throw new Error(`Invalid action`);
-            }
+            const { path, schema } = data;
+            yield env.db.schema.set(path, schema);
             res.contentType('application/json').send({ success: true });
         }
         catch (err) {

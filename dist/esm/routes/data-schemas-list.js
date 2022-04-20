@@ -7,7 +7,11 @@ export const addRoute = (env) => {
         }
         try {
             const schemas = await env.db.schema.all();
-            res.contentType('application/json').send(schemas);
+            res.contentType('application/json').send(schemas.map(schema => ({
+                path: schema.path,
+                schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
+                text: schema.text
+            })));
         }
         catch (err) {
             sendError(res, err);
