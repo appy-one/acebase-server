@@ -3,7 +3,7 @@ import { sendError, sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = {
-    action: 'set';
+    action?: 'set'; // deprecated
     path: string;
     schema: string|Object;
 };
@@ -23,13 +23,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         try {
             const data = req.body;
-            if (data.action === 'set') {
-                const { path, schema } = data;
-                await env.db.schema.set(path, schema);
-            }
-            else {
-                throw new Error(`Invalid action`);
-            }
+            const { path, schema } = data;
+            await env.db.schema.set(path, schema);
+
             res.contentType('application/json').send({ success: true });
         }
         catch(err) {
