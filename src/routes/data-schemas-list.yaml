@@ -1,0 +1,41 @@
+/schema/{dbname}:
+  get:
+    tags:
+      - data
+      - schemas
+    summary: Gets all defined schema definitions
+    description: Gets a list of all defined schema definitions
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+    responses:
+      200:
+        description: Returns all defined schemas in the database
+        content:
+          'application/json':
+            schema:
+              type: array
+              items:
+                type: object
+              description: Object containing the string representation of the schema
+              example:
+                - path: collection/child
+                  schema: "{ name: string, stats?: { size: number, created: Date, modified: Date, deleted?: Date } }"
+                  text: "{ name: string, stats?: { size: number, created: Date, modified: Date, deleted?: Date } }"
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not admin
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'

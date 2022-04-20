@@ -1,10 +1,10 @@
-/schema/{dbname}/test:
+/schema/{dbname}:
   post:
     tags:
       - data
       - schemas
-    summary: Test a data schema
-    description: Tests an existing data schema in the database, or a given custom schema.
+    summary: Add a schema definition
+    description: Adds a schema definition to the specified path. This schema will be enabled while the server runs, and cleared upon restart. If you need the schema to be persisted, add it to your server's rules.json file
     parameters:
       - name: dbname
         in: path
@@ -20,38 +20,32 @@
           schema:
             type: object
             properties:
+              action:
+                type: string
+                description: The desired operation `'set'` (optional, deprecated since v1.10.0)
+                example: set
               path:
                 type: string
                 description: database path to the given value
                 example: collection/item
-              value:
-                $ref: '#/components/schemas/SerializedValue'
-              partial:
-                type: boolean
-                description: Whether to only test passed data (`update` db operation), or to validate the value against the entire schema (`set` db operation). Update operations allow required children in the schema not to be present in the passed value.
-                example: false
               schema:
                 type: string
                 description: When given, tests this schema definition against the passed value instead of ones defined in the database
                 example: "{ name: string, stats?: { size: number, created: Date, modified: Date, deleted?: Date } }"
             required:
             - path
-            - value
-            - partial
+            - schema
     responses:
       200:
-        description: Returns an object that indicates whether the value successfully validated against schema
+        description: Returns "200 OK" if the schema was added successfully
         content:
           'application/json':
             schema:
               type: object
               properties:
-                ok:
+                success:
                   type: boolean
-                  example: false
-                reason:
-                  type: string
-                  example: path "books/book1/title" must be typeof string
+                  example: true
       403:
         description: Returns a "403 Forbidden" if the signed in user is not admin
         content:
@@ -59,7 +53,7 @@
             schema:
               $ref: '#/components/schemas/Error'
       500:
-        description: An unexpected error occurred
+        description: An error occurred
         content:
           'application/json':
             schema:
