@@ -21,11 +21,12 @@ export declare type RequestBody = {
             }>;
         };
         /** client's query id for realtime event notifications through the websocket */
-        query_id: string;
+        query_id?: string;
         /** client's socket id for realtime event notifications through websocket */
-        client_id: string;
+        client_id?: string;
         options: {
-            monitor: boolean | {
+            snapshots?: boolean;
+            monitor?: boolean | {
                 add: boolean;
                 change: boolean;
                 remove: boolean;
