@@ -1,10 +1,12 @@
-import type { IAceBaseSchemaInfo } from 'acebase-core/src/api';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendError, sendUnauthorizedError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = null;
-export type ResponseBody = IAceBaseSchemaInfo;
+export type ResponseBody = 
+    { path: string; schema: string; text: string }   // 200
+    | 'Not Found';                                   // 410
+
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
@@ -17,7 +19,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
         try {
             const path = req.path.slice(env.db.name.length + 9);
             const schema = await env.db.schema.get(path);
-            res.contentType('application/json').send(schema);
+            if (!schema) {
+                return res.status(410).send('Not Found');
+            }
+            res.contentType('application/json').send({
+                path: schema.path,
+                schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
+                text: schema.text
+            });
         }
         catch(err) {
             sendError(res, err);
