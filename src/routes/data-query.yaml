@@ -1,0 +1,166 @@
+/query/{dbname}/{path}:
+  post:
+    tags:
+      - data
+      - query
+    summary: Query an object collection
+    description: Query an object collection in the database
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: path
+        description: database path
+        required: true
+        schema:
+          type: string
+          example: books
+    requestBody:
+      description: serialized query object
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              map:
+                description: Data type mappings for the value in _val_. See the _SerializedValue_ schema for more info
+                oneOf:
+                - type: string
+                - type: object
+                example: {}
+              val:
+                description: Information about the query to execute
+                type: object
+                properties:
+                  query:
+                    type: object
+                    properties:
+                      filters:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                              example: title
+                              description: Key to apply filter on
+                            op:
+                              type: string
+                              description: Comparison operator to use, such as `==`, `>`, 'like' etc
+                              example: like
+                            compare:
+                              example: AceBase*
+                              description: Value to compare with
+                              oneOf:
+                              - type: string
+                              - type: number
+                              - type: boolean
+                      skip:
+                        type: integer
+                        example: 0
+                        description: Number of results to skip, useful for paging
+                      take:
+                        type: integer
+                        example: 10
+                        description: Max number of results to return
+                      order:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                              description: Name of the key to sort the results on
+                              example: rating
+                            ascending:
+                              type: boolean
+                              description: Whether to sort the results in ascending or descending order
+                              example: false
+                  query_id:
+                    type: string
+                    description: (realtime queries only) client's query id for realtime event notifications through the websocket
+                    example: l27nswgz000009l58bo7gqhf 
+                  client_id:
+                    type: string
+                    description: (realtime queries only) client's socket id for realtime event notifications through websocket
+                    example: l27mjf9k000209mhafylc3eo
+                  options:
+                    type: object
+                    properties:
+                      snapshots:
+                        type: boolean
+                        description: Whether to return snapshots of the data, or references to the results only (default)
+                        example: true
+                      monitor:
+                        description: (optional, realtime queries only) which realtime events to monitor
+                        oneOf:
+                        - type: boolean
+                          description: Whether to monitor all or none of the realtime events (add, change, remove)
+                        - type: object
+                          description: Which realtime events to monitor
+                          properties:
+                            add:
+                              type: boolean
+                              description: Monitors results that are added after initial query execution
+                            change:
+                              type: boolean
+                              description: Monitors results that are changed after initial query execution
+                            remove:
+                              type: boolean
+                              description: Monitors results that are removed after initial query execution
+                        example: false
+                      include:
+                        type: array
+                        items:
+                          type: string
+                          description: (optional) keys to include in the results set
+                        example:
+                          - title
+                          - author
+                          - rating
+                          - reviews/*/author
+                          - reviews/*/text
+                      exclude:
+                        type: array
+                        items:
+                          type: string
+                          description: (optional) keys to exclude from the results set
+                        example: []
+                      child_objects:
+                        type: boolean
+                        description: (optional) whether to load child object values
+                        example: true
+    responses:
+      200:
+        description: Returns the serialized count and list of query results
+        content:
+          'application/json':
+            schema:
+              required:
+              - val
+              allOf:
+              - $ref: '#/components/schemas/SerializedValue'
+              example:
+                val: { count: 1, list: [{ path: 'books/l27oxggz000009ml9ri26y2d', val: { title: 'AceBase is cool', author: 'Database guru', rating: 5.0, reviews: { 'cl27ozp2g000009lbfopcbkd2': { author: 'DB admin', text: 'The title says it all!' } } }}] }
+                map: { 'stats/created': 'date', 'stats/modified': 'date' } 
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'
+
+
+
+                    
