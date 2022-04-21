@@ -1,0 +1,75 @@
+/import/{dbname}/{path}:
+  post:
+    tags:
+      - data
+    summary: Import (stream) a new value for a path
+    description: Imports (streams) the sent data for a path into the database (beta functionality, currently not very fast)
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: path
+        description: database path
+        required: true
+        schema:
+          type: string
+          example: collection
+      - name: format
+        in: query
+        description: used data format. Only `json` is currently supported
+        schema:
+          type: string
+          enum:
+          - json
+          example: json
+      - name: suppress_events
+        in: query
+        description: Whether to suppress firing data change events during the import
+        schema:
+          type: string
+          enum:
+          - 0
+          - 1
+          example: 0
+    requestBody:
+      description: value to store in the database, can use typesafe values as exported by the _export_ endpoint
+      content:
+        'text/plain':
+          schema:
+            type: object
+            example: {"l27mgh8r000009mhh84jdp9c":{"name":"My todo list","stats":{"size":216,"created":{".type":"Date",".val":"2022-04-07T15:11:42.000Z"},"modified":{".type":"Date",".val":"2022-03-08T12:24:05.000Z"}}},"l27mhwz2000109mh11yi7rbo":{"name":"Another child"},"l27mjf9k000209mhafylc3eo":{"name":"And another.."}}
+    responses:
+      200:
+        description: Returns "200 OK" when the database operation succeeded
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+      403:
+        description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An error occurred
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: false
+                reason:
+                  type: string
+                  example: Something went wrong
