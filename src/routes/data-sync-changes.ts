@@ -1,5 +1,5 @@
 import { ValueChange } from 'acebase-core/src/api';
-import { PathInfo } from 'acebase-core';
+import { PathInfo, Transport } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
@@ -56,7 +56,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
             res.contentType('application/json');
-            res.send(result.changes);
+
+            const serialized = Transport.serialize2(result.changes);
+            res.send(serialized);
         }
         catch(err) {
             sendError(res, err);
