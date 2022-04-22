@@ -1,0 +1,67 @@
+/sync/mutations/{dbname}:
+  get:
+    tags:
+      - data
+    summary: Gets mutations since cursor
+    description: Gets all mutations for specific path(s) and event combinations since given cursor. Use either the _path_ or _for_ parameter. If both are given, only _path_ is used.
+    parameters:
+      - name: dbname
+        in: path
+        description: name of the database
+        required: true
+        schema:
+          type: string
+          example: mydb
+      - name: path
+        in: query
+        description: "single database path to get all changes for (equivalent to _for_ `[{ path, events: ['value'] }]`)"
+        schema:
+          type: string
+          example: collection
+      - name: for
+        in: query
+        description: JSON array of path / events combinations
+        schema:
+          type: string
+          example: "[{ path: 'collection', events: ['child_changed'] }]"
+      - name: cursor
+        in: query
+        description: previously acquired cursor to use
+        schema:
+          type: string
+          example: l2a37q55000008ll8dyngkny
+      - name: timestamp
+        in: query
+        description: instead of a cursor, you can also use a timestamp (ms since 1970/01/01)
+        schema:
+          type: integer
+          example: ""
+    responses:
+      200:
+        description: Returns an array of all mutations to the requested selection
+        content:
+          'application/json':
+            schema:
+              type: object
+              example: []
+      400:
+        description: Returns "400 Bad Request" if transaction logging is not enabled in the server settings (code `no_transaction_logging`) or if no targets were specified in your query (no _path_ or _for_ parameters given, code `invalid_request`)
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+              example:
+                code: no_transaction_logging
+                message: Transaction logging not enabled
+      403:
+        description: Returns a "403 Forbidden" if the signed in user is not allowed to read from any of the targeted paths
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Error'
+      500:
+        description: An unexpected error occurred
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/UnexpectedError'
