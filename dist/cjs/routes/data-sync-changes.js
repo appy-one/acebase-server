@@ -48,7 +48,8 @@ const addRoute = (env) => {
             const result = yield env.db.api.getChanges({ for: targets, cursor, timestamp });
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
             res.contentType('application/json');
-            res.send(result.changes);
+            const serialized = acebase_core_1.Transport.serialize2(result.changes);
+            res.send(serialized);
         }
         catch (err) {
             (0, error_1.sendError)(res, err);

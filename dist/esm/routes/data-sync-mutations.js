@@ -1,4 +1,4 @@
-import { PathInfo } from 'acebase-core';
+import { PathInfo, Transport } from 'acebase-core';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error.js';
 export const addRoute = (env) => {
     env.app.get(`/sync/mutations/${env.db.name}`, async (req, res) => {
@@ -35,7 +35,8 @@ export const addRoute = (env) => {
             const result = await env.db.api.getMutations({ for: targets, cursor, timestamp });
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
             res.contentType('application/json');
-            res.send(result.mutations);
+            const serialized = Transport.serialize2(result.mutations);
+            res.send(serialized);
         }
         catch (err) {
             sendError(res, err);
