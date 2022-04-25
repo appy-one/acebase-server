@@ -49,7 +49,7 @@
           'text/plain':
             schema:
               type: object
-              example: {"l27mgh8r000009mhh84jdp9c":{"name":"My todo list","stats":{"size":216,"created":{".type":"Date",".val":"2022-04-07T15:11:42.000Z"},"modified":{".type":"Date",".val":"2022-03-08T12:24:05.000Z"}}},"l27mhwz2000109mh11yi7rbo":{"name":"Another child"},"l27mjf9k000209mhafylc3eo":{"name":"And another.."}}
+              example: {"l27mgh8r000009mhh84jdp9c":{"name":"My todo list","stats":{"size":216,"created":{".type":"date",".val":"2022-04-07T15:11:42.000Z"},"modified":{".type":"date",".val":"2022-03-08T12:24:05.000Z"}}},"l27mhwz2000109mh11yi7rbo":{"name":"Another child"},"l27mjf9k000209mhafylc3eo":{"name":"And another.."}}
       403:
         description: Returns a "403 Forbidden" if the signed in user is not allowed to read from the target path
         content:
