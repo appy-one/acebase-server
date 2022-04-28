@@ -27,7 +27,7 @@
                 time:
                   type: number
                   example: 868
-                  summary: unix timestamp (seconds since Jan 1, 1970)
+                  summary: unix timestamp (ms since Jan 1, 1970)
                 process:
                   type: integer
                   example: 465
