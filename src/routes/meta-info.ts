@@ -2,6 +2,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { readFileSync } from 'fs';
 import { packageRootPath } from '../shared/rootpath';
 import { join as joinPaths } from 'path';
+import * as os from 'os';
 
 export type RequestQuery = null;
 export type RequestBody = null;
@@ -28,7 +29,6 @@ export const addRoute = (env: RouteInitEnvironment) => {
             process: process.pid
         };
         if (req.user && req.user.uid === 'admin') {
-            const os = require('os');
             const numberToByteSize = number => {
                 return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
             }
