@@ -4,6 +4,7 @@ exports.addRoute = void 0;
 const fs_1 = require("fs");
 const rootpath_1 = require("../shared/rootpath");
 const path_1 = require("path");
+const os = require("os");
 const addRoute = (env) => {
     // Read server version from package.json
     const filePath = (0, path_1.join)(rootpath_1.packageRootPath, '/package.json');
@@ -17,7 +18,6 @@ const addRoute = (env) => {
             process: process.pid
         };
         if (req.user && req.user.uid === 'admin') {
-            const os = require('os');
             const numberToByteSize = number => {
                 return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
             };

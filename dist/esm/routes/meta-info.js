@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { packageRootPath } from '../shared/rootpath.js';
 import { join as joinPaths } from 'path';
+import * as os from 'os';
 export const addRoute = (env) => {
     // Read server version from package.json
     const filePath = joinPaths(packageRootPath, '/package.json');
@@ -14,7 +15,6 @@ export const addRoute = (env) => {
             process: process.pid
         };
         if (req.user && req.user.uid === 'admin') {
-            const os = require('os');
             const numberToByteSize = number => {
                 return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
             };
