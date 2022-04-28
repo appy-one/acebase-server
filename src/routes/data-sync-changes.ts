@@ -53,7 +53,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             const cursor = data.cursor;
             const timestamp = parseInt(data.timestamp as unknown as string);
-            console.error('DATA', timestamp)
+
             const result = await env.db.api.getChanges({ for: targets, cursor, timestamp });
 
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
