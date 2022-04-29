@@ -44,9 +44,14 @@ const addRoute = (env) => {
             if (targets.length === 0) {
                 return (0, error_1.sendUnauthorizedError)(res, 'not_authorized', 'User is not authorized to access this data');
             }
-            const cursor = data.cursor;
-            const timestamp = parseInt(data.timestamp);
-            console.error('DATA', timestamp);
+            const { cursor } = data;
+            let timestamp;
+            if (typeof data.timestamp !== 'undefined') {
+                timestamp = parseInt(data.timestamp);
+                if (isNaN(timestamp)) {
+                    return (0, error_1.sendBadRequestError)(res, { code: 'wrong_timestamp', message: 'Timestamp is not a number' });
+                }
+            }
             const result = yield env.db.api.getChanges({ for: targets, cursor, timestamp });
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
             res.contentType('application/json');

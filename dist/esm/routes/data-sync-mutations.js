@@ -31,7 +31,14 @@ export const addRoute = (env) => {
             if (targets.length === 0) {
                 return sendUnauthorizedError(res, 'not_authorized', 'User is not authorized to access this data');
             }
-            const { cursor, timestamp } = data;
+            const { cursor } = data;
+            let timestamp;
+            if (typeof data.timestamp !== 'undefined') {
+                timestamp = parseInt(data.timestamp);
+                if (isNaN(timestamp)) {
+                    return sendBadRequestError(res, { code: 'wrong_timestamp', message: 'Timestamp is not a number' });
+                }
+            }
             const result = await env.db.api.getMutations({ for: targets, cursor, timestamp });
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
             res.contentType('application/json');

@@ -7,7 +7,7 @@ export declare type RequestQuery = {
         events: string[];
     }>;
     cursor?: string;
-    timestamp?: number;
+    timestamp?: string;
 };
 export declare type RequestBody = null;
 export declare type ResponseBody = ValueMutation[] | {
