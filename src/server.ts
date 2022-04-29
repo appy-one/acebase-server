@@ -77,6 +77,11 @@ export class AceBaseServer extends SimpleEventEmitter {
      */
     readonly db: AceBase;
 
+    /**
+     * Exposes the used http frameworks app (currently Express) for external use.
+     */
+    readonly app: ReturnType<typeof createApp>;
+
     private readonly authProviders: { [provider: string]: IOAuth2Provider } = {};
 
     constructor(dbname: string, options?: AceBaseServerSettings) {
@@ -121,6 +126,10 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
         })();
 
+        // Create Express app
+        this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+
+        // Initialize and start server
         this.init({ authDb });
     }
 
@@ -135,8 +144,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             authDb?.ready()
         ]);
 
-        // Create http server and app
-        const app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        // Create http server
+        const app = this.app;
         const server = config.https.enabled ? createSecureServer(config.https, app) : createServer(app);
         const clients = new Map<string, ConnectedClient>();
 
