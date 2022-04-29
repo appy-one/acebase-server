@@ -7,7 +7,7 @@ export type RequestQuery = {
     path?: string;
     for?: Array<{ path: string, events: string[] }>;
     cursor?: string;
-    timestamp?: number;
+    timestamp?: string;
 };
 export type RequestBody = null;
 export type ResponseBody = ValueMutation[] // 200
@@ -51,7 +51,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 return sendUnauthorizedError(res, 'not_authorized', 'User is not authorized to access this data');
             }
 
-            const { cursor, timestamp } = data;
+            const { cursor } = data;
+            let timestamp: number;
+            if (typeof data.timestamp !== 'undefined') {
+                timestamp = parseInt(data.timestamp);
+                if (isNaN(timestamp)) {
+                    return sendBadRequestError(res, { code: 'wrong_timestamp', message: 'Timestamp is not a number' });
+                }
+            }
             const result = await env.db.api.getMutations({ for: targets, cursor, timestamp });
 
             res.setHeader('AceBase-Context', JSON.stringify({ acebase_cursor: result.new_cursor }));
