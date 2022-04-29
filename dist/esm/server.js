@@ -60,6 +60,9 @@ export class AceBaseServer extends SimpleEventEmitter {
                 default: return this.db;
             }
         })();
+        // Create Express app
+        this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        // Initialize and start server
         this.init({ authDb });
     }
     get isReady() { return this._ready; }
@@ -89,8 +92,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             db.ready(),
             authDb?.ready()
         ]);
-        // Create http server and app
-        const app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        // Create http server
+        const app = this.app;
         const server = config.https.enabled ? createSecureServer(config.https, app) : createServer(app);
         const clients = new Map();
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;

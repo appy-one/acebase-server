@@ -1,6 +1,7 @@
 /// <reference types="express-serve-static-core" />
 import { DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
+import { createApp } from './shared/http';
 import { AceBase } from 'acebase';
 import { DbUserAccountDetails } from './schema/user';
 export declare class AceBaseServerNotReadyError extends Error {
@@ -39,6 +40,10 @@ export declare class AceBaseServer extends SimpleEventEmitter {
      * });
      */
     readonly db: AceBase;
+    /**
+     * Exposes the used http frameworks app (currently Express) for external use.
+     */
+    readonly app: ReturnType<typeof createApp>;
     private readonly authProviders;
     constructor(dbname: string, options?: AceBaseServerSettings);
     private init;

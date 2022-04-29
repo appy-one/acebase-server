@@ -47,5 +47,8 @@ server.once("ready", () => {
     var _a;
     server.debug.log(`AceBase server running`);
     (_a = process.send) === null || _a === void 0 ? void 0 : _a.call(process, 'ready'); // When using pm2, you can use --wait-ready flag (see https://pm2.keymetrics.io/docs/usage/signals-clean-restart/)
+    server.app.get('/ewout', (req, res) => {
+        res.send('Hey!');
+    });
 });
 //# sourceMappingURL=start.js.map
