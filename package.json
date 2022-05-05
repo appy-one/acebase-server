@@ -14,7 +14,7 @@
   "private": false,
   "repository": "github:appy-one/acebase-server",
   "scripts": {
-    "start": "node dist/cjs/start.js DBNAME=default HOST=localhost PORT=3000 TXLOG=1",
+    "start": "node dist/esm/start.js DBNAME=default HOST=localhost PORT=3000 TXLOG=1",
     "test": "set NODE_ENV=development && npm run start",
     "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && echo Done!",
     "build:clean": "rm -fr dist/*",
