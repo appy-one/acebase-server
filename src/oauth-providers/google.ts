@@ -1,5 +1,5 @@
 import { IOAuth2Provider, IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
-import { fetch } from './simple-fetch';
+import { fetch } from '../shared/simple-fetch';
 
 /**
  * Details of your app to access the Google API. See https://developers.google.com/identity/protocols/oauth2/scopes

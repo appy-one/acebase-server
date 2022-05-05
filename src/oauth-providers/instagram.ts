@@ -1,5 +1,5 @@
 import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams } from "./oauth-provider";
-import { fetch } from './simple-fetch';
+import { fetch } from '../shared/simple-fetch';
 
 /**
  * Details of your app to access the Legacy Instagram API.
