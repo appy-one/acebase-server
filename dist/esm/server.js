@@ -5,6 +5,7 @@ import { addWebsocketServer } from './websocket/index.js';
 import { AceBase } from 'acebase';
 import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
+import oAuth2Providers from './oauth-providers/index.js';
 import { PathBasedRules } from './rules.js';
 import addConnectionMiddleware from './middleware/connection.js';
 import addCorsMiddleware from './middleware/cors.js';
@@ -330,7 +331,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             throw new Error(`Authentication is not enabled`);
         }
         try {
-            const { AuthProvider } = require('./oauth-providers/' + providerName);
+            const AuthProvider = oAuth2Providers[providerName];
             const provider = new AuthProvider(settings);
             this.authProviders[providerName] = provider;
             return provider;

@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const acebase_1 = require("acebase");
 const server_1 = require("./server");
-const cluster = require('cluster');
-const numCPUs = 2; //require('os').cpus().length;
+const cluster = require("cluster");
+const numCPUs = 2; //os.cpus().length;
 /**
  * Node.js cluster example. You can use this as a reference how to create an AceBaseServer cluster using Node.js'
  * built-in cluster functionality.

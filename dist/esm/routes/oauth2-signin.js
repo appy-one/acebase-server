@@ -1,6 +1,7 @@
 import { ID } from 'acebase-core';
 import { createPasswordHash, generatePassword } from '../shared/password.js';
 import { createPublicAccessToken, createSignedPublicToken, parseSignedPublicToken } from '../shared/tokens.js';
+import { fetch } from '../shared/simple-fetch.js';
 const socketSignInSuccess = `<html><script>window.close()</script><body>Signed in succesfully. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const socketSignInFailed = `<html><script>window.close()</script><body>Failed to sign in. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 export const addRoute = (env) => {
@@ -35,10 +36,8 @@ export const addRoute = (env) => {
             if (user_details.picture && user_details.picture.length > 0) {
                 // Download it, convert to base64
                 const best = user_details.picture.sort((a, b) => a.width * a.height > b.width * b.height ? -1 : 1)[0];
-                // TODO: Let client do this instead:
-                const { fetch } = require('./oauth-providers/simple-fetch');
-                await fetch(best.url)
-                    .then(async (response) => {
+                try {
+                    const response = await fetch(best.url);
                     const contentType = response.headers.get('Content-Type');
                     if (contentType === 'image/png') { //state.provider === 'google' && 
                         // Don't accept image/png, because it's probably a placeholder image. Google does this by creating a png with people's initials
@@ -49,11 +48,11 @@ export const addRoute = (env) => {
                     let buff = Buffer.from(image);
                     best.url = `data:${contentType};base64,${buff.toString('base64')}`;
                     user_details.picture = [best]; // Only keep the best one
-                })
-                    .catch(err => {
+                }
+                catch (err) {
                     env.debug.warn(`Could not fetch profile picture from "${best.url}": `, err);
                     user_details.picture = null;
-                });
+                }
             }
             const getProviderSettings = () => {
                 // Returns an object with all info (except picture) the provider has about the user

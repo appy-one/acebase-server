@@ -1,7 +1,7 @@
 import { AceBase } from 'acebase';
 import { AceBaseServer } from './server.js';
-const cluster = require('cluster');
-const numCPUs = 2; //require('os').cpus().length;
+import * as cluster from 'cluster';
+const numCPUs = 2; //os.cpus().length;
 /**
  * Node.js cluster example. You can use this as a reference how to create an AceBaseServer cluster using Node.js'
  * built-in cluster functionality.

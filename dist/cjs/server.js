@@ -17,6 +17,7 @@ const websocket_1 = require("./websocket");
 const acebase_1 = require("acebase");
 const http_2 = require("http");
 const https_1 = require("https");
+const oauth_providers_1 = require("./oauth-providers");
 const rules_1 = require("./rules");
 const connection_1 = require("./middleware/connection");
 const cors_1 = require("./middleware/cors");
@@ -348,7 +349,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             throw new Error(`Authentication is not enabled`);
         }
         try {
-            const { AuthProvider } = require('./oauth-providers/' + providerName);
+            const AuthProvider = oauth_providers_1.default[providerName];
             const provider = new AuthProvider(settings);
             this.authProviders[providerName] = provider;
             return provider;

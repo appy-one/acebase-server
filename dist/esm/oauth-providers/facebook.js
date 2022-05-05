@@ -1,4 +1,4 @@
-import { fetch } from './simple-fetch.js';
+import { fetch } from '../shared/simple-fetch.js';
 export class FacebookAuthProvider {
     constructor(settings) {
         this.settings = settings;

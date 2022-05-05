@@ -1,4 +1,4 @@
-import { fetch } from './simple-fetch.js';
+import { fetch } from '../shared/simple-fetch.js';
 export class DropboxAuthProvider {
     constructor(settings) {
         this.settings = settings;

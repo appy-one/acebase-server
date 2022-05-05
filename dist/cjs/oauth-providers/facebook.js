@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthProvider = exports.FacebookAuthProvider = void 0;
-const simple_fetch_1 = require("./simple-fetch");
+const simple_fetch_1 = require("../shared/simple-fetch");
 class FacebookAuthProvider {
     constructor(settings) {
         this.settings = settings;
