@@ -8,6 +8,7 @@ import { AceBase, AceBaseLocalSettings, AceBaseStorageSettings } from 'acebase';
 import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
 import { IOAuth2Provider } from './oauth-providers/oauth-provider';
+import oAuth2Providers from './oauth-providers';
 import { PathBasedRules } from './rules';
 import { DbUserAccountDetails } from './schema/user';
 import { Api } from 'acebase-core/src/api';
@@ -403,7 +404,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             throw new Error(`Authentication is not enabled`);
         }
         try {
-            const { AuthProvider } = require('./oauth-providers/' + providerName);
+            const AuthProvider = oAuth2Providers[providerName];
             const provider = new AuthProvider(settings);
             this.authProviders[providerName] = provider;
             return provider;
