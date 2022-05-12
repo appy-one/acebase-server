@@ -220,7 +220,6 @@ export class AceBaseServerConfig {
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
     readonly ipc: IPCClientSettings;
-
     readonly storage?: AceBaseStorageSettings;
 
     constructor(settings: AceBaseServerSettings) {
