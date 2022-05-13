@@ -31,7 +31,7 @@ export abstract class WebSocketManager<SocketType> extends SimpleEventEmitter {
     }
 
     emit(event: 'connect', data: WebSocketEventData<SocketType>): void;
-    emit(event: 'disconnect', data: WebSocketEventData<SocketType>): void;
+    emit(event: 'disconnect', data: WebSocketEventData<SocketType, string>): void;
     /** @deprecated deprecated since client v0.9.4 */
     emit(event: 'signin', data: WebSocketEventData<SocketType, { accessToken: string }>): void;
     /** @deprecated deprecated since client v0.9.4 */

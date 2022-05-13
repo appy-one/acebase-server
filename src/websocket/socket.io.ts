@@ -1,5 +1,6 @@
 import * as socketIO from 'socket.io';
-const createSocketIOServer = (socketIO as any).default ?? socketIO; // ESM and CJS compatible approach
+import type { Server as SocketIOServer, ServerOptions as SocketIOServerOptions } from 'socket.io';
+const createSocketIOServer: (httpServer: any, options: Partial<SocketIOServerOptions>) => SocketIOServer = (socketIO as any).default ?? socketIO; // ESM and CJS compatible approach
 
 import type { Socket } from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
@@ -42,15 +43,11 @@ export const createServer = (env: RouteInitEnvironment) => {
         pingTimeout: 5000,      // socket.io 2.x default is 5000, 3.x default = 20000
         maxHttpBufferSize: maxPayloadBytes,
 
-        // socket.io 2.x:
-        handlePreflightRequest: (req, res) => {
-            const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
-            res.writeHead(200, headers);
-            res.end();
-        }
+        // Allow socket.io 2.x clients (using engine.io 3.x):
+        allowEIO3: true,
 
         // socket.io 3+ uses cors package:
-        // cors: getCorsOptions(env.config.allowOrigin)
+        cors: getCorsOptions(env.config.allowOrigin)
     });
 
     // Setup event emitter for communication with consuming server
@@ -64,7 +61,7 @@ export const createServer = (env: RouteInitEnvironment) => {
         manager.emit('connect', { socket, socket_id: socket.id });
 
         // Pass any events to manager
-        socket.on('disconnect', data => manager.emit('disconnect', { socket, socket_id: socket.id, data }));
+        socket.on('disconnect', reason => manager.emit('disconnect', { socket, socket_id: socket.id, data: reason }));
         socket.on('reconnect', data => manager.emit('connect', { socket, socket_id: socket.id, data }));
         socket.on('signin', accessToken => manager.emit('signin', { socket, socket_id: socket.id, data: { accessToken } }));
         socket.on('signout', data => manager.emit('signout', { socket, socket_id: socket.id, data }));
