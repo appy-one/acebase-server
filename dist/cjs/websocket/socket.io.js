@@ -36,14 +36,10 @@ const createServer = (env) => {
         pingInterval: 5000,
         pingTimeout: 5000,
         maxHttpBufferSize: maxPayloadBytes,
-        // socket.io 2.x:
-        handlePreflightRequest: (req, res) => {
-            const headers = (0, cors_1.getCorsHeaders)(env.config.allowOrigin, req.headers.origin);
-            res.writeHead(200, headers);
-            res.end();
-        }
+        // Allow socket.io 2.x clients (using engine.io 3.x):
+        allowEIO3: true,
         // socket.io 3+ uses cors package:
-        // cors: getCorsOptions(env.config.allowOrigin)
+        cors: (0, cors_1.getCorsOptions)(env.config.allowOrigin)
     });
     // Setup event emitter for communication with consuming server
     const manager = new SocketIOManager();
@@ -52,7 +48,7 @@ const createServer = (env) => {
         // Notify manager of new connection
         manager.emit('connect', { socket, socket_id: socket.id });
         // Pass any events to manager
-        socket.on('disconnect', data => manager.emit('disconnect', { socket, socket_id: socket.id, data }));
+        socket.on('disconnect', reason => manager.emit('disconnect', { socket, socket_id: socket.id, data: reason }));
         socket.on('reconnect', data => manager.emit('connect', { socket, socket_id: socket.id, data }));
         socket.on('signin', accessToken => manager.emit('signin', { socket, socket_id: socket.id, data: { accessToken } }));
         socket.on('signout', data => manager.emit('signout', { socket, socket_id: socket.id, data }));
