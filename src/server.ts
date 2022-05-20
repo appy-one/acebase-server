@@ -1,13 +1,13 @@
 import { ColorStyle, DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp } from './shared/http';
+import { createApp, HttpRequest, HttpResponse } from './shared/http';
 import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
 import { AceBase, AceBaseLocalSettings, AceBaseStorageSettings } from 'acebase';
 import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
-import { IOAuth2Provider } from './oauth-providers/oauth-provider';
+import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import oAuth2Providers from './oauth-providers';
 import { PathBasedRules } from './rules';
 import { DbUserAccountDetails } from './schema/user';
@@ -30,6 +30,8 @@ type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: '
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
 }
+
+type HttpMethod = 'get'|'GET'|'put'|'PUT'|'post'|'POST'|'delete'|'DELETE';
 
 export class AceBaseServer extends SimpleEventEmitter {
 
@@ -83,7 +85,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      */
     readonly app: ReturnType<typeof createApp>;
 
-    private readonly authProviders: { [provider: string]: IOAuth2Provider } = {};
+    private readonly authProviders: { [provider: string]: OAuth2Provider } = {};
 
     constructor(dbname: string, options?: AceBaseServerSettings) {
         super();
@@ -211,7 +213,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         addWebManagerRoutes(routeEnv);
 
         // Allow adding custom routes
-        this.extend = (method: 'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => any) => {
+        this.extend = (method: HttpMethod, ext_path: string, handler: (req: HttpRequest, res: HttpResponse) => any) => {
             const route = `/ext/${db.name}/${ext_path}`;
             this.debug.log(`Extending server: `, method, route);
             routeEnv.app[method.toLowerCase()](route, handler);
@@ -385,11 +387,11 @@ export class AceBaseServer extends SimpleEventEmitter {
      * .then(quote => {
      *      console.log(`Got random quote: ${quote}`);
      * })
-     * @param {'get'|'put'|'post'|'delete'} method 
-     * @param {string} ext_path 
-     * @param {(req: Express.Request, res: Express.Response)} handler 
+     * @param method http method to bind to
+     * @param ext_path path to bind to (appended to /ext/)
+     * @param handler your Express request handler callback
      */
-     extend(method: 'get'|'put'|'post'|'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => void) {
+    extend(method: HttpMethod, ext_path: string, handler: (req: HttpRequest, res: HttpResponse) => void) {
         throw new AceBaseServerNotReadyError();
     }
 
