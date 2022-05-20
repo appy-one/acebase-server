@@ -18,28 +18,32 @@ export interface IOAuth2TokenResult {
     expires_in?: number;
     refresh_token?: string;
 }
-export interface IOAuth2Provider {
-    init(info: {
-        redirect_url: string;
-        state?: string;
-        options?: any;
-    }): Promise<string>;
-    getAccessToken(params: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult>;
-    getUserInfo(access_token: string): Promise<{
-        id: string;
-        name: string;
-        display_name: string;
-        picture?: Array<{
-            width?: number;
-            height?: number;
-            url: string;
-        }>;
-        email: string;
-        email_verified: boolean;
-        other?: {
-            [key: string]: string | number | boolean;
-        };
+export declare type OAuth2ProviderInitInfo = {
+    redirect_url: string;
+    state?: string;
+    options?: any;
+};
+export declare type OAuth2ProviderUserInfo = {
+    id: string;
+    name: string;
+    display_name: string;
+    picture?: Array<{
+        width?: number;
+        height?: number;
+        url: string;
     }>;
+    email: string;
+    email_verified: boolean;
+    other?: {
+        [key: string]: string | number | boolean;
+    };
+};
+export declare class OAuth2Provider {
+    protected settings: IOAuth2ProviderSettings;
+    constructor(settings: IOAuth2ProviderSettings);
+    init(info: OAuth2ProviderInitInfo): Promise<string>;
+    getAccessToken(param: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult>;
+    getUserInfo(access_token: string): Promise<OAuth2ProviderUserInfo>;
 }
 export interface IOpenIDToken {
     email: string;

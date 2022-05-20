@@ -331,9 +331,9 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
      * .then(quote => {
      *      console.log(`Got random quote: ${quote}`);
      * })
-     * @param {'get'|'put'|'post'|'delete'} method
-     * @param {string} ext_path
-     * @param {(req: Express.Request, res: Express.Response)} handler
+     * @param method http method to bind to
+     * @param ext_path path to bind to (appended to /ext/)
+     * @param handler your Express request handler callback
      */
     extend(method, ext_path, handler) {
         throw new AceBaseServerNotReadyError();

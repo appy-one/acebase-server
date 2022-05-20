@@ -1,7 +1,7 @@
 import { AceBase } from 'acebase';
 import { DebugLogger } from 'acebase-core';
 import { DbUserAccountDetails } from './schema/user';
-import { AUTH_ACCESS_DEFAULT } from './settings';
+import { AuthAccessDefault } from './settings';
 export declare type RuleValidationFailCode = 'rule' | 'no_rule' | 'private' | 'exception';
 declare type HasAccessResult = {
     allow: boolean;
@@ -24,7 +24,7 @@ export declare class PathBasedRules {
     private authEnabled;
     private accessRules;
     stop(): void;
-    constructor(rulesFilePath: string, defaultAccess: AUTH_ACCESS_DEFAULT, env: {
+    constructor(rulesFilePath: string, defaultAccess: AuthAccessDefault, env: {
         debug: DebugLogger;
         db: AceBase;
         authEnabled: boolean;

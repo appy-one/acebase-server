@@ -10,10 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthProvider = exports.SpotifyAuthProvider = void 0;
+const oauth_provider_1 = require("./oauth-provider");
 const simple_fetch_1 = require("../shared/simple-fetch");
-class SpotifyAuthProvider {
+class SpotifyAuthProvider extends oauth_provider_1.OAuth2Provider {
     constructor(settings) {
-        this.settings = settings;
+        super(settings);
         if (!settings.scopes) {
             settings.scopes = [];
         }

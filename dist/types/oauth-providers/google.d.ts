@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2ProviderInitInfo, OAuth2Provider } from "./oauth-provider";
 /**
  * Details of your app to access the Google API. See https://developers.google.com/identity/protocols/oauth2/scopes
  */
@@ -15,8 +15,7 @@ interface IGoogleAuthToken {
     scope: string;
     token_type: string;
 }
-export declare class GoogleAuthProvider implements IOAuth2Provider {
-    private settings;
+export declare class GoogleAuthProvider extends OAuth2Provider {
     _config: IOpenIDConfiguration;
     constructor(settings: IGoogleAuthSettings);
     getOpenIDConfig(): Promise<IOpenIDConfiguration>;
@@ -25,10 +24,7 @@ export declare class GoogleAuthProvider implements IOAuth2Provider {
      * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
-    init(info: {
-        redirect_url: string;
-        state?: string;
-    }): Promise<string>;
+    init(info: OAuth2ProviderInitInfo): Promise<string>;
     getAccessToken(params: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IGoogleAuthToken>;
     revokeAccess(access_token: string): Promise<void>;
     getUserInfo(access_token: string): Promise<{

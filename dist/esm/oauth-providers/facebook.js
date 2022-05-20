@@ -1,7 +1,8 @@
+import { OAuth2Provider } from "./oauth-provider.js";
 import { fetch } from '../shared/simple-fetch.js';
-export class FacebookAuthProvider {
+export class FacebookAuthProvider extends OAuth2Provider {
     constructor(settings) {
-        this.settings = settings;
+        super(settings);
         if (!settings.scopes) {
             settings.scopes = [];
         }

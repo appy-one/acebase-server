@@ -22,11 +22,10 @@ export declare class AceBaseServerHttpsConfig {
     passphrase?: string;
     constructor(settings: AceBaseServerHttpsSettings);
 }
-export declare enum AUTH_ACCESS_DEFAULT {
-    DENY_ALL = "deny",
-    ALLOW_ALL = "allow",
-    ALLOW_AUTHENTICATED = "auth"
-}
+export declare type AuthAccessDefault = 'deny' | 'allow' | 'auth';
+export declare const AUTH_ACCESS_DEFAULT: {
+    [key: string]: AuthAccessDefault;
+};
 export declare class AceBaseServerAuthenticationSettings {
     /**
      * Whether to enable authorization. Without authorization the entire db can be read and written to by anyone (not recommended 🤷🏼‍♂️)
@@ -47,7 +46,7 @@ export declare class AceBaseServerAuthenticationSettings {
     /**
      * When the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
      */
-    readonly defaultAccessRule: AUTH_ACCESS_DEFAULT;
+    readonly defaultAccessRule: AuthAccessDefault;
     /**
      * When the server runs for the first time, what password to use for the admin user. If not supplied, a generated password will be used and shown ONCE in the console output.
      */

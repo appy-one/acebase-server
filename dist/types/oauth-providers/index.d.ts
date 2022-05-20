@@ -1,18 +1,10 @@
-import { DropboxAuthProvider } from './dropbox';
-import { FacebookAuthProvider } from './facebook';
-import { GoogleAuthProvider } from './google';
-import { InstagramAuthProvider } from './instagram';
-import { SpotifyAuthProvider } from './spotify';
+import { OAuth2Provider } from './oauth-provider';
 export { DropboxAuthProvider, IDropboxAuthSettings } from './dropbox';
 export { FacebookAuthProvider, IFacebookAuthSettings } from './facebook';
 export { GoogleAuthProvider, IGoogleAuthSettings } from './google';
 export { InstagramAuthProvider, IInstagramAuthSettings } from './instagram';
 export { SpotifyAuthProvider, ISpotifyAuthSettings } from './spotify';
 declare const oAuth2Providers: {
-    dropbox: typeof DropboxAuthProvider;
-    facebook: typeof FacebookAuthProvider;
-    google: typeof GoogleAuthProvider;
-    instagram: typeof InstagramAuthProvider;
-    spotify: typeof SpotifyAuthProvider;
+    [key: string]: typeof OAuth2Provider;
 };
 export default oAuth2Providers;

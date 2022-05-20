@@ -1,12 +1,13 @@
-/// <reference types="express-serve-static-core" />
 import { DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp } from './shared/http';
+import { createApp, HttpRequest, HttpResponse } from './shared/http';
 import { AceBase } from 'acebase';
+import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import { DbUserAccountDetails } from './schema/user';
 export declare class AceBaseServerNotReadyError extends Error {
     constructor();
 }
+declare type HttpMethod = 'get' | 'GET' | 'put' | 'PUT' | 'post' | 'POST' | 'delete' | 'DELETE';
 export declare class AceBaseServer extends SimpleEventEmitter {
     private _ready;
     get isReady(): boolean;
@@ -91,16 +92,17 @@ export declare class AceBaseServer extends SimpleEventEmitter {
      * .then(quote => {
      *      console.log(`Got random quote: ${quote}`);
      * })
-     * @param {'get'|'put'|'post'|'delete'} method
-     * @param {string} ext_path
-     * @param {(req: Express.Request, res: Express.Response)} handler
+     * @param method http method to bind to
+     * @param ext_path path to bind to (appended to /ext/)
+     * @param handler your Express request handler callback
      */
-    extend(method: 'get' | 'put' | 'post' | 'delete', ext_path: string, handler: (req: Express.Request, res: Express.Response) => void): void;
+    extend(method: HttpMethod, ext_path: string, handler: (req: HttpRequest, res: HttpResponse) => void): void;
     /**
      * Configure an auth provider to allow users to sign in with Facebook, Google, etc
      * @param providerName name of the third party OAuth provider. Eg: "Facebook", "Google", "spotify" etc
      * @param settings API key & secret for the OAuth provider
      * @returns Returns the created auth provider instance, which can be used to call non-user specific methods the provider might support. (example: the Spotify auth provider supports getClientAuthToken, which allows API calls to be made to the core (non-user) spotify service)
      */
-    configAuthProvider(providerName: string, settings: any): any;
+    configAuthProvider(providerName: string, settings: any): OAuth2Provider;
 }
+export {};

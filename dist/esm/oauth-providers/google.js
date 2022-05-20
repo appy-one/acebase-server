@@ -1,7 +1,8 @@
+import { OAuth2Provider } from "./oauth-provider.js";
 import { fetch } from '../shared/simple-fetch.js';
-export class GoogleAuthProvider {
+export class GoogleAuthProvider extends OAuth2Provider {
     constructor(settings) {
-        this.settings = settings;
+        super(settings);
         if (!settings.scopes) {
             settings.scopes = [];
         }

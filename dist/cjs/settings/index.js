@@ -20,12 +20,11 @@ class AceBaseServerHttpsConfig {
     }
 }
 exports.AceBaseServerHttpsConfig = AceBaseServerHttpsConfig;
-var AUTH_ACCESS_DEFAULT;
-(function (AUTH_ACCESS_DEFAULT) {
-    AUTH_ACCESS_DEFAULT["DENY_ALL"] = "deny";
-    AUTH_ACCESS_DEFAULT["ALLOW_ALL"] = "allow";
-    AUTH_ACCESS_DEFAULT["ALLOW_AUTHENTICATED"] = "auth";
-})(AUTH_ACCESS_DEFAULT = exports.AUTH_ACCESS_DEFAULT || (exports.AUTH_ACCESS_DEFAULT = {}));
+exports.AUTH_ACCESS_DEFAULT = {
+    DENY_ALL: 'deny',
+    ALLOW_ALL: 'allow',
+    ALLOW_AUTHENTICATED: 'auth'
+};
 class AceBaseServerAuthenticationSettings {
     constructor(settings) {
         /**
@@ -47,7 +46,7 @@ class AceBaseServerAuthenticationSettings {
         /**
          * When the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
          */
-        this.defaultAccessRule = AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
+        this.defaultAccessRule = exports.AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
         /**
          * Whether to use a separate database for auth and logging. 'v2' will store data in auth.db, which is NOT TESTED YET!
          */

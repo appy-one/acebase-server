@@ -16,12 +16,11 @@ export class AceBaseServerHttpsConfig {
         }
     }
 }
-export var AUTH_ACCESS_DEFAULT;
-(function (AUTH_ACCESS_DEFAULT) {
-    AUTH_ACCESS_DEFAULT["DENY_ALL"] = "deny";
-    AUTH_ACCESS_DEFAULT["ALLOW_ALL"] = "allow";
-    AUTH_ACCESS_DEFAULT["ALLOW_AUTHENTICATED"] = "auth";
-})(AUTH_ACCESS_DEFAULT || (AUTH_ACCESS_DEFAULT = {}));
+export const AUTH_ACCESS_DEFAULT = {
+    DENY_ALL: 'deny',
+    ALLOW_ALL: 'allow',
+    ALLOW_AUTHENTICATED: 'auth'
+};
 export class AceBaseServerAuthenticationSettings {
     constructor(settings) {
         /**

@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
 /**
  * Details of your app to access the Dropbox API
  */
@@ -16,8 +16,7 @@ interface IDropboxAuthToken {
     account_id: string;
     uid: string;
 }
-export declare class DropboxAuthProvider implements IOAuth2Provider {
-    private settings;
+export declare class DropboxAuthProvider extends OAuth2Provider {
     constructor(settings: IDropboxAuthSettings);
     /**
      * Starts auth flow by getting the url the user should be redirected to
@@ -30,17 +29,7 @@ export declare class DropboxAuthProvider implements IOAuth2Provider {
      * @param info.options.locale If the locale specified is a supported language, Dropbox will direct users to a translated version of the authorization website. Locale tags should be IETF language tags.
      * @param info.options.force_reauthentication When true (default is false) users will be signed out if they are currently signed in. This will make sure the user is brought to a page where they can create a new account or sign in to another account. This should only be used when there is a definite reason to believe that the user needs to sign in to a new or different account.
      */
-    init(info: {
-        redirect_url: string;
-        state?: string;
-        options?: {
-            locale?: string;
-            require_role?: string;
-            disable_signup?: boolean;
-            force_reapprove?: boolean;
-            force_reauthentication?: boolean;
-        };
-    }): Promise<string>;
+    init(info: OAuth2ProviderInitInfo): Promise<string>;
     getAccessToken(params: IOAuth2AuthCodeParams | IOAuth2RefreshTokenParams): Promise<IDropboxAuthToken>;
     getUserInfo(access_token: string): Promise<{
         id: string;

@@ -6,7 +6,7 @@ import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
 import type { ConnectedClient } from './clients';
 import type { DebugLogger, SimpleCache } from 'acebase-core';
-import type { IOAuth2Provider } from '../oauth-providers/oauth-provider';
+import type { OAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
@@ -27,7 +27,7 @@ export interface RouteInitEnvironment {
     clients: Map<string, ConnectedClient>;
     authCache: SimpleCache<string, DbUserAccountDetails>;
     authProviders: {
-        [providerName: string]: IOAuth2Provider;
+        [providerName: string]: OAuth2Provider;
     };
     rules: PathBasedRules;
 }
