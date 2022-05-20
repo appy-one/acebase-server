@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2ProviderInitInfo, OAuth2Provider } from "./oauth-provider";
 import { fetch } from '../shared/simple-fetch';
 
 /**
@@ -43,11 +43,12 @@ interface IGoogleUser {
     updated_at: number
 }
 
-export class GoogleAuthProvider implements IOAuth2Provider {
+export class GoogleAuthProvider extends OAuth2Provider {
 
     _config: IOpenIDConfiguration
 
-    constructor(private settings: IGoogleAuthSettings) {
+    constructor(settings: IGoogleAuthSettings) {
+        super(settings);
         if (!settings.scopes) { settings.scopes = []; }
         if (!settings.scopes.includes('email')) { settings.scopes.push('email'); }
         if (!settings.scopes.includes('profile')) { settings.scopes.push('profile'); }
@@ -66,7 +67,7 @@ export class GoogleAuthProvider implements IOAuth2Provider {
      * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url 
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
-    async init(info: { redirect_url: string, state?: string }) {
+    async init(info: OAuth2ProviderInitInfo) {
         // Return url to get authorization code with
         // See https://developers.google.com/identity/protocols/oauth2/web-server#httprest
 

@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
 import { fetch } from '../shared/simple-fetch';
 
 /**
@@ -48,9 +48,10 @@ interface IDropboxUser {
     }
     team_member_id?: string
 }
-export class DropboxAuthProvider implements IOAuth2Provider {
+export class DropboxAuthProvider extends OAuth2Provider {
 
-    constructor(private settings: IDropboxAuthSettings) {
+    constructor(settings: IDropboxAuthSettings) {
+        super(settings);
         if (!settings.scopes) { settings.scopes = []; }
         if (settings.scopes.length > 0 && !settings.scopes.includes('account_info.read')) { settings.scopes.push('account_info.read'); }
     }
@@ -66,7 +67,7 @@ export class DropboxAuthProvider implements IOAuth2Provider {
      * @param info.options.locale If the locale specified is a supported language, Dropbox will direct users to a translated version of the authorization website. Locale tags should be IETF language tags.
      * @param info.options.force_reauthentication When true (default is false) users will be signed out if they are currently signed in. This will make sure the user is brought to a page where they can create a new account or sign in to another account. This should only be used when there is a definite reason to believe that the user needs to sign in to a new or different account.
      */
-    async init(info: { redirect_url: string, state?: string, options?: { locale?: string, require_role?: string, disable_signup?: boolean, force_reapprove?: boolean, force_reauthentication?: boolean } }) {
+    async init(info: OAuth2ProviderInitInfo) {
         // Return url to get authorization code with
         const options = info.options || {};
         const authUrl = `https://www.dropbox.com/oauth2/authorize?response_type=code&token_access_type=offline&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}&locale=${options.locale || ''}&require_role=${options.require_role || ''}&force_reauthentication=${options.force_reauthentication === true}&force_reapprove=${options.force_reapprove === true}&disable_signup=${options.disable_signup === true}&state=${encodeURIComponent(info.state)}`;

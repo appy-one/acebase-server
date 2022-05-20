@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
 import { fetch } from '../shared/simple-fetch';
 
 /**
@@ -28,9 +28,10 @@ interface ISpotifyUser {
     type: 'user',
     uri: string
 }
-export class SpotifyAuthProvider implements IOAuth2Provider {
+export class SpotifyAuthProvider extends OAuth2Provider {
 
-    constructor(private settings: ISpotifyAuthSettings) {
+    constructor(settings: ISpotifyAuthSettings) {
+        super(settings);
         if (!settings.scopes) { settings.scopes = []; }
         if (!settings.scopes.includes('user-read-email')) { settings.scopes.push('user-read-email'); }
         if (!settings.scopes.includes('user-read-private')) { settings.scopes.push('user-read-private'); }
@@ -41,7 +42,7 @@ export class SpotifyAuthProvider implements IOAuth2Provider {
      * @param info.redirectUrl Url spotify will redirect to after authorizing 
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
-    async init(info: { redirect_url: string, state?: string }) {
+    async init(info: OAuth2ProviderInitInfo) {
         // Return url to get authorization code with
         const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}&state=${encodeURIComponent(info.state)}`;
         return authUrl;

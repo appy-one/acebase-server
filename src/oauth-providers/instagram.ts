@@ -1,4 +1,4 @@
-import { IOAuth2Provider, IOAuth2ProviderSettings, IOAuth2AuthCodeParams } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
 import { fetch } from '../shared/simple-fetch';
 
 /**
@@ -28,9 +28,10 @@ interface IInstagramUser {
         followed_by: number
     }
 }
-export class InstagramAuthProvider implements IOAuth2Provider {
+export class InstagramAuthProvider extends OAuth2Provider {
 
-    constructor(private settings: IInstagramAuthSettings) {
+    constructor(settings: IInstagramAuthSettings) {
+        super(settings);
         if (!settings.scopes) { settings.scopes = []; }
         if (!settings.scopes.includes('basic')) { settings.scopes.push('basic'); }
 
@@ -44,7 +45,7 @@ export class InstagramAuthProvider implements IOAuth2Provider {
      * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url 
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
-    async init(info: { redirect_url: string, state?: string }) {
+    async init(info: OAuth2ProviderInitInfo) {
         // Return url to get authorization code with
         // See https://www.instagram.com/developer/authorization/
         const authUrl = `https://api.instagram.com/oauth/authorize/?response_type=code&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}&state=${encodeURIComponent(info.state)}`;
