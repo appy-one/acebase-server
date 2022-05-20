@@ -5,6 +5,8 @@ const createExpress = (express as any).default ?? express; // ESM and CJS compat
 
 export type HttpApp = express.Express;
 export type HttpSocket = Socket;
+export type HttpRequest = express.Request;
+export type HttpResponse = express.Response;
 
 /**
  * Creates an app that handles http requests, adds json body parsing.
