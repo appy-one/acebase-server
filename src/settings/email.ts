@@ -14,5 +14,5 @@ export interface AceBaseServerEmailSettings {
     server?: AceBaseServerEmailServerSettings;
 
     /** function to call when an e-mail needs to be sent */
-    send: (request: AceBaseEmailRequest) => Promise<boolean>;
+    send: (request: AceBaseEmailRequest) => Promise<void>;
 };
