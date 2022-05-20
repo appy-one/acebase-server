@@ -35,11 +35,12 @@ export class AceBaseServerHttpsConfig {
     }
 }
 
-export enum AUTH_ACCESS_DEFAULT {
-    DENY_ALL = 'deny',
-    ALLOW_ALL = 'allow',
-    ALLOW_AUTHENTICATED = 'auth'    
-}
+export type AuthAccessDefault = 'deny'|'allow'|'auth';
+export const AUTH_ACCESS_DEFAULT: { [key: string]: AuthAccessDefault } = {
+    DENY_ALL: 'deny',
+    ALLOW_ALL: 'allow',
+    ALLOW_AUTHENTICATED: 'auth'
+};
 
 export class AceBaseServerAuthenticationSettings {
 
@@ -66,7 +67,7 @@ export class AceBaseServerAuthenticationSettings {
     /**
      * When the server runs for the first time, what defaults to use to generate the rules.json file with. Options are: 'auth' (only authenticated access to db, default), 'deny' (deny access to anyone except admin user), 'allow' (allow access to anyone)
      */
-    readonly defaultAccessRule: AUTH_ACCESS_DEFAULT = AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
+    readonly defaultAccessRule: AuthAccessDefault = AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED;
 
     /**
      * When the server runs for the first time, what password to use for the admin user. If not supplied, a generated password will be used and shown ONCE in the console output.

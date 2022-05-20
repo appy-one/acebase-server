@@ -2,7 +2,7 @@ import { AceBase } from 'acebase';
 import { DebugLogger, PathInfo } from 'acebase-core';
 import * as fs from 'fs';
 import { DbUserAccountDetails } from './schema/user';
-import { AUTH_ACCESS_DEFAULT } from './settings';
+import { AUTH_ACCESS_DEFAULT, AuthAccessDefault } from './settings';
 
 type PathRuleFunction = ((env: any) => boolean) & { getText(): string };
 type PathRules = {} & {
@@ -24,7 +24,7 @@ export class PathBasedRules {
     private accessRules: RulesData;
     stop(): void { throw new Error('not started yet'); }
 
-    constructor(rulesFilePath: string, defaultAccess: AUTH_ACCESS_DEFAULT, env: { debug: DebugLogger, db: AceBase, authEnabled: boolean } ) {
+    constructor(rulesFilePath: string, defaultAccess: AuthAccessDefault, env: { debug: DebugLogger, db: AceBase, authEnabled: boolean } ) {
         // Reads rules from a file and monitors it
         // Check if there is a rules file, load it or generate default
 
