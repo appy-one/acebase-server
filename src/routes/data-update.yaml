@@ -24,7 +24,7 @@
         description: Contextual info about the database operation (must be valid JSON). This info is included in event notifications sent to clients watching data at this or child paths
         schema:
           type: string
-          example: {}
+          example: '{}'
     requestBody:
       description: serialized value to store in the database
       content:
@@ -36,6 +36,12 @@
         description: Returns "200 OK" when the database operation succeeded
         content:
           'application/json':
+            headers:
+              'AceBase-Context':
+                description: Returns contextual information, such as the `acebase_cursor` if transaction logging is enabled on the server.
+                schema:
+                  type: string
+                  example: '{ "acebase_cursor": "l3lf2iwd000109mgdn0d6pqt" }'
             schema:
               type: object
               properties:

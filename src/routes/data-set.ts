@@ -52,6 +52,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 .context(req.context)
                 .set(val);
 
+            // NEW: add cursor to response context, which was added to the request context in `acebase_cursor` if transaction logging is enabled
+            const returnContext = { acebase_cursor: req.context.acebase_cursor };
+            res.setHeader('AceBase-Context', JSON.stringify(returnContext) );
+
             res.send({ success: true });
         }
         catch(err) {

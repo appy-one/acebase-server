@@ -34,6 +34,12 @@
         description: If successful returns the string `"done"`
         content:
           'text/plain':
+            headers:
+              'AceBase-Context':
+                description: Returns the context that was passed to the transaction start endpoint, augmented with an `acebase_cursor` if transaction logging is enabled on the server.
+                schema:
+                  type: string
+                  example: '{ "acebase_cursor": "l3lf2iwd000109mgdn0d6pqt" }'
             schema:
               type: string
               value: done

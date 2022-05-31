@@ -1,5 +1,6 @@
 import { SchemaValidationError } from 'acebase';
 import { ID, Transport } from 'acebase-core';
+import { Api } from 'acebase-core/src/api';
 import { SerializedValue } from 'acebase-core/types/transport';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
@@ -34,7 +35,7 @@ export type FinishResponseBody = 'done'     // 200
 
 export type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
 
-type Transaction = { id: string; started: number; path: string; context: any; finish?: (val?: any) => Promise<any>; timeout: NodeJS.Timeout };
+type Transaction = { id: string; started: number; path: string; context: any; finish?: (val?: any) => ReturnType<Api['transaction']>; timeout: NodeJS.Timeout };
 
 export const addRoutes = (env: RouteInitEnvironment) => {
 
@@ -69,7 +70,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             const donePromise = env.db.api.transaction(tx.path, val => {
                 env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
                 const currentValue = Transport.serialize(val);
-                const promise = new Promise((resolve) => {
+                const promise = new Promise<any>((resolve) => {
                     tx.finish = (val: any) => {
                         env.debug.verbose(`Transaction ${tx.id} finishing with value: `, val);
                         _transactions.delete(tx.id);
@@ -118,7 +119,14 @@ export const addRoutes = (env: RouteInitEnvironment) => {
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
     
-            await tx.finish(newValue);
+            
+            const result = await tx.finish(newValue);
+             
+            // NEW: capture cursor and return it in the response context header
+            if (!tx.context) { tx.context = {}; }
+            tx.context.acebase_cursor = result.cursor;
+            res.setHeader('AceBase-Context', JSON.stringify(tx.context));
+            
             res.send('done');
         }
         catch (err) {
@@ -137,7 +145,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
                 sendError(res, err);
             }
         }
-    });    
+    });
 
 };
 
