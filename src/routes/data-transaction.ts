@@ -109,10 +109,17 @@ export const addRoutes = (env: RouteInitEnvironment) => {
 
         // Finish transaction
         try {
-            if (typeof data.value?.val === 'undefined' || !['string','object','undefined'].includes(typeof data.value?.map)) {
+            let cancel = false;
+            if (typeof data.value === 'object' && (data.value === null || Object.keys(data.value).length === 0)) {
+                // Returning undefined from a transaction callback should cancel the transaction
+                // acebase-client (Transport.serialize) serializes value undefined as { val: undefined, map: undefined }, which
+                // then is sent to the server as an empty object: {}
+                cancel = true;
+            }
+            else if (typeof data.value?.val === 'undefined' || !['string','object','undefined'].includes(typeof data.value?.map)) {
                 throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
             }
-            const newValue = Transport.deserialize(data.value);
+            const newValue = cancel ? undefined : Transport.deserialize(data.value);
 
             if (tx.path === '' && req.user?.uid !== 'admin' && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
