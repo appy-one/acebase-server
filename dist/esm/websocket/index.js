@@ -268,11 +268,11 @@ export const addWebsocketServer = (env) => {
             if (!env.rules.userHasAccess(client.user, data.path, true)) {
                 throw new Error('access_denied');
             }
-            const newValue = Transport.deserialize(data.value);
+            const newValue = 'val' in data.value ? Transport.deserialize(data.value) : undefined;
             try {
-                await tx.finish(newValue);
+                const { cursor } = await tx.finish(newValue);
                 env.debug.verbose(`Transaction ${tx.id} finished`);
-                serverManager.send(event.socket, 'tx_completed', { id: tx.id });
+                serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
             }
             catch (err) {
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message });

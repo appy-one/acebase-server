@@ -1,5 +1,7 @@
-import * as socketIO from 'socket.io';
-const createSocketIOServer = socketIO.default ?? socketIO; // ESM and CJS compatible approach
+import { Server as SocketIOServer } from 'socket.io';
+const createSocketIOServer = (httpServer, options) => {
+    return new SocketIOServer(httpServer, options);
+};
 import { WebSocketManager } from './manager.js';
 import { getCorsOptions } from '../middleware/cors.js';
 export class SocketIOManager extends WebSocketManager {

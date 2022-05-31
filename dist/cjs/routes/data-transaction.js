@@ -86,15 +86,28 @@ const addRoutes = (env) => {
         }
         // Finish transaction
         try {
-            if (typeof ((_a = data.value) === null || _a === void 0 ? void 0 : _a.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_b = data.value) === null || _b === void 0 ? void 0 : _b.map))) {
+            let cancel = false;
+            if (typeof data.value === 'object' && (data.value === null || Object.keys(data.value).length === 0)) {
+                // Returning undefined from a transaction callback should cancel the transaction
+                // acebase-client (Transport.serialize) serializes value undefined as { val: undefined, map: undefined }, which
+                // then is sent to the server as an empty object: {}
+                cancel = true;
+            }
+            else if (typeof ((_a = data.value) === null || _a === void 0 ? void 0 : _a.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_b = data.value) === null || _b === void 0 ? void 0 : _b.map))) {
                 throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
             }
-            const newValue = acebase_core_1.Transport.deserialize(data.value);
+            const newValue = cancel ? undefined : acebase_core_1.Transport.deserialize(data.value);
             if (tx.path === '' && ((_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== 'admin' && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
-            yield tx.finish(newValue);
+            const result = yield tx.finish(newValue);
+            // NEW: capture cursor and return it in the response context header
+            if (!tx.context) {
+                tx.context = {};
+            }
+            tx.context.acebase_cursor = result.cursor;
+            res.setHeader('AceBase-Context', JSON.stringify(tx.context));
             res.send('done');
         }
         catch (err) {

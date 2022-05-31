@@ -55,12 +55,13 @@ const addRoute = (env) => {
                     if (contentType === 'image/png') { //state.provider === 'google' && 
                         // Don't accept image/png, because it's probably a placeholder image. Google does this by creating a png with people's initials
                         user_details.picture = [];
-                        return;
                     }
-                    const image = yield response.arrayBuffer();
-                    let buff = Buffer.from(image);
-                    best.url = `data:${contentType};base64,${buff.toString('base64')}`;
-                    user_details.picture = [best]; // Only keep the best one
+                    else {
+                        const image = yield response.arrayBuffer();
+                        let buff = Buffer.from(image);
+                        best.url = `data:${contentType};base64,${buff.toString('base64')}`;
+                        user_details.picture = [best]; // Only keep the best one
+                    }
                 }
                 catch (err) {
                     env.debug.warn(`Could not fetch profile picture from "${best.url}": `, err);

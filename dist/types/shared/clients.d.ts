@@ -37,7 +37,9 @@ export declare class ConnectedClient {
             started: number;
             path: string;
             context: any;
-            finish?: (val?: any) => Promise<any>;
+            finish?: (val?: any) => Promise<{
+                cursor?: string;
+            }>;
             timeout: NodeJS.Timeout;
         };
     };

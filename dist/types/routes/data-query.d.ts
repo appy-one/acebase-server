@@ -42,7 +42,7 @@ export declare type ResponseBody = {
         count: number;
         list: any[];
     };
-    map: any;
+    map?: any;
 };
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;

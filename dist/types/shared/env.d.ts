@@ -35,7 +35,7 @@ export interface RouteRequestEnvironment {
     /** If the request has an Authentication: bearer token, the user will be bound to the incoming request */
     user?: DbUserAccountDetails;
     /** If context is sent through AceBase-Context header, it will be bound to the incoming request */
-    context?: {
+    context: {
         [key: string]: any;
     };
 }

@@ -1,9 +1,10 @@
 "use strict";
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createServer = exports.SocketIOManager = void 0;
-const socketIO = require("socket.io");
-const createSocketIOServer = (_a = socketIO.default) !== null && _a !== void 0 ? _a : socketIO; // ESM and CJS compatible approach
+const socket_io_1 = require("socket.io");
+const createSocketIOServer = (httpServer, options) => {
+    return new socket_io_1.Server(httpServer, options);
+};
 const manager_1 = require("./manager");
 const cors_1 = require("../middleware/cors");
 class SocketIOManager extends manager_1.WebSocketManager {
