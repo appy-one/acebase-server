@@ -14,7 +14,7 @@
   "private": false,
   "repository": "github:appy-one/acebase-server",
   "scripts": {
-    "start": "node dist/esm/start.js DBNAME=default HOST=localhost PORT=3000 TXLOG=1",
+    "start": "node dist/esm/start.js DBNAME=default DBPATH=.. HOST=localhost PORT=3000 TXLOG=1",
     "test": "set NODE_ENV=development && npm run start",
     "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && echo Done!",
     "build:clean": "rm -fr dist/*",
@@ -57,8 +57,8 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.19.0",
-    "acebase-core": "^1.16.0",
+    "acebase": "^1.21.1",
+    "acebase-core": "^1.18.0",
     "express": "^4.17.1",
     "socket.io": "^4.5.0",
     "swagger-jsdoc": "^6.1.0",
