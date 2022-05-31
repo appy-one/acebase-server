@@ -65,7 +65,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             res.contentType('application/json');
 
             const serialized = Transport.serialize2(result.mutations);
-            res.send(serialized);
+            res.send(serialized as ValueMutation[]);
         }
         catch(err) {
             sendError(res, err);
