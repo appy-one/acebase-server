@@ -1,6 +1,8 @@
-import * as socketIO from 'socket.io';
-import type { Server as SocketIOServer, ServerOptions as SocketIOServerOptions } from 'socket.io';
-const createSocketIOServer: (httpServer: any, options: Partial<SocketIOServerOptions>) => SocketIOServer = (socketIO as any).default ?? socketIO; // ESM and CJS compatible approach
+import { Server as SocketIOServer } from 'socket.io';
+import type { ServerOptions as SocketIOServerOptions } from 'socket.io';
+const createSocketIOServer = (httpServer: any, options: Partial<SocketIOServerOptions>) => {
+    return new SocketIOServer(httpServer, options);
+}
 
 import type { Socket } from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
