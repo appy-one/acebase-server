@@ -85,11 +85,11 @@ export class PathBasedRules {
                     rule.getText = () => {
                         return text;
                     }
-                    parent[key] = rule;
+                    return parent[key] = rule;
                 }
                 else if (key === '.schema') {
                     // Add schema
-                    env.db.schema.set(path, rule)
+                    return env.db.schema.set(path, rule)
                     .catch(err => {
                         env.debug.error(`Error parsing ${path}/.schema: ${err.message}`)
                     });
@@ -105,15 +105,15 @@ export class PathBasedRules {
         processRules('', accessRules.rules, []);
 
         // Watch file for changes
-        const wacthFileListener = () => {
+        const watchFileListener = () => {
             // Reload access rules
             const accessRules = readRules();
             processRules('', accessRules, []);
             this.accessRules = accessRules;
         };
-        fs.watchFile(rulesFilePath, wacthFileListener);
+        fs.watchFile(rulesFilePath, watchFileListener);
         this.stop = () => {
-            fs.unwatchFile(rulesFilePath, wacthFileListener);
+            fs.unwatchFile(rulesFilePath, watchFileListener);
         }
         process.on('SIGINT', this.stop);
 
