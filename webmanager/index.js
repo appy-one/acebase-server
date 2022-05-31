@@ -407,16 +407,13 @@ document.getElementById('update_button').addEventListener('click', () => {
     let json = textarea.value;
     if (!json.startsWith('{') || !json.endsWith('}')) { return alert('Value must be json'); }
     
-    // TODO: Find a secure way to replace dates
-    // // Replace date strings with dates
-    // json = json.replace(/"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?Z"/g, m => `new Date(${m})`);
-    // // Parse object
-    // const updates = eval(`(${json})`); // eval to allow JS, eg: new Date("2021-04-13T20:03:02.735Z")
     // Parse object
-
     let updates;
     try {
         updates = JSON.parse(json);
+        // Allow passed data to be serialized by Transport.serialize2:
+        // this allows dates etc to be used: { "created": { ".type": "date", ".val": "2022-05-31T16:52:51Z" } }
+        updates = acebaseclient.Transport.deserialize2(updates);
     }
     catch(err) {
         return alert(err.message);
