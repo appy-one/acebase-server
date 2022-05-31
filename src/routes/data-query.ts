@@ -34,7 +34,7 @@ export type ResponseBody = {
         count: number;
         list: any[]
     },
-    map: any
+    map?: any
 };
 export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 
