@@ -27,5 +27,5 @@ export class ConnectedClient {
     realtimeQueries: { [id: string]: { path: string; query: IApiQuery, options: IApiQueryOptions }} = {};
     
     /** Currently running transactions */
-    transactions: { [id: string]: { id: string; started: number; path: string; context: any; finish?: (val?: any) => Promise<any>; timeout: NodeJS.Timeout } } = {};
+    transactions: { [id: string]: { id: string; started: number; path: string; context: any; finish?: (val?: any) => Promise<{ cursor?: string }>; timeout: NodeJS.Timeout } } = {};
 }
