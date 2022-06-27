@@ -21,6 +21,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/forgot_password`, async (req: Request, res) => {
 
         const details = req.body;
+        const LOG_ACTION = 'auth.forgot_password';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, email: details.email };
+        
         try {
             if (!env.config.email || typeof env.config.email.send !== 'function') {
                 throw new ForgotPasswordError('server_email_config', 'Server email settings have not been configured');
@@ -51,15 +54,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     displayName: user.display_name
                 }
             };
-            await Promise.all([
-                env.config.email.send(request),
-                snap.ref.update({ password_reset_code: user.password_reset_code })
-            ])
-            env.logRef.push({ action: 'forgot_password', success: true, email: details.email, ip: req.ip, date: new Date() });
+
+            await snap.ref.update({ password_reset_code: user.password_reset_code });
+            await env.config.email.send(request).catch(err => {
+                env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, request }, err);
+            });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'forgot_password', success: false, code: err.code || 'unexpected', message: err.code ? null : err.message, email: details.email, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, err.code || 'unexpected', { ...LOG_DETAILS, message: (err instanceof Error && err.message) ?? err.toString() });
             if (err.code) {
                 sendBadRequestError(res, err);
             }

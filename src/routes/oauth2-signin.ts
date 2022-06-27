@@ -17,10 +17,13 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 export const addRoute = (env: RouteInitEnvironment) => {
     
     env.app.get(`/oauth2/${env.db.name}/signin`, async (req: Request, res) => {
-
         // This is where the user is redirected to by the provider after signin or error
+
+        const LOG_ACTION = 'oauth2.signin';
+        const LOG_DETAILS = { ip: req.ip, provider: null };
+
         try {
-            const state = parseSignedPublicToken(req.query.state, env.tokenSalt);
+            const state = parseSignedPublicToken(req.query.state, env.tokenSalt) as { provider: string; client_id: string; flow: 'socket'|'http'; callbackUrl: string; uid?: string };
             if (req.query.error) {
                 if (state.flow === 'socket') {
                     const client = env.clients.get(state.client_id);
@@ -36,6 +39,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             // Got authorization code
             const authCode = req.query.code;
             const provider = env.authProviders[state.provider];
+            LOG_DETAILS.provider = state.provider;
 
             // Get access & refresh tokens
             const tokens = await provider.getAccessToken({ type: 'auth', auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${env.db.name}/signin` });
@@ -149,7 +153,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 await env.authRef.child(uid).child('settings').update(getProviderSettings());
 
                 // Log success
-                env.logRef.push({ action: 'oauth2_signin', success: true, ip: req.ip, date: new Date(), uid });
+                env.log.event(LOG_ACTION, { ...LOG_DETAILS, uid });
 
                 // Cache the user
                 env.authCache.set(user.uid, user);
@@ -172,14 +176,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 };
 
                 env.config.email?.send(request).catch(err => {
-                    env.logRef.push({ action: 'oauth2_login_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                    env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, uid, request }, err);
                 });                            
             }
             else if (snaps.length === 0) {
                 // User does not exist, create
 
                 if (!env.config.auth.allowUserSignup) {
-                    env.logRef.push({ action: 'oauth2_signup', success: false, code: 'user_signup_disabled', provider: state.provider, email: user_details.email, date: new Date() });
+                    env.log.error(LOG_ACTION, 'user_signup_disabled', { ...LOG_DETAILS, email: user_details.email });
                     res.statusCode = 403; // Forbidden
                     return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
                 }
@@ -209,7 +213,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 user.uid = uid;
 
                 // Log success
-                env.logRef.push({ action: 'oauth2_signup', success: true, ip: req.ip, date: new Date(), uid });
+                env.log.event(LOG_ACTION, { ...LOG_DETAILS, uid });
 
                 // Cache the user
                 env.authCache.set(user.uid, user);
@@ -232,7 +236,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 };
 
                 env.config.email?.send(request).catch(err => {
-                    env.logRef.push({ action: 'oauth2_signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                    env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, uid, request }, err);
                 });
             }
             else {

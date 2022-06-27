@@ -35,8 +35,11 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/signup`, async (req: Request, res) => {
+        const LOG_ACTION = 'auth.signup';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
+
         if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
-            env.logRef.push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'user_signup_disabled', LOG_DETAILS);
             res.statusCode = 403; // Forbidden
             return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
         }
@@ -82,13 +85,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
         
         if (err === emailExistsError || err === usernameExistsError) {
-            env.logRef.push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
+            env.log.error(LOG_ACTION, 'conflict', { ...LOG_DETAILS, username: details.username, email: details.email });
             res.statusCode = 409; // conflict
             return res.send(emailOrUsernameExistsError);
         }
         else if (err) {
             // Log failure
-            env.logRef.push({ action: 'signup', success: false, code: err.code, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS);
             res.statusCode = 422; // Unprocessable Entity
             return res.send(err);
         }
@@ -116,9 +119,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             const userRef = await env.authRef.push(user);
             user.uid = userRef.key;
+            LOG_DETAILS.uid = user.uid;
 
             // Log success
-            env.logRef.push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
 
             // Cache the user
             env.authCache.set(user.uid, user);
@@ -141,7 +145,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             };
 
             env.config.email?.send(request).catch(err => {
-                env.logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, request }, err);
             });
 
             // Return the positive news
@@ -152,7 +156,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             });
         }
         catch (err) {
-            env.logRef.push({ action: 'signup', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, username: details.username, email: details.email });
+            env.log.error(LOG_ACTION, 'unexpected', { ...LOG_DETAILS, message: err instanceof Error ? err.message : err.toString(), username: details.username, email: details.email });
             sendUnexpectedError(res, err);
         }
     });

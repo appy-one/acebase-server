@@ -20,14 +20,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/change_password`, async (req: Request, res) => {
         let access_token = req.user?.access_token;
         const details = req.body;
+        const LOG_ACTION = 'auth.change_password';
+        const LOG_DETAILS = { ip: req.ip, uid: details.uid ?? null };
 
         if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
-            env.logRef.push({ action: 'change_password', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'invalid_details', LOG_DETAILS);
             res.status(400).send('Bad Request'); // Bad Request
             return;
         }
         if (details.new_password.length < 8 || details.new_password.includes(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
-            env.logRef.push({ action: 'change_password', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
+            env.log.error(LOG_ACTION, 'new_password_denied', LOG_DETAILS);
             const err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
             res.status(422).send(err);// Unprocessable Entity
             return;
@@ -71,10 +73,11 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 return user; // Update db
             });
 
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send({ access_token: publicAccessToken }); // Client must use this new access token from now on
         }
         catch(err) {
-            env.logRef.push({ action: 'change_pwd', success: false, code: err.code, ip: req.ip, date: new Date(), uid: details.uid });
+            env.log.error(LOG_ACTION, err.code, LOG_DETAILS);
             if (err.code) {
                 sendBadRequestError(res, err);
             }

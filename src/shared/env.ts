@@ -9,6 +9,7 @@ import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
 import { Api } from 'acebase-core/src/api';
+import { DatabaseLog } from '../logger';
 
 export interface RouteInitEnvironment {
     server: HttpServer | SecureHttpServer;
@@ -19,7 +20,7 @@ export interface RouteInitEnvironment {
     debug: DebugLogger;
     securityRef: DataReference;
     authRef: DataReference;
-    logRef: DataReference;
+    log: DatabaseLog; // logRef: DataReference;
     tokenSalt: string;
     clients: Map<string, ConnectedClient>;
     authCache: SimpleCache<string, DbUserAccountDetails>;

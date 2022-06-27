@@ -15,30 +15,32 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/delete`, async (req: Request, res) => {
         let details = req.body;
+        const LOG_ACTION = 'auth.delete';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, delete_uid: details.uid };
 
         if (!req.user) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthenticated_delete', delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthenticated_delete', LOG_DETAILS);
             return sendNotAuthenticatedError(res, 'unauthenticated_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
 
         if (req.user.uid !== 'admin' && details.uid !== req.user.uid) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
             return sendUnauthorizedError(res, 'unauthorized_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
 
         const uid = details.uid ?? req.user.uid;
         if (uid === 'admin') {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
             return sendUnauthorizedError(res, 'unauthorized_delete', 'The admin account cannot be deleted, your attempt has been logged');
         }
 
         try {
             await env.authRef.child(uid).remove();
-            env.logRef.push({ action: 'delete', success: true, auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send('Farewell');
         }
         catch (err) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unexpected', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unexpected', { ...LOG_DETAILS, message: (err instanceof Error && err.message) ?? err.toString() });
             sendUnexpectedError(res, err);
         }
     });

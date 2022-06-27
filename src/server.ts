@@ -23,6 +23,7 @@ import addMetadataRoutes from './routes/meta';
 import add404Middleware from './middleware/404';
 import addSwaggerMiddleware from './middleware/swagger';
 import addCacheMiddleware from './middleware/cache';
+import { DatabaseLog } from './logger';
 
 type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: 'data'|'transaction'|'auth'|'log' };
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -155,6 +156,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
         const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
         const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
+        const logger = new DatabaseLog(logRef);
 
         // Setup rules
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
@@ -169,7 +171,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             debug: this.debug,
             securityRef,
             authRef,
-            logRef,
+            log: logger,
             tokenSalt: null,
             clients,
             authCache: null,

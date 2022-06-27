@@ -24,10 +24,14 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 export const addRoute = (env: RouteInitEnvironment) => {
 
     env.app.post(`/data/${env.db.name}/*`, async (req: Request, res) => {
-        // update data
+
         const path = req.path.slice(env.db.name.length + 7);
+        const LOG_ACTION = 'data.update';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path };
+
         const access = env.rules.userHasAccess(req.user, path, true);
         if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null, rule_error: access.details?.message ?? null });
             return sendUnauthorizedError(res, access.code, access.message);
         }
 
@@ -61,16 +65,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
         catch(err) {
             if (err instanceof SchemaValidationError) {
-                env.logRef?.push({ action: 'update_data', success: false, code: 'schema_validation_failed', path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
+                env.log.error(LOG_ACTION, 'schema_validation_failed', { ...LOG_DETAILS, reason: err.reason });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
             else if (err instanceof UpdateDataError) {
-                env.logRef?.push({ action: 'update_data', success: false, code: err.code, path, ip: req.ip, uid: req.user?.uid ?? null });
+                env.log.error(LOG_ACTION, err.code, { ...LOG_DETAILS, message: err.message });
                 sendBadRequestError(res, err);
             }
             else {
                 env.debug.error(`failed to update "${path}":`, err);
-                env.logRef?.push({ action: 'update_data', success: false, code: `unknown_error`, path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
+                env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
                 sendError(res, err);
             }
         }

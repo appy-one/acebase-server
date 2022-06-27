@@ -21,7 +21,12 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
  */
 export const addRoute = (env: RouteInitEnvironment) => {
 
+    const LOG_ACTION = 'auth.verify_email';
+
     const verifyEmailAddress = async (clientIp: string, code: string) => {
+
+        const LOG_DETAILS = { ip: clientIp, uid: null };
+
         try {
             var verification = parseSignedPublicToken(code, env.tokenSalt);
         }
@@ -29,8 +34,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
             throw new VerifyEmailError('invalid_code', err.message);
         }
 
+        LOG_DETAILS.uid = verification.uid;
         const snap = await env.authRef.child(verification.uid).get();
-        if (!snap.exists()) { 
+        if (!snap.exists()) {
+            env.log.error(LOG_ACTION, 'unknown_user', LOG_DETAILS);
             throw new VerifyEmailError('unknown_user', 'Unknown user');
         }
         const user: DbUserAccountDetails = snap.val();
@@ -40,22 +47,23 @@ export const addRoute = (env: RouteInitEnvironment) => {
         // Mark account as verified
         await snap.ref.update({ email_verified: true });
 
-        env.logRef.push({ action: 'verify_email', success: true, ip: clientIp, date: new Date(), uid: user.uid });
+        env.log.event(LOG_ACTION, LOG_DETAILS);
     };
 
     env.app.post(`/auth/${env.db.name}/verify_email`, async (req: Request, res) => {
 
         const details = req.body;
+        
         try {
             await verifyEmailAddress(req.ip, details.code);
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'verify_email', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: req.user?.uid ?? null });
             if (err.code) {
                 sendBadRequestError(res, err);
             }
             else {
+                env.log.error(LOG_ACTION, 'unexpected', { ip: req.ip, message: err.message, verificaion_code: details.code });
                 sendUnexpectedError(res, err);
             }
         }

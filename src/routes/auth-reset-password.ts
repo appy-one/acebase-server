@@ -71,13 +71,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/reset_password`, async (req: Request, res) => {
 
         const details = req.body;
+        const LOG_ACTION = 'auth.reset_password';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
+
         try {
             const user = await resetPassword(req.ip, details.code, details.password);
-            env.logRef.push({ action: 'reset_password', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+            env.log.event(LOG_ACTION, { ...LOG_DETAILS, reset_uid: user.uid });
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'reset_password', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: req.user?.uid ?? null });
+            env.log.error(LOG_ACTION, err.code ?? 'unexpected', { ...LOG_DETAILS, message: (err instanceof Error && err.message) ?? err.toString() });
             if (err.code) {
                 sendBadRequestError(res, err);
             }
