@@ -25,9 +25,11 @@ class SignupError extends Error {
 exports.SignupError = SignupError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/signup`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        const LOG_ACTION = 'auth.signup';
+        const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null };
         if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
-            env.logRef.push({ action: 'signup', success: false, code: 'user_signup_disabled', ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'user_signup_disabled', LOG_DETAILS);
             res.statusCode = 403; // Forbidden
             return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
         }
@@ -68,13 +70,13 @@ const addRoute = (env) => {
             err = validate_1.invalidPictureError;
         }
         if (err === validate_1.emailExistsError || err === validate_1.usernameExistsError) {
-            env.logRef.push({ action: 'signup', success: false, code: 'conflict', ip: req.ip, date: new Date(), username: details.username, email: details.email });
+            env.log.error(LOG_ACTION, 'conflict', Object.assign(Object.assign({}, LOG_DETAILS), { username: details.username, email: details.email }));
             res.statusCode = 409; // conflict
             return res.send(validate_1.emailOrUsernameExistsError);
         }
         else if (err) {
             // Log failure
-            env.logRef.push({ action: 'signup', success: false, code: err.code, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, (_c = err.code) !== null && _c !== void 0 ? _c : 'unexpected', LOG_DETAILS);
             res.statusCode = 422; // Unprocessable Entity
             return res.send(err);
         }
@@ -83,8 +85,8 @@ const addRoute = (env) => {
             let pwd = (0, password_1.createPasswordHash)(details.password);
             const user = {
                 uid: null,
-                username: (_a = details.username) !== null && _a !== void 0 ? _a : null,
-                email: (_b = details.email) !== null && _b !== void 0 ? _b : null,
+                username: (_d = details.username) !== null && _d !== void 0 ? _d : null,
+                email: (_e = details.email) !== null && _e !== void 0 ? _e : null,
                 email_verified: false,
                 display_name: details.displayName,
                 password: pwd.hash,
@@ -95,13 +97,14 @@ const addRoute = (env) => {
                 access_token_created: new Date(),
                 last_signin: new Date(),
                 last_signin_ip: req.ip,
-                picture: (_c = details.picture) !== null && _c !== void 0 ? _c : null,
-                settings: (_d = details.settings) !== null && _d !== void 0 ? _d : {}
+                picture: (_f = details.picture) !== null && _f !== void 0 ? _f : null,
+                settings: (_g = details.settings) !== null && _g !== void 0 ? _g : {}
             };
             const userRef = yield env.authRef.push(user);
             user.uid = userRef.key;
+            LOG_DETAILS.uid = user.uid;
             // Log success
-            env.logRef.push({ action: 'signup', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             // Cache the user
             env.authCache.set(user.uid, user);
             // Request welcome e-mail to be sent
@@ -120,8 +123,8 @@ const addRoute = (env) => {
                 activationCode: (0, tokens_1.createSignedPublicToken)({ uid: user.uid }, env.tokenSalt),
                 emailVerified: false
             };
-            (_e = env.config.email) === null || _e === void 0 ? void 0 : _e.send(request).catch(err => {
-                env.logRef.push({ action: 'signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+            (_h = env.config.email) === null || _h === void 0 ? void 0 : _h.send(request).catch(err => {
+                env.log.error(LOG_ACTION + '.email', 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { request }), err);
             });
             // Return the positive news
             const isAdmin = req.user && req.user.uid === 'admin';
@@ -131,7 +134,7 @@ const addRoute = (env) => {
             });
         }
         catch (err) {
-            env.logRef.push({ action: 'signup', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, username: details.username, email: details.email });
+            env.log.error(LOG_ACTION, 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { message: err instanceof Error ? err.message : err.toString(), username: details.username, email: details.email }));
             (0, error_1.sendUnexpectedError)(res, err);
         }
     }));

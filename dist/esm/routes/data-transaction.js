@@ -13,8 +13,11 @@ export const addRoutes = (env) => {
     // Start transaction endpoint:
     env.app.post(`/transaction/${env.db.name}/start`, (req, res) => {
         const data = req.body;
+        const LOG_ACTION = 'data.transaction.start';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path: data.path };
         const access = env.rules.userHasAccess(req.user, data.path, true);
         if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
             return sendUnauthorizedError(res, access.code, access.message);
         }
         // Start transaction
@@ -50,15 +53,18 @@ export const addRoutes = (env) => {
         }
         catch (err) {
             env.debug.error(`failed to start transaction on "${tx.path}":`, err);
-            env.logRef?.push({ action: 'tx_start', success: false, code: err.code ?? 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
+            env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
             sendUnexpectedError(res, err);
         }
     });
     // Finish transaction endpoint:
     env.app.post(`/transaction/${env.db.name}/finish`, async (req, res) => {
         const data = req.body;
+        const LOG_ACTION = 'data.transaction.finish';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path: data.path };
         const tx = _transactions.get(data.id);
         if (!tx || tx.path !== data.path) {
+            env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', { ...LOG_DETAILS, id: data.id, tx_path: tx?.path ?? null });
             res.statusCode = 410; // Gone
             res.send(`transaction not found`);
             return;
@@ -67,6 +73,7 @@ export const addRoutes = (env) => {
         _transactions.delete(tx.id);
         const access = env.rules.userHasAccess(req.user, tx.path, true);
         if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
             return sendUnauthorizedError(res, access.code, access.message);
         }
         // Finish transaction
@@ -98,16 +105,16 @@ export const addRoutes = (env) => {
         catch (err) {
             tx.finish(); // Finish without value cancels the transaction
             if (err instanceof SchemaValidationError) {
-                env.logRef?.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: req.user?.uid ?? null });
+                env.log.error(LOG_ACTION, 'schema_validation_failed', { ...LOG_DETAILS, reason: err.reason });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
             else if (err instanceof DataTransactionError) {
-                env.logRef?.push({ action: 'tx_finish', success: false, code: err.code, path: tx.path, ip: req.ip, uid: req.user?.uid ?? null });
+                env.log.error(LOG_ACTION, err.code, { ...LOG_DETAILS, message: err.message });
                 sendBadRequestError(res, err);
             }
             else {
-                env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);
-                env.logRef?.push({ action: 'tx_finish', success: false, code: 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: req.user?.uid ?? null });
+                env.debug.error(`failed to finish transaction on "${tx.path}":`, err);
+                env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
                 sendError(res, err);
             }
         }

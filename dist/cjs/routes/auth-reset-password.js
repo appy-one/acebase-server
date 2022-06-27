@@ -70,15 +70,17 @@ const addRoute = (env) => {
         return user;
     });
     env.app.post(`/auth/${env.db.name}/reset_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _b, _c;
+        var _b, _c, _d, _e;
         const details = req.body;
+        const LOG_ACTION = 'auth.reset_password';
+        const LOG_DETAILS = { ip: req.ip, uid: (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid) !== null && _c !== void 0 ? _c : null };
         try {
             const user = yield resetPassword(req.ip, details.code, details.password);
-            env.logRef.push({ action: 'reset_password', success: true, ip: req.ip, date: new Date(), uid: user.uid });
+            env.log.event(LOG_ACTION, Object.assign(Object.assign({}, LOG_DETAILS), { reset_uid: user.uid }));
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'reset_password', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: (_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid) !== null && _c !== void 0 ? _c : null });
+            env.log.error(LOG_ACTION, (_d = err.code) !== null && _d !== void 0 ? _d : 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { message: (_e = (err instanceof Error && err.message)) !== null && _e !== void 0 ? _e : err.toString() }));
             if (err.code) {
                 (0, error_1.sendBadRequestError)(res, err);
             }

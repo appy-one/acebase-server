@@ -18,8 +18,10 @@ const socketSignInSuccess = `<html><script>window.close()</script><body>Signed i
 const socketSignInFailed = `<html><script>window.close()</script><body>Failed to sign in. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const addRoute = (env) => {
     env.app.get(`/oauth2/${env.db.name}/signin`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b;
         // This is where the user is redirected to by the provider after signin or error
+        var _a, _b;
+        const LOG_ACTION = 'oauth2.signin';
+        const LOG_DETAILS = { ip: req.ip, provider: null };
         try {
             const state = (0, tokens_1.parseSignedPublicToken)(req.query.state, env.tokenSalt);
             if (req.query.error) {
@@ -36,6 +38,7 @@ const addRoute = (env) => {
             // Got authorization code
             const authCode = req.query.code;
             const provider = env.authProviders[state.provider];
+            LOG_DETAILS.provider = state.provider;
             // Get access & refresh tokens
             const tokens = yield provider.getAccessToken({ type: 'auth', auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${env.db.name}/signin` });
             let user_details;
@@ -142,7 +145,7 @@ const addRoute = (env) => {
                 // Add provider details
                 yield env.authRef.child(uid).child('settings').update(getProviderSettings());
                 // Log success
-                env.logRef.push({ action: 'oauth2_signin', success: true, ip: req.ip, date: new Date(), uid });
+                env.log.event(LOG_ACTION, Object.assign(Object.assign({}, LOG_DETAILS), { uid }));
                 // Cache the user
                 env.authCache.set(user.uid, user);
                 // Request signin e-mail to be sent
@@ -162,13 +165,13 @@ const addRoute = (env) => {
                     provider: state.provider
                 };
                 (_a = env.config.email) === null || _a === void 0 ? void 0 : _a.send(request).catch(err => {
-                    env.logRef.push({ action: 'oauth2_login_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                    env.log.error(LOG_ACTION + '.email', 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { uid, request }), err);
                 });
             }
             else if (snaps.length === 0) {
                 // User does not exist, create
                 if (!env.config.auth.allowUserSignup) {
-                    env.logRef.push({ action: 'oauth2_signup', success: false, code: 'user_signup_disabled', provider: state.provider, email: user_details.email, date: new Date() });
+                    env.log.error(LOG_ACTION, 'user_signup_disabled', Object.assign(Object.assign({}, LOG_DETAILS), { email: user_details.email }));
                     res.statusCode = 403; // Forbidden
                     return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
                 }
@@ -195,7 +198,7 @@ const addRoute = (env) => {
                 const uid = userRef.key;
                 user.uid = uid;
                 // Log success
-                env.logRef.push({ action: 'oauth2_signup', success: true, ip: req.ip, date: new Date(), uid });
+                env.log.event(LOG_ACTION, Object.assign(Object.assign({}, LOG_DETAILS), { uid }));
                 // Cache the user
                 env.authCache.set(user.uid, user);
                 // Request welcome e-mail to be sent
@@ -215,7 +218,7 @@ const addRoute = (env) => {
                     provider: state.provider
                 };
                 (_b = env.config.email) === null || _b === void 0 ? void 0 : _b.send(request).catch(err => {
-                    env.logRef.push({ action: 'oauth2_signup_email', success: false, code: 'unexpected', ip: req.ip, date: new Date(), error: err.message, request });
+                    env.log.error(LOG_ACTION + '.email', 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { uid, request }), err);
                 });
             }
             else {

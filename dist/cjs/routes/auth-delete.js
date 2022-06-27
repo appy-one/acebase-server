@@ -20,28 +20,30 @@ class DeleteError extends Error {
 exports.DeleteError = DeleteError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/delete`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _a, _b, _c, _d;
         let details = req.body;
+        const LOG_ACTION = 'auth.delete';
+        const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, delete_uid: details.uid };
         if (!req.user) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthenticated_delete', delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthenticated_delete', LOG_DETAILS);
             return (0, error_1.sendNotAuthenticatedError)(res, 'unauthenticated_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
         if (req.user.uid !== 'admin' && details.uid !== req.user.uid) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
             return (0, error_1.sendUnauthorizedError)(res, 'unauthorized_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
-        const uid = (_a = details.uid) !== null && _a !== void 0 ? _a : req.user.uid;
+        const uid = (_c = details.uid) !== null && _c !== void 0 ? _c : req.user.uid;
         if (uid === 'admin') {
-            env.logRef.push({ action: 'delete', success: false, code: 'unauthorized_delete', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
             return (0, error_1.sendUnauthorizedError)(res, 'unauthorized_delete', 'The admin account cannot be deleted, your attempt has been logged');
         }
         try {
             yield env.authRef.child(uid).remove();
-            env.logRef.push({ action: 'delete', success: true, auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send('Farewell');
         }
         catch (err) {
-            env.logRef.push({ action: 'delete', success: false, code: 'unexpected', auth_uid: req.user.uid, delete_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { message: (_d = (err instanceof Error && err.message)) !== null && _d !== void 0 ? _d : err.toString() }));
             (0, error_1.sendUnexpectedError)(res, err);
         }
     }));

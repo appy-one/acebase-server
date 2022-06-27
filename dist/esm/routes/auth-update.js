@@ -10,13 +10,15 @@ export class UpdateError extends Error {
 export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/update`, async (req, res) => {
         let details = req.body;
+        const LOG_ACTION = 'auth.update';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, update_uid: details.uid ?? null };
         if (!req.user) {
-            env.logRef.push({ action: 'update', success: false, code: 'unauthenticated_update', update_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthenticated_update', LOG_DETAILS);
             return sendNotAuthenticatedError(res, 'unauthenticated_update', 'Sign in to change details');
         }
         const uid = details.uid || req.user.uid;
         if (req.user.uid !== 'admin' && (uid !== req.user.uid || typeof details.is_disabled === 'boolean')) {
-            env.logRef.push({ action: 'update', success: false, code: 'unauthorized_update', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unauthorized_update', LOG_DETAILS);
             return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this update. This attempt has been logged.');
         }
         if (typeof details.display_name === 'undefined' && typeof details.displayName === 'string') {
@@ -48,7 +50,7 @@ export const addRoute = (env) => {
         }
         if (err) {
             // Log failure
-            env.logRef.push({ action: 'update', success: false, code: err.code, auth_uid: req.user.uid, update_uid: uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, err.code, LOG_DETAILS);
             res.status(422).send(err); // Unprocessable Entity
             return;
         }
@@ -81,7 +83,7 @@ export const addRoute = (env) => {
                     });
                     if (!isValidSettings(user.settings)) {
                         err = invalidSettingsError;
-                        env.logRef.push({ action: 'update', success: false, code: 'too_many_settings', auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                        env.log.error(LOG_ACTION, 'too_many_settings', LOG_DETAILS);
                         res.statusCode = 422; // Unprocessable Entity
                         res.send(err);
                         return;
@@ -100,13 +102,13 @@ export const addRoute = (env) => {
         catch (err) {
             // All known errors except user_not_found will have been sent already
             if (err.code === 'user_not_found') {
-                env.logRef.push({ action: 'update', success: false, code: err.code, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                env.log.error(LOG_ACTION, err.code, LOG_DETAILS);
                 res.statusCode = 404; // Not Found
                 res.send(err);
             }
             else {
                 // Unexpected
-                env.logRef.push({ action: 'update', success: false, code: err.code || 'unexpected', message: err.message, auth_uid: req.user.uid, update_uid: details.uid, ip: req.ip, date: new Date() });
+                env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, err);
                 sendUnexpectedError(res, err);
             }
         }

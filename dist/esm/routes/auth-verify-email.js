@@ -12,15 +12,19 @@ export class VerifyEmailError extends Error {
  * @returns returns the verification function
  */
 export const addRoute = (env) => {
+    const LOG_ACTION = 'auth.verify_email';
     const verifyEmailAddress = async (clientIp, code) => {
+        const LOG_DETAILS = { ip: clientIp, uid: null };
         try {
             var verification = parseSignedPublicToken(code, env.tokenSalt);
         }
         catch (err) {
             throw new VerifyEmailError('invalid_code', err.message);
         }
+        LOG_DETAILS.uid = verification.uid;
         const snap = await env.authRef.child(verification.uid).get();
         if (!snap.exists()) {
+            env.log.error(LOG_ACTION, 'unknown_user', LOG_DETAILS);
             throw new VerifyEmailError('unknown_user', 'Unknown user');
         }
         const user = snap.val();
@@ -28,7 +32,7 @@ export const addRoute = (env) => {
         // No need to do further checks, code was signed by us so we can trust the contents
         // Mark account as verified
         await snap.ref.update({ email_verified: true });
-        env.logRef.push({ action: 'verify_email', success: true, ip: clientIp, date: new Date(), uid: user.uid });
+        env.log.event(LOG_ACTION, LOG_DETAILS);
     };
     env.app.post(`/auth/${env.db.name}/verify_email`, async (req, res) => {
         const details = req.body;
@@ -37,11 +41,11 @@ export const addRoute = (env) => {
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'verify_email', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: req.user?.uid ?? null });
             if (err.code) {
                 sendBadRequestError(res, err);
             }
             else {
+                env.log.error(LOG_ACTION, 'unexpected', { ip: req.ip, message: err.message, verificaion_code: details.code });
                 sendUnexpectedError(res, err);
             }
         }

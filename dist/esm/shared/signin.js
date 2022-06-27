@@ -17,6 +17,8 @@ export class SignInError extends Error {
  * @returns
  */
 export const signIn = async (credentials, env, req) => {
+    const LOG_ACTION = 'auth.signin';
+    const LOG_DETAILS = { ip: req.ip, method: credentials.method };
     try {
         const query = env.authRef.query();
         let tokenDetails;
@@ -34,7 +36,7 @@ export const signIn = async (credentials, env, req) => {
                 }
                 break;
             }
-            case 'private_token': {
+            case 'internal': {
                 // Method used internally: uses the access token extracted from a public access token (see tokenDetails.access_token in above 'token' case)
                 if (typeof credentials.access_token !== 'string') {
                     throw new SignInError('invalid_details', 'sign in request has invalid arguments');
@@ -109,7 +111,9 @@ export const signIn = async (credentials, env, req) => {
         // Update db
         await snap.ref.update(updates);
         // Log history item
-        env.logRef.push({ action: `signin`, type: credentials.method, [credentials.method]: credentials[credentials.method], ip: req.ip, date: new Date(), success: true });
+        if (credentials.method !== 'internal') {
+            env.log.event(LOG_ACTION, LOG_DETAILS);
+        }
         // Add to cache
         env.authCache.set(user.uid, user);
         // Bind user to current request
@@ -118,7 +122,7 @@ export const signIn = async (credentials, env, req) => {
     }
     catch (err) {
         // Log error
-        env.logRef.push({ action: 'signin', type: credentials.method, [credentials.method]: credentials[credentials.method], success: false, code: err.code || 'unexpected', message: err.code ? null : err.message, ip: req.ip, date: new Date(), ...err.details });
+        env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
         throw err;
     }
 };

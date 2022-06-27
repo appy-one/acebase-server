@@ -9,7 +9,7 @@ declare type HasAccessResult = {
     message?: string;
     rule?: string | boolean;
     rulePath?: string;
-    details?: any;
+    details?: Error;
 } & ({
     allow: true;
 } | {
@@ -18,7 +18,7 @@ declare type HasAccessResult = {
     message: string;
     rule?: string | boolean;
     rulePath?: string;
-    details?: any;
+    details?: Error;
 });
 export declare class PathBasedRules {
     private authEnabled;

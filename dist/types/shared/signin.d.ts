@@ -4,7 +4,7 @@ export declare type SignInCredentials = {
     method: 'token';
     access_token: string;
 } | {
-    method: 'private_token';
+    method: 'internal';
     access_token: string;
 } | {
     method: 'email';

@@ -18,9 +18,9 @@ const addMiddleware = (env) => {
     env.app.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         let authorization = req.get('Authorization');
         if (typeof authorization !== 'string' && 'auth_token' in req.query) {
-            // Enables browser calls to be authenticated                        
-            if (req.path.startsWith('/export/')) {
-                // For now, only allow this if the intention is to call '/export' api call
+            // Enables browser calls to be authenticated by adding the access token as auth_token query parameter
+            if (req.path.startsWith('/export/') || req.path.startsWith('/logs')) {
+                // For now, only allow '/export' or '/logs' api calls
                 // In the future, use these prerequisites:
                 // - user must be currently authenticated (in cache)
                 // - ip address must match the token
@@ -41,7 +41,7 @@ const addMiddleware = (env) => {
             if (!req.user) {
                 // Query database to get user for this token
                 try {
-                    yield (0, signin_1.signIn)({ method: 'private_token', access_token: tokenDetails.access_token }, env, req);
+                    yield (0, signin_1.signIn)({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
                 }
                 catch (err) {
                     return (0, error_1.sendNotAuthenticatedError)(res, err.code, err.message);

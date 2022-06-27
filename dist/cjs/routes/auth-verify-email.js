@@ -25,15 +25,19 @@ exports.VerifyEmailError = VerifyEmailError;
  * @returns returns the verification function
  */
 const addRoute = (env) => {
+    const LOG_ACTION = 'auth.verify_email';
     const verifyEmailAddress = (clientIp, code) => __awaiter(void 0, void 0, void 0, function* () {
+        const LOG_DETAILS = { ip: clientIp, uid: null };
         try {
             var verification = (0, tokens_1.parseSignedPublicToken)(code, env.tokenSalt);
         }
         catch (err) {
             throw new VerifyEmailError('invalid_code', err.message);
         }
+        LOG_DETAILS.uid = verification.uid;
         const snap = yield env.authRef.child(verification.uid).get();
         if (!snap.exists()) {
+            env.log.error(LOG_ACTION, 'unknown_user', LOG_DETAILS);
             throw new VerifyEmailError('unknown_user', 'Unknown user');
         }
         const user = snap.val();
@@ -41,21 +45,20 @@ const addRoute = (env) => {
         // No need to do further checks, code was signed by us so we can trust the contents
         // Mark account as verified
         yield snap.ref.update({ email_verified: true });
-        env.logRef.push({ action: 'verify_email', success: true, ip: clientIp, date: new Date(), uid: user.uid });
+        env.log.event(LOG_ACTION, LOG_DETAILS);
     });
     env.app.post(`/auth/${env.db.name}/verify_email`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b;
         const details = req.body;
         try {
             yield verifyEmailAddress(req.ip, details.code);
             res.send('OK');
         }
         catch (err) {
-            env.logRef.push({ action: 'verify_email', success: false, code: err.code, message: err.message, ip: req.ip, date: new Date(), uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null });
             if (err.code) {
                 (0, error_1.sendBadRequestError)(res, err);
             }
             else {
+                env.log.error(LOG_ACTION, 'unexpected', { ip: req.ip, message: err.message, verificaion_code: details.code });
                 (0, error_1.sendUnexpectedError)(res, err);
             }
         }

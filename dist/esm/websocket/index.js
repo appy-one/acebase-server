@@ -2,6 +2,12 @@ import { ColorStyle, Transport } from "acebase-core";
 import { ConnectedClient } from "../shared/clients.js";
 import { decodePublicAccessToken } from "../shared/tokens.js";
 import { createServer } from "./socket.io.js";
+export class SocketRequestError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
 export const addWebsocketServer = (env) => {
     // TODO: Allow using uWebSockets.js server instead of Socket.IO
     const serverManager = createServer(env);
@@ -94,7 +100,7 @@ export const addWebsocketServer = (env) => {
             serverManager.send(event.socket, 'oauth2-signin', { error: err.message });
         }
     });
-    const acknowlegdeRequest = (socket, requestId) => {
+    const acknowledgeRequest = (socket, requestId) => {
         // Send acknowledgement
         serverManager.send(socket, 'result', {
             success: true,
@@ -119,12 +125,12 @@ export const addWebsocketServer = (env) => {
         const subscriptionPath = event.data.path;
         const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === event.data.event);
         if (isSubscribed()) {
-            return acknowlegdeRequest(event.socket, event.data.req_id);
+            return acknowledgeRequest(event.socket, event.data.req_id);
         }
         // Get client
         // const client = clients.get(socket.id);
         if (!env.rules.userHasAccess(client.user, subscriptionPath, false)) {
-            env.logRef.push({ action: 'subscribe', success: false, code: 'access_denied', uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+            env.log.error('event.subscribe', 'access_denied', { uid: client.user?.uid ?? 'anonymous', path: subscriptionPath });
             return failRequest(event.socket, event.data.req_id, 'access_denied');
         }
         const callback = (err, path, currentValue, previousValue, context) => {
@@ -165,7 +171,7 @@ export const addWebsocketServer = (env) => {
         let subscr = { path: subscriptionPath, event: event.data.event, callback };
         pathSubs.push(subscr);
         env.db.api.subscribe(subscriptionPath, event.data.event, callback);
-        acknowlegdeRequest(event.socket, event.data.req_id);
+        acknowledgeRequest(event.socket, event.data.req_id);
     });
     serverManager.on('unsubscribe', event => {
         // Client unsubscribes from events on a node
@@ -178,7 +184,7 @@ export const addWebsocketServer = (env) => {
         let pathSubs = client.subscriptions[event.data.path];
         if (!pathSubs) {
             // We have no knowledge of any active subscriptions on this path
-            return acknowlegdeRequest(event.socket, event.data.req_id);
+            return acknowledgeRequest(event.socket, event.data.req_id);
         }
         let remove = pathSubs;
         if (event.data.event) {
@@ -195,7 +201,7 @@ export const addWebsocketServer = (env) => {
             // No subscriptions left on this path, remove the path entry
             delete client.subscriptions[event.data.path];
         }
-        return acknowlegdeRequest(event.socket, event.data.req_id);
+        return acknowledgeRequest(event.socket, event.data.req_id);
     });
     serverManager.on('query-unsubscribe', event => {
         // Client unsubscribing from realtime query events
@@ -206,15 +212,17 @@ export const addWebsocketServer = (env) => {
         env.debug.verbose(`Client ${event.socket_id} is unsubscribing from realtime query "${event.data.query_id}"`);
         // const client = clients.get(socket.id);
         delete client.realtimeQueries[event.data.query_id];
-        acknowlegdeRequest(event.socket, event.data.req_id);
+        acknowledgeRequest(event.socket, event.data.req_id);
     });
     const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
     serverManager.on('transaction-start', event => {
         // Start transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-start');
-        if (!client) {
+        if (!client || !event.data) {
             return;
         }
+        const LOG_ACTION = 'socket.transaction.start';
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: client.user?.uid ?? null, path: event.data.path };
         env.debug.verbose(`Client ${event.socket_id} is sending transaction start request on path "${event.data.path}"`);
         const data = event.data;
         const tx = {
@@ -226,11 +234,14 @@ export const addWebsocketServer = (env) => {
             timeout: setTimeout(() => {
                 delete client.transactions[tx.id];
                 tx.finish(); // Finish without value cancels the transaction
+                env.log.error(LOG_ACTION, 'timeout', LOG_DETAILS);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
             }, TRANSACTION_TIMEOUT_MS)
         };
-        if (!env.rules.userHasAccess(client.user, data.path, true)) {
+        const access = env.rules.userHasAccess(client.user, data.path, true);
+        if (!access.allow) {
             // throw new AccessDeniedError(`access_denied`);
+            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
             return serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'access_denied' });
         }
         // Bind to client
@@ -254,32 +265,36 @@ export const addWebsocketServer = (env) => {
     serverManager.on('transaction-finish', async (event) => {
         // Finish transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-finish');
-        if (!client) {
+        if (!client || !event.data) {
             return;
         }
+        const LOG_ACTION = 'socket.transaction.finish';
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: client.user?.uid ?? null, path: event.data.path };
         const data = event.data;
         const tx = client.transactions[data.id];
         try {
             if (!tx || data.path !== tx.path) {
-                throw new Error('transaction_not_found');
+                env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', { ...LOG_DETAILS, id: data.id, tx_path: tx?.path ?? null });
+                throw new SocketRequestError('transaction_not_found', 'Transaction not found');
             }
             clearTimeout(tx.timeout);
             delete client.transactions[data.id];
-            if (!env.rules.userHasAccess(client.user, data.path, true)) {
-                throw new Error('access_denied');
+            const access = env.rules.userHasAccess(client.user, data.path, true);
+            if (!access.allow) {
+                env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
+                throw new SocketRequestError('access_denied', 'Access denied');
             }
             const newValue = 'val' in data.value ? Transport.deserialize(data.value) : undefined;
-            try {
-                const { cursor } = await tx.finish(newValue);
-                env.debug.verbose(`Transaction ${tx.id} finished`);
-                serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
-            }
-            catch (err) {
-                serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message });
-            }
+            const { cursor } = await tx.finish(newValue);
+            env.debug.verbose(`Transaction ${tx.id} finished`);
+            serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
         }
         catch (err) {
-            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message, data });
+            if (!(err instanceof SocketRequestError)) {
+                // Other errors have been logged already
+                env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
+            }
+            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.code ?? err.message, data });
             tx.finish(); // Finish with undefined, canceling the transaction
         }
     });

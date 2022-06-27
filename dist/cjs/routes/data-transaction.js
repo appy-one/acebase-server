@@ -27,8 +27,11 @@ const addRoutes = (env) => {
     env.app.post(`/transaction/${env.db.name}/start`, (req, res) => {
         var _a, _b, _c, _d;
         const data = req.body;
+        const LOG_ACTION = 'data.transaction.start';
+        const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: data.path };
         const access = env.rules.userHasAccess(req.user, data.path, true);
         if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_c = access.rulePath) !== null && _c !== void 0 ? _c : null }), access.details);
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }
         // Start transaction
@@ -64,16 +67,19 @@ const addRoutes = (env) => {
         }
         catch (err) {
             env.debug.error(`failed to start transaction on "${tx.path}":`, err);
-            (_a = env.logRef) === null || _a === void 0 ? void 0 : _a.push({ action: 'tx_start', success: false, code: (_b = err.code) !== null && _b !== void 0 ? _b : 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: (_d = (_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== null && _d !== void 0 ? _d : null });
+            env.log.error(LOG_ACTION, (_d = err.code) !== null && _d !== void 0 ? _d : 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
             (0, error_1.sendUnexpectedError)(res, err);
         }
     });
     // Finish transaction endpoint:
     env.app.post(`/transaction/${env.db.name}/finish`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        var _a, _b, _c, _d, _e, _f, _g;
         const data = req.body;
+        const LOG_ACTION = 'data.transaction.finish';
+        const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: data.path };
         const tx = _transactions.get(data.id);
         if (!tx || tx.path !== data.path) {
+            env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', Object.assign(Object.assign({}, LOG_DETAILS), { id: data.id, tx_path: (_c = tx === null || tx === void 0 ? void 0 : tx.path) !== null && _c !== void 0 ? _c : null }));
             res.statusCode = 410; // Gone
             res.send(`transaction not found`);
             return;
@@ -82,6 +88,7 @@ const addRoutes = (env) => {
         _transactions.delete(tx.id);
         const access = env.rules.userHasAccess(req.user, tx.path, true);
         if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_d = access.rulePath) !== null && _d !== void 0 ? _d : null }), access.details);
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }
         // Finish transaction
@@ -93,11 +100,11 @@ const addRoutes = (env) => {
                 // then is sent to the server as an empty object: {}
                 cancel = true;
             }
-            else if (typeof ((_a = data.value) === null || _a === void 0 ? void 0 : _a.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_b = data.value) === null || _b === void 0 ? void 0 : _b.map))) {
+            else if (typeof ((_e = data.value) === null || _e === void 0 ? void 0 : _e.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_f = data.value) === null || _f === void 0 ? void 0 : _f.map))) {
                 throw new DataTransactionError('invalid_serialized_value', 'The sent value is not properly serialized');
             }
             const newValue = cancel ? undefined : acebase_core_1.Transport.deserialize(data.value);
-            if (tx.path === '' && ((_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== 'admin' && newValue !== null && typeof newValue === 'object') {
+            if (tx.path === '' && ((_g = req.user) === null || _g === void 0 ? void 0 : _g.uid) !== 'admin' && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
@@ -113,16 +120,16 @@ const addRoutes = (env) => {
         catch (err) {
             tx.finish(); // Finish without value cancels the transaction
             if (err instanceof acebase_1.SchemaValidationError) {
-                (_d = env.logRef) === null || _d === void 0 ? void 0 : _d.push({ action: 'tx_finish', success: false, code: 'schema_validation_failed', path: tx.path, error: err.reason, ip: req.ip, uid: (_f = (_e = req.user) === null || _e === void 0 ? void 0 : _e.uid) !== null && _f !== void 0 ? _f : null });
+                env.log.error(LOG_ACTION, 'schema_validation_failed', Object.assign(Object.assign({}, LOG_DETAILS), { reason: err.reason }));
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
             else if (err instanceof DataTransactionError) {
-                (_g = env.logRef) === null || _g === void 0 ? void 0 : _g.push({ action: 'tx_finish', success: false, code: err.code, path: tx.path, ip: req.ip, uid: (_j = (_h = req.user) === null || _h === void 0 ? void 0 : _h.uid) !== null && _j !== void 0 ? _j : null });
+                env.log.error(LOG_ACTION, err.code, Object.assign(Object.assign({}, LOG_DETAILS), { message: err.message }));
                 (0, error_1.sendBadRequestError)(res, err);
             }
             else {
-                env.debug.error(`failed to finsih transaction on "${tx.path}":`, err);
-                (_k = env.logRef) === null || _k === void 0 ? void 0 : _k.push({ action: 'tx_finish', success: false, code: 'unknown_error', path: tx.path, error: err.message, ip: req.ip, uid: (_m = (_l = req.user) === null || _l === void 0 ? void 0 : _l.uid) !== null && _m !== void 0 ? _m : null });
+                env.debug.error(`failed to finish transaction on "${tx.path}":`, err);
+                env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
                 (0, error_1.sendError)(res, err);
             }
         }

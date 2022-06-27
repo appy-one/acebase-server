@@ -9,11 +9,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addWebsocketServer = void 0;
+exports.addWebsocketServer = exports.SocketRequestError = void 0;
 const acebase_core_1 = require("acebase-core");
 const clients_1 = require("../shared/clients");
 const tokens_1 = require("../shared/tokens");
 const socket_io_1 = require("./socket.io");
+class SocketRequestError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
+exports.SocketRequestError = SocketRequestError;
 const addWebsocketServer = (env) => {
     // TODO: Allow using uWebSockets.js server instead of Socket.IO
     const serverManager = (0, socket_io_1.createServer)(env);
@@ -106,7 +113,7 @@ const addWebsocketServer = (env) => {
             serverManager.send(event.socket, 'oauth2-signin', { error: err.message });
         }
     }));
-    const acknowlegdeRequest = (socket, requestId) => {
+    const acknowledgeRequest = (socket, requestId) => {
         // Send acknowledgement
         serverManager.send(socket, 'result', {
             success: true,
@@ -122,6 +129,7 @@ const addWebsocketServer = (env) => {
         });
     };
     serverManager.on('subscribe', event => {
+        var _a, _b;
         // Client wants to subscribe to events on a node
         const client = getClientBySocketId(event.socket_id, 'subscribe');
         if (!client) {
@@ -131,12 +139,12 @@ const addWebsocketServer = (env) => {
         const subscriptionPath = event.data.path;
         const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === event.data.event);
         if (isSubscribed()) {
-            return acknowlegdeRequest(event.socket, event.data.req_id);
+            return acknowledgeRequest(event.socket, event.data.req_id);
         }
         // Get client
         // const client = clients.get(socket.id);
         if (!env.rules.userHasAccess(client.user, subscriptionPath, false)) {
-            env.logRef.push({ action: 'subscribe', success: false, code: 'access_denied', uid: client.user ? client.user.uid : '-', path: subscriptionPath });
+            env.log.error('event.subscribe', 'access_denied', { uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : 'anonymous', path: subscriptionPath });
             return failRequest(event.socket, event.data.req_id, 'access_denied');
         }
         const callback = (err, path, currentValue, previousValue, context) => {
@@ -177,7 +185,7 @@ const addWebsocketServer = (env) => {
         let subscr = { path: subscriptionPath, event: event.data.event, callback };
         pathSubs.push(subscr);
         env.db.api.subscribe(subscriptionPath, event.data.event, callback);
-        acknowlegdeRequest(event.socket, event.data.req_id);
+        acknowledgeRequest(event.socket, event.data.req_id);
     });
     serverManager.on('unsubscribe', event => {
         // Client unsubscribes from events on a node
@@ -190,7 +198,7 @@ const addWebsocketServer = (env) => {
         let pathSubs = client.subscriptions[event.data.path];
         if (!pathSubs) {
             // We have no knowledge of any active subscriptions on this path
-            return acknowlegdeRequest(event.socket, event.data.req_id);
+            return acknowledgeRequest(event.socket, event.data.req_id);
         }
         let remove = pathSubs;
         if (event.data.event) {
@@ -207,7 +215,7 @@ const addWebsocketServer = (env) => {
             // No subscriptions left on this path, remove the path entry
             delete client.subscriptions[event.data.path];
         }
-        return acknowlegdeRequest(event.socket, event.data.req_id);
+        return acknowledgeRequest(event.socket, event.data.req_id);
     });
     serverManager.on('query-unsubscribe', event => {
         // Client unsubscribing from realtime query events
@@ -218,15 +226,18 @@ const addWebsocketServer = (env) => {
         env.debug.verbose(`Client ${event.socket_id} is unsubscribing from realtime query "${event.data.query_id}"`);
         // const client = clients.get(socket.id);
         delete client.realtimeQueries[event.data.query_id];
-        acknowlegdeRequest(event.socket, event.data.req_id);
+        acknowledgeRequest(event.socket, event.data.req_id);
     });
     const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
     serverManager.on('transaction-start', event => {
+        var _a, _b, _c;
         // Start transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-start');
-        if (!client) {
+        if (!client || !event.data) {
             return;
         }
+        const LOG_ACTION = 'socket.transaction.start';
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: event.data.path };
         env.debug.verbose(`Client ${event.socket_id} is sending transaction start request on path "${event.data.path}"`);
         const data = event.data;
         const tx = {
@@ -238,11 +249,14 @@ const addWebsocketServer = (env) => {
             timeout: setTimeout(() => {
                 delete client.transactions[tx.id];
                 tx.finish(); // Finish without value cancels the transaction
+                env.log.error(LOG_ACTION, 'timeout', LOG_DETAILS);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
             }, TRANSACTION_TIMEOUT_MS)
         };
-        if (!env.rules.userHasAccess(client.user, data.path, true)) {
+        const access = env.rules.userHasAccess(client.user, data.path, true);
+        if (!access.allow) {
             // throw new AccessDeniedError(`access_denied`);
+            env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_c = access.rulePath) !== null && _c !== void 0 ? _c : null }), access.details);
             return serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'access_denied' });
         }
         // Bind to client
@@ -264,34 +278,39 @@ const addWebsocketServer = (env) => {
         }, { context: tx.context });
     });
     serverManager.on('transaction-finish', (event) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b, _c, _d, _e;
         // Finish transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-finish');
-        if (!client) {
+        if (!client || !event.data) {
             return;
         }
+        const LOG_ACTION = 'socket.transaction.finish';
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: event.data.path };
         const data = event.data;
         const tx = client.transactions[data.id];
         try {
             if (!tx || data.path !== tx.path) {
-                throw new Error('transaction_not_found');
+                env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', Object.assign(Object.assign({}, LOG_DETAILS), { id: data.id, tx_path: (_c = tx === null || tx === void 0 ? void 0 : tx.path) !== null && _c !== void 0 ? _c : null }));
+                throw new SocketRequestError('transaction_not_found', 'Transaction not found');
             }
             clearTimeout(tx.timeout);
             delete client.transactions[data.id];
-            if (!env.rules.userHasAccess(client.user, data.path, true)) {
-                throw new Error('access_denied');
+            const access = env.rules.userHasAccess(client.user, data.path, true);
+            if (!access.allow) {
+                env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_d = access.rulePath) !== null && _d !== void 0 ? _d : null }), access.details);
+                throw new SocketRequestError('access_denied', 'Access denied');
             }
             const newValue = 'val' in data.value ? acebase_core_1.Transport.deserialize(data.value) : undefined;
-            try {
-                const { cursor } = yield tx.finish(newValue);
-                env.debug.verbose(`Transaction ${tx.id} finished`);
-                serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
-            }
-            catch (err) {
-                serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message });
-            }
+            const { cursor } = yield tx.finish(newValue);
+            env.debug.verbose(`Transaction ${tx.id} finished`);
+            serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
         }
         catch (err) {
-            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: err.message, data });
+            if (!(err instanceof SocketRequestError)) {
+                // Other errors have been logged already
+                env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
+            }
+            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: (_e = err.code) !== null && _e !== void 0 ? _e : err.message, data });
             tx.finish(); // Finish with undefined, canceling the transaction
         }
     }));

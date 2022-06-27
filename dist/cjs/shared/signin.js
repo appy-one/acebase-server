@@ -30,6 +30,9 @@ exports.SignInError = SignInError;
  * @returns
  */
 const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const LOG_ACTION = 'auth.signin';
+    const LOG_DETAILS = { ip: req.ip, method: credentials.method };
     try {
         const query = env.authRef.query();
         let tokenDetails;
@@ -47,7 +50,7 @@ const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, func
                 }
                 break;
             }
-            case 'private_token': {
+            case 'internal': {
                 // Method used internally: uses the access token extracted from a public access token (see tokenDetails.access_token in above 'token' case)
                 if (typeof credentials.access_token !== 'string') {
                     throw new SignInError('invalid_details', 'sign in request has invalid arguments');
@@ -122,7 +125,9 @@ const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, func
         // Update db
         yield snap.ref.update(updates);
         // Log history item
-        env.logRef.push({ action: `signin`, type: credentials.method, [credentials.method]: credentials[credentials.method], ip: req.ip, date: new Date(), success: true });
+        if (credentials.method !== 'internal') {
+            env.log.event(LOG_ACTION, LOG_DETAILS);
+        }
         // Add to cache
         env.authCache.set(user.uid, user);
         // Bind user to current request
@@ -131,7 +136,7 @@ const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, func
     }
     catch (err) {
         // Log error
-        env.logRef.push(Object.assign({ action: 'signin', type: credentials.method, [credentials.method]: credentials[credentials.method], success: false, code: err.code || 'unexpected', message: err.code ? null : err.message, ip: req.ip, date: new Date() }, err.details));
+        env.log.error(LOG_ACTION, (_a = err.code) !== null && _a !== void 0 ? _a : 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
         throw err;
     }
 });

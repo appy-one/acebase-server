@@ -23,16 +23,18 @@ class ChangePasswordError extends Error {
 exports.ChangePasswordError = ChangePasswordError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/change_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _a, _b;
         let access_token = (_a = req.user) === null || _a === void 0 ? void 0 : _a.access_token;
         const details = req.body;
+        const LOG_ACTION = 'auth.change_password';
+        const LOG_DETAILS = { ip: req.ip, uid: (_b = details.uid) !== null && _b !== void 0 ? _b : null };
         if (typeof details !== 'object' || typeof details.uid !== 'string' || typeof details.password !== 'string' || typeof details.new_password !== 'string') {
-            env.logRef.push({ action: 'change_password', success: false, code: 'invalid_details', ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'invalid_details', LOG_DETAILS);
             res.status(400).send('Bad Request'); // Bad Request
             return;
         }
         if (details.new_password.length < 8 || details.new_password.includes(' ') || !/[0-9]/.test(details.new_password) || !/[a-z]/.test(details.new_password) || !/[A-Z]/.test(details.new_password)) {
-            env.logRef.push({ action: 'change_password', success: false, code: 'new_password_denied', ip: req.ip, date: new Date(), uid: details.uid });
+            env.log.error(LOG_ACTION, 'new_password_denied', LOG_DETAILS);
             const err = 'Invalid new password, must be at least 8 characters and contain a combination of numbers and letters (both lower and uppercase)';
             res.status(422).send(err); // Unprocessable Entity
             return;
@@ -67,10 +69,11 @@ const addRoute = (env) => {
                 publicAccessToken = (0, tokens_1.createPublicAccessToken)(user.uid, req.ip, user.access_token, env.tokenSalt);
                 return user; // Update db
             });
+            env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send({ access_token: publicAccessToken }); // Client must use this new access token from now on
         }
         catch (err) {
-            env.logRef.push({ action: 'change_pwd', success: false, code: err.code, ip: req.ip, date: new Date(), uid: details.uid });
+            env.log.error(LOG_ACTION, err.code, LOG_DETAILS);
             if (err.code) {
                 (0, error_1.sendBadRequestError)(res, err);
             }

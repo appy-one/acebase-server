@@ -17,6 +17,7 @@ import addWebManagerRoutes from './routes/webmanager.js';
 import addMetadataRoutes from './routes/meta.js';
 import addSwaggerMiddleware from './middleware/swagger.js';
 import addCacheMiddleware from './middleware/cache.js';
+import { DatabaseLog } from './logger.js';
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
@@ -100,6 +101,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
         const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
         const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
+        const logger = new DatabaseLog(logRef);
         // Setup rules
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
         const rules = new PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
@@ -112,7 +114,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             debug: this.debug,
             securityRef,
             authRef,
-            logRef,
+            log: logger,
             tokenSalt: null,
             clients,
             authCache: null,

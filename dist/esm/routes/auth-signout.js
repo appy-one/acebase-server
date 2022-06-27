@@ -1,6 +1,8 @@
 import { sendUnexpectedError } from '../shared/error.js';
 export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/signout`, async (req, res) => {
+        const LOG_ACTION = 'auth.signout';
+        const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
         try {
             if (req.user) {
                 const client = typeof req.body.client_id === 'string' ? env.clients.get(req.body.client_id) : null; // NEW in AceBaseClient v0.9.4
@@ -32,12 +34,12 @@ export const addRoute = (env) => {
                     user.last_signout_ip = req.ip;
                     return user;
                 });
-                env.logRef.push({ action: 'signout', success: true, uid: req.user.uid, ip: req.ip, date: new Date() });
+                env.log.event(LOG_ACTION, LOG_DETAILS);
             }
             res.send('Bye!');
         }
         catch (err) {
-            env.logRef.push({ action: 'signout', success: false, code: 'unexpected', message: err.message, uid: req.user.uid, ip: req.ip, date: new Date() });
+            env.log.error(LOG_ACTION, 'unexpected', { ...LOG_DETAILS, message: err instanceof Error ? err.message : err.toString() });
             sendUnexpectedError(res, err);
         }
     });

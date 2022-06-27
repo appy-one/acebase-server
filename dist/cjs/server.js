@@ -29,6 +29,7 @@ const webmanager_1 = require("./routes/webmanager");
 const meta_1 = require("./routes/meta");
 const swagger_1 = require("./middleware/swagger");
 const cache_1 = require("./middleware/cache");
+const logger_1 = require("./logger");
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
@@ -117,6 +118,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
             const logRef = authDb ? authDb === db ? db.ref('__log__') : authDb.ref('log') : null;
+            const logger = new logger_1.DatabaseLog(logRef);
             // Setup rules
             const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
             const rules = new rules_1.PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
@@ -129,7 +131,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 debug: this.debug,
                 securityRef,
                 authRef,
-                logRef,
+                log: logger,
                 tokenSalt: null,
                 clients,
                 authCache: null,
