@@ -16,7 +16,7 @@ type RulesData = {
 }
 export type RuleValidationFailCode = 'rule'|'no_rule'|'private'|'exception';
 // type HasAccessResult = { allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any };
-type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: any } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any });
+type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: Error });
 
 export class PathBasedRules {
 
