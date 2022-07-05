@@ -5,7 +5,7 @@ import { createPasswordHash } from '../shared/password';
 import { ID } from 'acebase-core';
 import { AceBaseUserSignupEmailRequest } from '../shared/email';
 import { createPublicAccessToken, createSignedPublicToken } from '../shared/tokens';
-import { sendUnexpectedError } from '../shared/error';
+import { sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
 export class SignupError extends Error { 
     constructor(public code: 'admin_only'|'conflict'|'email_conflict'|'username_conflict'|'missing_details'|'invalid_email'|'invalid_username'|'invalid_display_name'|'invalid_password'|'invalid_picture'|'invalid_settings', message: string) {
@@ -38,10 +38,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
 
-        if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
+        if (!env.config.auth.allowUserSignup && req.user?.uid !== 'admin') {
             env.log.error(LOG_ACTION, 'user_signup_disabled', LOG_DETAILS);
-            res.statusCode = 403; // Forbidden
-            return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
+            return sendUnauthorizedError(res, 'admin_only', 'Only admin is allowed to create users');
         }
 
         // Create user if it doesn't exist yet.

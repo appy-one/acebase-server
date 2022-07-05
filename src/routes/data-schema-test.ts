@@ -1,8 +1,9 @@
 import { ISchemaCheckResult, SchemaDefinition, Transport } from 'acebase-core';
 import type { IAceBaseSchemaInfo } from 'acebase-core/src/api';
 import type { SerializedValue } from 'acebase-core/types/transport';
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = { 
@@ -19,12 +20,8 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/schema/${env.db.name}/test`, async (req: Request, res) => {
+    env.app.post(`/schema/${env.db.name}/test`, adminOnly(env), async (req: Request, res) => {
         // tests a schema
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform schema operations');
-        }
-
         try {
             const data = req.body;
             if (typeof data.value?.val === 'undefined' || !['string','object','undefined'].includes(typeof data.value?.map)) {

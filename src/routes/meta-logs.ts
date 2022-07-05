@@ -1,7 +1,7 @@
 import { AceBase } from 'acebase';
 import { QueryOperator } from 'acebase-core/types/data-reference';
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendUnauthorizedError } from '../shared/error';
 
 type AceBaseLogLine = {
     action: string;
@@ -16,13 +16,10 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/logs/${env.db.name}`, async (req: Request, res) => {
+    env.app.get(`/logs/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // Get database logs
-        if (req.user?.uid !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'Only the admin user has access to logs');
-        }
 
-        // Create index is it's not there yet
+        // Create indexes if not there yet
         const db = (env.log.ref as any).db as AceBase;
         const createIndexes = [
             db.indexes.create(env.log.ref.path, 'date')

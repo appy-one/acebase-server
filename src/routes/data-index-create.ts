@@ -1,5 +1,6 @@
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendError } from '../shared/error';
 import { Response } from '../shared/http';
 
 export type FullTextIndexOptions = {
@@ -51,10 +52,6 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 export const addRoute = (env: RouteInitEnvironment) => {
 
     const handleRequest = async (req: Request, res: Response) => {
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
-        }
-
         try {
             const data = req.body;
             await env.db.indexes.create(data.path, data.key, data.options);
@@ -66,7 +63,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
     };
 
-    env.app.post(`/index/${env.db.name}`, async (req: RouteRequest<any, ResponseBody, RequestBody & { action: 'create'} >, res) => {
+    env.app.post(`/index/${env.db.name}`, adminOnly(env), async (req: RouteRequest<any, ResponseBody, RequestBody & { action: 'create'} >, res) => {
         // Legacy endpoint that was designed to handle multiple actions
         // The only action ever implemented was 'create', so we'll handle that here
         if (req.body?.action !== 'create') {
@@ -75,7 +72,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         handleRequest(req, res);
     });
 
-    env.app.post(`/index/${env.db.name}/create`, async (req: Request, res) => {
+    env.app.post(`/index/${env.db.name}/create`, adminOnly(env), async (req: Request, res) => {
         // New dedicated create endpoint
         handleRequest(req, res);
     });

@@ -1,5 +1,6 @@
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = {
@@ -13,12 +14,8 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/index/${env.db.name}/delete`, async (req: Request, res) => {
+    env.app.post(`/index/${env.db.name}/delete`, adminOnly(env), async (req: Request, res) => {
         // Delete an index
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
-        }
-
         try {
             const data = req.body;
             if (!data.fileName) {

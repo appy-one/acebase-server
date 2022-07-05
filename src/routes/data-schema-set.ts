@@ -1,5 +1,6 @@
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = {
@@ -15,12 +16,8 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/schema/${env.db.name}`, async (req: Request, res) => {
+    env.app.post(`/schema/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // defines a schema
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform schema operations');
-        }
-
         try {
             const data = req.body;
             const { path, schema } = data;

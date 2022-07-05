@@ -1,5 +1,6 @@
+import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { sendError, sendUnauthorizedError } from '../shared/error';
+import { sendError } from '../shared/error';
 
 export interface PublicDataIndex {
     path: string;
@@ -19,12 +20,8 @@ export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/index/${env.db.name}`, async (req: Request, res) => {
+    env.app.get(`/index/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // Get all indexes
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
-        }
-
         try {
             const indexes = await env.db.indexes.get();
             res.contentType('application/json').send(indexes.map(index => {
