@@ -38,6 +38,9 @@ if (+getVariable('TXLOG', 0) === 1) {
         maxAge: +getVariable('TXDAYS', 30)
     };
 }
+if (+getVariable('AUTH', 1) === 0) {
+    options.authentication = { enabled: false };
+}
 const server = new AceBaseServer(dbname, options);
 server.once("ready", () => {
     server.debug.log(`AceBase server running`);
