@@ -3,16 +3,13 @@ import { sendUnauthorizedError } from '../shared/error.js';
 export const addRoute = (env) => {
     env.app.get(`/reflect/${env.db.name}/*`, async (req, res) => {
         // Reflection API
-        // if (!req.user || req.user.username !== 'admin') {
-        //     return sendUnauthorizedError(res, 'admin_only', 'only admin can use reflection api');
-        // }
         const path = req.path.slice(env.db.name.length + 10);
         const access = env.rules.userHasAccess(req.user, path, false);
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
         const impersonatedAccess = {
-            uid: (!req.user || req.user.username !== 'admin') ? null : req.query.impersonate,
+            uid: req.user?.uid !== 'admin' ? null : req.query.impersonate,
             read: {
                 allow: false,
                 error: null

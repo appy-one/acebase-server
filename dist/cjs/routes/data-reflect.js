@@ -14,17 +14,15 @@ const acebase_core_1 = require("acebase-core");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
     env.app.get(`/reflect/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
         // Reflection API
-        // if (!req.user || req.user.username !== 'admin') {
-        //     return sendUnauthorizedError(res, 'admin_only', 'only admin can use reflection api');
-        // }
         const path = req.path.slice(env.db.name.length + 10);
         const access = env.rules.userHasAccess(req.user, path, false);
         if (!access.allow) {
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }
         const impersonatedAccess = {
-            uid: (!req.user || req.user.username !== 'admin') ? null : req.query.impersonate,
+            uid: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin' ? null : req.query.impersonate,
             read: {
                 allow: false,
                 error: null

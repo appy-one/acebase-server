@@ -10,13 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
+const admin_only_1 = require("../middleware/admin-only");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.post(`/schema/${env.db.name}`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.app.post(`/schema/${env.db.name}`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // defines a schema
-        if (!req.user || req.user.username !== 'admin') {
-            return (0, error_1.sendUnauthorizedError)(res, 'admin_only', 'only admin can perform schema operations');
-        }
         try {
             const data = req.body;
             const { path, schema } = data;

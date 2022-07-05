@@ -17,7 +17,7 @@ export declare class DatabaseLog {
      */
     warning(action: string, code: string, details: any): Promise<void>;
     /**
-     * Logs a system error
+     * Logs a system or client/user error
      * @param action action identifier
      * @param code error code
      * @param details any additional details to be logged

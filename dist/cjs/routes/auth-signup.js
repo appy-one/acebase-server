@@ -25,13 +25,12 @@ class SignupError extends Error {
 exports.SignupError = SignupError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/signup`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null };
-        if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
+        if (!env.config.auth.allowUserSignup && ((_c = req.user) === null || _c === void 0 ? void 0 : _c.uid) !== 'admin') {
             env.log.error(LOG_ACTION, 'user_signup_disabled', LOG_DETAILS);
-            res.statusCode = 403; // Forbidden
-            return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
+            return (0, error_1.sendUnauthorizedError)(res, 'admin_only', 'Only admin is allowed to create users');
         }
         // Create user if it doesn't exist yet.
         // TODO: Rate-limit nr of signups per IP to prevent abuse
@@ -76,7 +75,7 @@ const addRoute = (env) => {
         }
         else if (err) {
             // Log failure
-            env.log.error(LOG_ACTION, (_c = err.code) !== null && _c !== void 0 ? _c : 'unexpected', LOG_DETAILS);
+            env.log.error(LOG_ACTION, (_d = err.code) !== null && _d !== void 0 ? _d : 'unexpected', LOG_DETAILS);
             res.statusCode = 422; // Unprocessable Entity
             return res.send(err);
         }
@@ -85,8 +84,8 @@ const addRoute = (env) => {
             let pwd = (0, password_1.createPasswordHash)(details.password);
             const user = {
                 uid: null,
-                username: (_d = details.username) !== null && _d !== void 0 ? _d : null,
-                email: (_e = details.email) !== null && _e !== void 0 ? _e : null,
+                username: (_e = details.username) !== null && _e !== void 0 ? _e : null,
+                email: (_f = details.email) !== null && _f !== void 0 ? _f : null,
                 email_verified: false,
                 display_name: details.displayName,
                 password: pwd.hash,
@@ -97,8 +96,8 @@ const addRoute = (env) => {
                 access_token_created: new Date(),
                 last_signin: new Date(),
                 last_signin_ip: req.ip,
-                picture: (_f = details.picture) !== null && _f !== void 0 ? _f : null,
-                settings: (_g = details.settings) !== null && _g !== void 0 ? _g : {}
+                picture: (_g = details.picture) !== null && _g !== void 0 ? _g : null,
+                settings: (_h = details.settings) !== null && _h !== void 0 ? _h : {}
             };
             const userRef = yield env.authRef.push(user);
             user.uid = userRef.key;
@@ -123,7 +122,7 @@ const addRoute = (env) => {
                 activationCode: (0, tokens_1.createSignedPublicToken)({ uid: user.uid }, env.tokenSalt),
                 emailVerified: false
             };
-            (_h = env.config.email) === null || _h === void 0 ? void 0 : _h.send(request).catch(err => {
+            (_j = env.config.email) === null || _j === void 0 ? void 0 : _j.send(request).catch(err => {
                 env.log.error(LOG_ACTION + '.email', 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { request }), err);
             });
             // Return the positive news

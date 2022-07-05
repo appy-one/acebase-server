@@ -14,32 +14,6 @@ class DatabaseLog {
     constructor(logRef) {
         this.logRef = logRef;
     }
-    // /**
-    //  * Logs an action initiated by a client/user with a positive or negative outcome. Used by `success` and `failure`
-    //  * @param action action identifier
-    //  * @param success whether the action was successful
-    //  * @param details any additional details to be logged
-    //  */
-    // async event(action: string, success: boolean, details: any) {
-    //     await this.logRef.push({ type: 'event', action, success, date: new Date(), ...details });
-    // }
-    // /**
-    //  * Logs a successful action initiated by a client/user
-    //  * @param action action identifier
-    //  * @param details any additional details to be logged
-    //  */
-    // async success(action: string, details: any) {
-    //     await this.event(action, true, details);
-    // }
-    // /**
-    //  * Logs a failed action initiated by a client/user
-    //  * @param action action identifier
-    //  * @param code error code (also sent to the client)
-    //  * @param details any additional details to be logged
-    //  */
-    // async failure(action: string, code: string, details: any) {
-    //     await this.event(action, false, { code, ...details });
-    // }
     /**
      * Logs an action initiated by a client/user with a positive or negative outcome. Used by `success` and `failure`
      * @param action action identifier
@@ -63,7 +37,7 @@ class DatabaseLog {
         });
     }
     /**
-     * Logs a system error
+     * Logs a system or client/user error
      * @param action action identifier
      * @param code error code
      * @param details any additional details to be logged

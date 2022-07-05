@@ -11,14 +11,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const acebase_core_1 = require("acebase-core");
+const admin_only_1 = require("../middleware/admin-only");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.post(`/schema/${env.db.name}/test`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.app.post(`/schema/${env.db.name}/test`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
         // tests a schema
-        if (!req.user || req.user.username !== 'admin') {
-            return (0, error_1.sendUnauthorizedError)(res, 'admin_only', 'only admin can perform schema operations');
-        }
         try {
             const data = req.body;
             if (typeof ((_a = data.value) === null || _a === void 0 ? void 0 : _a.val) === 'undefined' || !['string', 'object', 'undefined'].includes(typeof ((_b = data.value) === null || _b === void 0 ? void 0 : _b.map))) {

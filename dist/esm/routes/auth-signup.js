@@ -3,7 +3,7 @@ import { emailExistsError, emailOrUsernameExistsError, invalidDisplayNameError, 
 import { createPasswordHash } from '../shared/password.js';
 import { ID } from 'acebase-core';
 import { createPublicAccessToken, createSignedPublicToken } from '../shared/tokens.js';
-import { sendUnexpectedError } from '../shared/error.js';
+import { sendUnauthorizedError, sendUnexpectedError } from '../shared/error.js';
 export class SignupError extends Error {
     constructor(code, message) {
         super(message);
@@ -14,10 +14,9 @@ export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/signup`, async (req, res) => {
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
-        if (!env.config.auth.allowUserSignup && (!req.user || req.user.username !== 'admin')) {
+        if (!env.config.auth.allowUserSignup && req.user?.uid !== 'admin') {
             env.log.error(LOG_ACTION, 'user_signup_disabled', LOG_DETAILS);
-            res.statusCode = 403; // Forbidden
-            return res.send({ code: 'admin_only', message: 'Only admin is allowed to create users' });
+            return sendUnauthorizedError(res, 'admin_only', 'Only admin is allowed to create users');
         }
         // Create user if it doesn't exist yet.
         // TODO: Rate-limit nr of signups per IP to prevent abuse

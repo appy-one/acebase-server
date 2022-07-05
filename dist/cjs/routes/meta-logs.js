@@ -10,31 +10,28 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
-const error_1 = require("../shared/error");
+const admin_only_1 = require("../middleware/admin-only");
 const addRoute = (env) => {
-    env.app.get(`/logs/${env.db.name}`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d;
+    env.app.get(`/logs/${env.db.name}`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Get database logs
-        if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin') {
-            return (0, error_1.sendUnauthorizedError)(res, 'admin_only', 'Only the admin user has access to logs');
-        }
-        // Create index is it's not there yet
+        var _a, _b, _c;
+        // Create indexes if not there yet
         const db = env.log.ref.db;
         const createIndexes = [
-            db.indexes.create(env.log.ref.path, 'date') //, { include: ['action', 'ip', 'code'] })
+            db.indexes.create(env.log.ref.path, 'date')
         ];
         if (req.query.filter_col === 'action') {
-            createIndexes.push(db.indexes.create(env.log.ref.path, 'action', { include: ['date'] })); // , 'ip', 'code'
+            createIndexes.push(db.indexes.create(env.log.ref.path, 'action', { include: ['date'] }));
         }
         if (req.query.filter_col === 'code') {
-            createIndexes.push(db.indexes.create(env.log.ref.path, 'code', { include: ['date'] })); // , 'ip'
+            createIndexes.push(db.indexes.create(env.log.ref.path, 'code', { include: ['date'] }));
         }
         yield Promise.all(createIndexes);
         try {
             const query = env.log.query()
-                .take(parseInt((_b = req.query.take) !== null && _b !== void 0 ? _b : '100'))
-                .skip(parseInt((_c = req.query.skip) !== null && _c !== void 0 ? _c : '0'))
-                .sort((_d = req.query.sort) !== null && _d !== void 0 ? _d : 'date', false);
+                .take(parseInt((_a = req.query.take) !== null && _a !== void 0 ? _a : '100'))
+                .skip(parseInt((_b = req.query.skip) !== null && _b !== void 0 ? _b : '0'))
+                .sort((_c = req.query.sort) !== null && _c !== void 0 ? _c : 'date', false);
             if (req.query.filter_col) {
                 query.filter(req.query.filter_col, req.query.filter_op, req.query.filter_val);
             }

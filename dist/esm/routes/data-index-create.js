@@ -1,9 +1,7 @@
-import { sendError, sendUnauthorizedError } from '../shared/error.js';
+import adminOnly from '../middleware/admin-only.js';
+import { sendError } from '../shared/error.js';
 export const addRoute = (env) => {
     const handleRequest = async (req, res) => {
-        if (!req.user || req.user.username !== 'admin') {
-            return sendUnauthorizedError(res, 'admin_only', 'only admin can perform index operations');
-        }
         try {
             const data = req.body;
             await env.db.indexes.create(data.path, data.key, data.options);
@@ -14,7 +12,7 @@ export const addRoute = (env) => {
             sendError(res, err);
         }
     };
-    env.app.post(`/index/${env.db.name}`, async (req, res) => {
+    env.app.post(`/index/${env.db.name}`, adminOnly(env), async (req, res) => {
         // Legacy endpoint that was designed to handle multiple actions
         // The only action ever implemented was 'create', so we'll handle that here
         if (req.body?.action !== 'create') {
@@ -22,7 +20,7 @@ export const addRoute = (env) => {
         }
         handleRequest(req, res);
     });
-    env.app.post(`/index/${env.db.name}/create`, async (req, res) => {
+    env.app.post(`/index/${env.db.name}/create`, adminOnly(env), async (req, res) => {
         // New dedicated create endpoint
         handleRequest(req, res);
     });
