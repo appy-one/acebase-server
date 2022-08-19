@@ -21,8 +21,9 @@ class DatabaseLog {
      * @param details any additional details to be logged
      */
     event(action, details) {
+        var _a;
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.logRef.push(Object.assign({ type: 'event', action, date: new Date() }, details));
+            yield ((_a = this.logRef) === null || _a === void 0 ? void 0 : _a.push(Object.assign({ type: 'event', action, date: new Date() }, details)));
         });
     }
     /**
@@ -32,8 +33,9 @@ class DatabaseLog {
      * @param details any additional details to be logged
      */
     warning(action, code, details) {
+        var _a;
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.logRef.push(Object.assign({ type: 'warning', action, code, date: new Date() }, details));
+            yield ((_a = this.logRef) === null || _a === void 0 ? void 0 : _a.push(Object.assign({ type: 'warning', action, code, date: new Date() }, details)));
         });
     }
     /**
@@ -43,12 +45,12 @@ class DatabaseLog {
      * @param details any additional details to be logged
      */
     error(action, code, details, unexpectedError) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             const errorDetails = unexpectedError instanceof Error
                 ? { error: (_a = unexpectedError.stack) !== null && _a !== void 0 ? _a : unexpectedError.message }
                 : { error: (_c = (_b = unexpectedError === null || unexpectedError === void 0 ? void 0 : unexpectedError.message) !== null && _b !== void 0 ? _b : unexpectedError === null || unexpectedError === void 0 ? void 0 : unexpectedError.toString()) !== null && _c !== void 0 ? _c : null };
-            yield this.logRef.push(Object.assign(Object.assign({ type: 'error', action, code, date: new Date() }, errorDetails), details));
+            yield ((_d = this.logRef) === null || _d === void 0 ? void 0 : _d.push(Object.assign(Object.assign({ type: 'error', action, code, date: new Date() }, errorDetails), details)));
         });
     }
     /**
@@ -56,13 +58,16 @@ class DatabaseLog {
      * @returns
      */
     query() {
+        if (!this.logRef) {
+            throw new Error('Logging is not enabled');
+        }
         return this.logRef.query();
     }
     /**
      * Reference to the logs database collection
      */
     get ref() {
-        return this.logRef;
+        return this === null || this === void 0 ? void 0 : this.logRef;
     }
 }
 exports.DatabaseLog = DatabaseLog;
