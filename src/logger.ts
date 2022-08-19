@@ -10,7 +10,7 @@ export class DatabaseLog {
      * @param details any additional details to be logged
      */
     async event(action: string, details: any) {
-        await this.logRef.push({ type: 'event', action, date: new Date(), ...details });
+        await this.logRef?.push({ type: 'event', action, date: new Date(), ...details });
     }
 
     /**
@@ -20,7 +20,7 @@ export class DatabaseLog {
      * @param details any additional details to be logged
      */
     async warning(action: string, code: string, details: any) {
-        await this.logRef.push({ type: 'warning', action, code, date: new Date(), ...details });
+        await this.logRef?.push({ type: 'warning', action, code, date: new Date(), ...details });
     }
 
     /**
@@ -33,7 +33,7 @@ export class DatabaseLog {
         const errorDetails = unexpectedError instanceof Error
             ? { error: unexpectedError.stack ?? unexpectedError.message }
             : { error: unexpectedError?.message ?? unexpectedError?.toString() ?? null };
-        await this.logRef.push({ type: 'error', action, code, date: new Date(), ...errorDetails, ...details });
+        await this.logRef?.push({ type: 'error', action, code, date: new Date(), ...errorDetails, ...details });
     }
 
     /**
@@ -41,6 +41,9 @@ export class DatabaseLog {
      * @returns 
      */
     query() {
+        if (!this.logRef) {
+            throw new Error('Logging is not enabled');
+        }
         return this.logRef.query();
     }
 
@@ -48,6 +51,6 @@ export class DatabaseLog {
      * Reference to the logs database collection
      */
     get ref() {
-        return this.logRef;
+        return this?.logRef;
     }
 }
