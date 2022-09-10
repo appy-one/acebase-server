@@ -1,12 +1,25 @@
 #!/bin/bash
+
+# Create CommonJS package.json
 cat >dist/cjs/package.json <<!EOF
 {
     "type": "commonjs"
 }
 !EOF
 
+# Write typings to support Node16 module resolution 
+cat >dist/cjs/index.d.ts <<!EOF
+export * from '../types';
+!EOF
+
+# Create ESM package.json
 cat >dist/esm/package.json <<!EOF
 {
     "type": "module"
 }
+!EOF
+
+# Write typings to support Node16 module resolution 
+cat >dist/esm/index.d.ts <<!EOF
+export * from '../types';
 !EOF
