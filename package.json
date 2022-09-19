@@ -21,7 +21,7 @@
     "build:esm": "tsc -p tsconfig.json && npx tsc-esm-fix ---target='dist/esm'",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:packages": "bash ./create-package-files",
-    "npmfix": "echo 'Regenerating package-lock.json...' && npm i --package--lock-only"
+    "npmfix": "echo 'Regenerating package-lock.json...' && npm i --package-lock-only"
   },
   "keywords": [
     "database",
@@ -57,7 +57,7 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.24.3",
+    "acebase": "^1.24.4",
     "acebase-core": "^1.22.4",
     "express": "^4.17.1",
     "socket.io": "^4.5.0",
