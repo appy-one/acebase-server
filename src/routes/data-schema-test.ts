@@ -1,5 +1,4 @@
-import { ISchemaCheckResult, SchemaDefinition, Transport } from 'acebase-core';
-import type { IAceBaseSchemaInfo } from 'acebase-core/src/api';
+import { ISchemaCheckResult, SchemaDefinition, Transport, IAceBaseSchemaInfo } from 'acebase-core';
 import type { SerializedValue } from 'acebase-core/types/transport';
 import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
