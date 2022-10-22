@@ -1,7 +1,5 @@
 import { SchemaValidationError } from 'acebase';
-import { ID, Transport } from 'acebase-core';
-import { Api } from 'acebase-core/src/api';
-import { SerializedValue } from 'acebase-core/types/transport';
+import { ID, Transport, Api } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
@@ -15,7 +13,7 @@ export class DataTransactionError extends Error {
 
 export type ApiTransactionDetails = {
     id: string;
-    value: SerializedValue;
+    value: Transport.SerializedValue;
 };
 export type StartRequestQuery = null;
 export type StartRequestBody = {
