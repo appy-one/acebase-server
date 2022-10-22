@@ -6,7 +6,7 @@ export type RequestQuery = null;
 export type RequestBody = {
     action?: 'set'; // deprecated
     path: string;
-    schema: string|Object;
+    schema: string | Record<string, any>;
 };
 export type ResponseBody = { success: true }    // 200
     | { code: 'admin_only'; message: string }   // 403
