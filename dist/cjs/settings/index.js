@@ -82,7 +82,7 @@ class AceBaseServerAuthenticationSettings {
 }
 exports.AceBaseServerAuthenticationSettings = AceBaseServerAuthenticationSettings;
 /**
- * TODO: Use AceBaseTransactionLogSettings from 'acebase/src/storage-acebase.js'
+ * TODO: Use AceBaseTransactionLogSettings from acebase
  */
 class AceBaseServerTransactionSettings {
     constructor(settings) {

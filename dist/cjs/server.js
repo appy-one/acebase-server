@@ -61,7 +61,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 removeVoidProperties: true,
             },
             transactions: this.config.transactions,
-            ipc: this.config.ipc
+            ipc: this.config.ipc,
         };
         this.db = new acebase_1.AceBase(dbname, dbOptions);
         const otherDbsPath = `${this.config.path}/${this.db.name}.acebase`;

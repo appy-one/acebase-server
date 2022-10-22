@@ -58,7 +58,7 @@ export declare class AceBaseServerAuthenticationSettings {
     constructor(settings: Partial<AceBaseServerAuthenticationSettings>);
 }
 /**
- * TODO: Use AceBaseTransactionLogSettings from 'acebase/src/storage-acebase.js'
+ * TODO: Use AceBaseTransactionLogSettings from acebase
  */
 export declare class AceBaseServerTransactionSettings {
     /**

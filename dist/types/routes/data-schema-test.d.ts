@@ -1,5 +1,4 @@
-import { ISchemaCheckResult } from 'acebase-core';
-import type { IAceBaseSchemaInfo } from 'acebase-core/src/api';
+import { ISchemaCheckResult, IAceBaseSchemaInfo } from 'acebase-core';
 import type { SerializedValue } from 'acebase-core/types/transport';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare type RequestQuery = null;

@@ -1,4 +1,4 @@
-import { ValueMutation } from 'acebase-core/src/api';
+import { ValueMutation } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare type RequestQuery = {
     path?: string;

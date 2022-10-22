@@ -3,7 +3,7 @@ export declare type RequestQuery = null;
 export declare type RequestBody = {
     action?: 'set';
     path: string;
-    schema: string | Object;
+    schema: string | Record<string, any>;
 };
 export declare type ResponseBody = {
     success: true;
