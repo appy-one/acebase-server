@@ -29,13 +29,6 @@ export declare class PathBasedRules {
         db: AceBase;
         authEnabled: boolean;
     });
-    /**
-     *
-     * @param {DbUserAccountDetails} user
-     * @param {string} path
-     * @param {boolean} [write]
-     * @param {(details: { code: string, message: string, [key:string]: any }) => void} denyDetailsCallback
-     */
     userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write?: boolean): HasAccessResult;
 }
 export {};
