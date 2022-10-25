@@ -82,11 +82,11 @@ class PathBasedRules {
             });
         };
         processRules('', accessRules.rules, []);
-        // Watch file for changes
+        // Watch file for changes. watchFile will poll for changes every (default) 5007ms
         const watchFileListener = () => {
             // Reload access rules
             const accessRules = readRules();
-            processRules('', accessRules, []);
+            processRules('', accessRules.rules, []);
             this.accessRules = accessRules;
         };
         fs.watchFile(rulesFilePath, watchFileListener);
@@ -98,13 +98,6 @@ class PathBasedRules {
         this.accessRules = accessRules;
     }
     stop() { throw new Error('not started yet'); }
-    /**
-     *
-     * @param {DbUserAccountDetails} user
-     * @param {string} path
-     * @param {boolean} [write]
-     * @param {(details: { code: string, message: string, [key:string]: any }) => void} denyDetailsCallback
-     */
     userHasAccess(user, path, write = false) {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
