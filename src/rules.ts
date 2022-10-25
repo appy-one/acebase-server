@@ -104,7 +104,7 @@ export class PathBasedRules {
         };
         processRules('', accessRules.rules, []);
 
-        // Watch file for changes
+        // Watch file for changes. watchFile will poll for changes every (default) 5007ms
         const watchFileListener = () => {
             // Reload access rules
             const accessRules = readRules();
