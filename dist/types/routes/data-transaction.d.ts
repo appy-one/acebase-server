@@ -1,4 +1,4 @@
-import { SerializedValue } from 'acebase-core/types/transport';
+import { Transport } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare const TRANSACTION_TIMEOUT_MS = 10000;
 export declare class DataTransactionError extends Error {
@@ -7,7 +7,7 @@ export declare class DataTransactionError extends Error {
 }
 export declare type ApiTransactionDetails = {
     id: string;
-    value: SerializedValue;
+    value: Transport.SerializedValue;
 };
 export declare type StartRequestQuery = null;
 export declare type StartRequestBody = {
@@ -32,3 +32,4 @@ export declare type FinishResponseBody = 'done' | {
 export declare type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
 export declare const addRoutes: (env: RouteInitEnvironment) => void;
 export default addRoutes;
+//# sourceMappingURL=data-transaction.d.ts.map

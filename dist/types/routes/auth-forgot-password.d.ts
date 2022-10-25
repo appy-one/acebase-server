@@ -14,3 +14,4 @@ export declare type ResponseBody = 'OK' | {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=auth-forgot-password.d.ts.map

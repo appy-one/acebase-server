@@ -39,6 +39,10 @@
                     type: string
                     description: Locale of the indexed string values
                     example: en-us
+                  textLocaleKey:
+                    type: string
+                    description: Key (property) that contains the locale of an indexed item, overrides the default in textLocale
+                    example: en-us
                   includeKeys:
                     type: array
                     description: keys (properties) whose values are included in the index

@@ -1,5 +1,5 @@
 import { AceBase } from 'acebase';
-import { QueryOperator } from 'acebase-core/types/data-reference';
+import { QueryOperator } from 'acebase-core/dist/types/data-reference';
 import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 

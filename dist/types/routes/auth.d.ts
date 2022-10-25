@@ -4,3 +4,4 @@ export declare const addAuthenticionRoutes: (env: RouteInitEnvironment) => {
     resetPassword: (clientIp: string, code: string, newPassword: string) => Promise<import("../schema/user").DbUserAccountDetails>;
 };
 export default addAuthenticionRoutes;
+//# sourceMappingURL=auth.d.ts.map

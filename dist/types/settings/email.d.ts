@@ -12,3 +12,4 @@ export interface AceBaseServerEmailSettings {
     /** function to call when an e-mail needs to be sent */
     send: (request: AceBaseEmailRequest) => Promise<void>;
 }
+//# sourceMappingURL=email.d.ts.map

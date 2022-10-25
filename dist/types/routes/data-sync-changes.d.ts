@@ -1,4 +1,4 @@
-import { ValueChange } from 'acebase-core/src/api';
+import { ValueChange } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare type RequestQuery = {
     path?: string;
@@ -26,3 +26,4 @@ export declare type ResponseBody = ValueChange[] | {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=data-sync-changes.d.ts.map

@@ -93,7 +93,7 @@ export class AceBaseServerAuthenticationSettings {
 }
 
 /**
- * TODO: Use AceBaseTransactionLogSettings from 'acebase/src/storage-acebase.js'
+ * TODO: Use AceBaseTransactionLogSettings from acebase
  */
 export class AceBaseServerTransactionSettings {
     /**

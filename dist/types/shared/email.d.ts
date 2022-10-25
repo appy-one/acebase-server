@@ -32,3 +32,4 @@ export interface AceBaseUserResetPasswordEmailRequest extends AceBaseUserEmailRe
 export interface AceBaseUserResetPasswordSuccessEmailRequest extends AceBaseUserEmailRequest {
     type: 'user_reset_password_success';
 }
+//# sourceMappingURL=email.d.ts.map

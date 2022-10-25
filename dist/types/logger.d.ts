@@ -33,3 +33,4 @@ export declare class DatabaseLog {
      */
     get ref(): DataReference;
 }
+//# sourceMappingURL=logger.d.ts.map

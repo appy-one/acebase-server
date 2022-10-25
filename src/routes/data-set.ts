@@ -1,6 +1,5 @@
 import { SchemaValidationError } from 'acebase';
 import { Transport } from 'acebase-core';
-import { SerializedValue } from 'acebase-core/types/transport';
 import { RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
@@ -11,7 +10,7 @@ export class SetDataError extends Error {
     }
 }
 export type RequestQuery = null;
-export type RequestBody = SerializedValue; // { val: any; map?: string|Record<string, 'date'|'binary'|'reference'|'regexp'|'array'> };
+export type RequestBody = Transport.SerializedValue; // { val: any; map?: string|Record<string, 'date'|'binary'|'reference'|'regexp'|'array'> };
 export type ResponseBody = { success: true }                    // 200
     | { code: 'invalid_serialized_value', message: string }     // 400
     | { code: RuleValidationFailCode, message: string }         // 403

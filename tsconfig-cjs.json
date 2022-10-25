@@ -5,6 +5,7 @@
         "module": "commonjs",
         "outDir": "./dist/cjs",
         "declaration": false,
+        "declarationMap": false,
         "declarationDir": null
     }
 }

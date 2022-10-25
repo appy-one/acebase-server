@@ -30,17 +30,17 @@ export abstract class WebSocketManager<SocketType> extends SimpleEventEmitter {
         super.on(event, callback);
     }
 
-    emit(event: 'connect', data: WebSocketEventData<SocketType>): void;
-    emit(event: 'disconnect', data: WebSocketEventData<SocketType, string>): void;
+    emit(event: 'connect', data: WebSocketEventData<SocketType>): this;
+    emit(event: 'disconnect', data: WebSocketEventData<SocketType, string>): this;
     /** @deprecated deprecated since client v0.9.4 */
-    emit(event: 'signin', data: WebSocketEventData<SocketType, { accessToken: string }>): void;
+    emit(event: 'signin', data: WebSocketEventData<SocketType, { accessToken: string }>): this;
     /** @deprecated deprecated since client v0.9.4 */
-    emit(event: 'signout', data: WebSocketEventData<SocketType>): void;
-    emit(event: 'oauth2-signin', data: WebSocketEventData<SocketType, { server: { protocol: 'http'|'https', host: string, port: number }; provider: string; options: any }>): void;
-    emit(event: 'subscribe', data: WebSocketEventData<SocketType, { req_id: string; path: string; event: string }>): void;
-    emit(event: 'unsubscribe', data: WebSocketEventData<SocketType, { req_id: string; path: string; event?: string }>): void;
-    emit(event: 'query-unsubscribe', data: WebSocketEventData<SocketType, { req_id: string; query_id: string }>): void;
-    emit(event: 'transaction-start', data: WebSocketEventData<SocketType, { action: 'start', id: string; path: string; context: any }>): void;
-    emit(event: 'transaction-finish', data: WebSocketEventData<SocketType, { action: 'finish', id: string; path: string; value: any }>): void;
-    emit(event: string, data: any) { super.emit(event, data); }
+    emit(event: 'signout', data: WebSocketEventData<SocketType>): this;
+    emit(event: 'oauth2-signin', data: WebSocketEventData<SocketType, { server: { protocol: 'http'|'https', host: string, port: number }; provider: string; options: any }>): this;
+    emit(event: 'subscribe', data: WebSocketEventData<SocketType, { req_id: string; path: string; event: string }>): this;
+    emit(event: 'unsubscribe', data: WebSocketEventData<SocketType, { req_id: string; path: string; event?: string }>): this;
+    emit(event: 'query-unsubscribe', data: WebSocketEventData<SocketType, { req_id: string; query_id: string }>): this;
+    emit(event: 'transaction-start', data: WebSocketEventData<SocketType, { action: 'start', id: string; path: string; context: any }>): this;
+    emit(event: 'transaction-finish', data: WebSocketEventData<SocketType, { action: 'finish', id: string; path: string; value: any }>): this;
+    emit(event: string, data: any) { super.emit(event, data); return this; }
 }

@@ -7,6 +7,6 @@ export class WebSocketManager extends SimpleEventEmitter {
     on(event, callback) {
         super.on(event, callback);
     }
-    emit(event, data) { super.emit(event, data); }
+    emit(event, data) { super.emit(event, data); return this; }
 }
 //# sourceMappingURL=manager.js.map

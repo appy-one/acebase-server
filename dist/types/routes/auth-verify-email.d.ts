@@ -19,3 +19,4 @@ export declare type Request = RouteRequest<any, ResponseBody, RequestBody, Reque
  */
 export declare const addRoute: (env: RouteInitEnvironment) => (clientIp: string, code: string) => Promise<void>;
 export default addRoute;
+//# sourceMappingURL=auth-verify-email.d.ts.map

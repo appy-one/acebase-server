@@ -13,3 +13,4 @@ export declare const sendBadRequestError: (res: Response, err: {
 }) => void;
 export declare const sendUnexpectedError: (res: Response, err: Error) => void;
 export {};
+//# sourceMappingURL=error.d.ts.map

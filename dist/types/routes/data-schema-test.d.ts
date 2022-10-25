@@ -1,10 +1,8 @@
-import { ISchemaCheckResult } from 'acebase-core';
-import type { IAceBaseSchemaInfo } from 'acebase-core/src/api';
-import type { SerializedValue } from 'acebase-core/types/transport';
+import { ISchemaCheckResult, Transport, IAceBaseSchemaInfo } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export declare type RequestQuery = null;
 export declare type RequestBody = {
-    value: SerializedValue;
+    value: Transport.SerializedValue;
     partial: boolean;
     path?: string;
     schema?: IAceBaseSchemaInfo;
@@ -19,3 +17,4 @@ export declare type ResponseBody = ISchemaCheckResult | {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=data-schema-test.d.ts.map

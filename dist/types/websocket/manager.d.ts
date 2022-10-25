@@ -53,14 +53,14 @@ export declare abstract class WebSocketManager<SocketType> extends SimpleEventEm
         path: string;
         value: any;
     }>): void;
-    emit(event: 'connect', data: WebSocketEventData<SocketType>): void;
-    emit(event: 'disconnect', data: WebSocketEventData<SocketType, string>): void;
+    emit(event: 'connect', data: WebSocketEventData<SocketType>): this;
+    emit(event: 'disconnect', data: WebSocketEventData<SocketType, string>): this;
     /** @deprecated deprecated since client v0.9.4 */
     emit(event: 'signin', data: WebSocketEventData<SocketType, {
         accessToken: string;
-    }>): void;
+    }>): this;
     /** @deprecated deprecated since client v0.9.4 */
-    emit(event: 'signout', data: WebSocketEventData<SocketType>): void;
+    emit(event: 'signout', data: WebSocketEventData<SocketType>): this;
     emit(event: 'oauth2-signin', data: WebSocketEventData<SocketType, {
         server: {
             protocol: 'http' | 'https';
@@ -69,31 +69,32 @@ export declare abstract class WebSocketManager<SocketType> extends SimpleEventEm
         };
         provider: string;
         options: any;
-    }>): void;
+    }>): this;
     emit(event: 'subscribe', data: WebSocketEventData<SocketType, {
         req_id: string;
         path: string;
         event: string;
-    }>): void;
+    }>): this;
     emit(event: 'unsubscribe', data: WebSocketEventData<SocketType, {
         req_id: string;
         path: string;
         event?: string;
-    }>): void;
+    }>): this;
     emit(event: 'query-unsubscribe', data: WebSocketEventData<SocketType, {
         req_id: string;
         query_id: string;
-    }>): void;
+    }>): this;
     emit(event: 'transaction-start', data: WebSocketEventData<SocketType, {
         action: 'start';
         id: string;
         path: string;
         context: any;
-    }>): void;
+    }>): this;
     emit(event: 'transaction-finish', data: WebSocketEventData<SocketType, {
         action: 'finish';
         id: string;
         path: string;
         value: any;
-    }>): void;
+    }>): this;
 }
+//# sourceMappingURL=manager.d.ts.map

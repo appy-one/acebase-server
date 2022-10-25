@@ -1,5 +1,4 @@
-import { ColorStyle, Transport } from "acebase-core";
-import { EventSubscriptionCallback } from "acebase-core/src/api";
+import { ColorStyle, Transport, EventSubscriptionCallback } from "acebase-core";
 import { ConnectedClient } from "../shared/clients";
 import { RouteInitEnvironment } from "../shared/env";
 import { decodePublicAccessToken } from "../shared/tokens";

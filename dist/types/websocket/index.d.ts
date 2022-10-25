@@ -4,3 +4,4 @@ export declare class SocketRequestError extends Error {
     constructor(code: string, message: string);
 }
 export declare const addWebsocketServer: (env: RouteInitEnvironment) => import("./socket.io").SocketIOManager;
+//# sourceMappingURL=index.d.ts.map

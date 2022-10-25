@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { EventSubscriptionCallback, IApiQuery, IApiQueryOptions } from "acebase-core/src/api";
+import { EventSubscriptionCallback, Query, QueryOptions } from "acebase-core";
 import { DbUserAccountDetails } from "../schema/user";
 import { HttpSocket } from "./http";
 export declare class ConnectedClient {
@@ -26,8 +26,8 @@ export declare class ConnectedClient {
     realtimeQueries: {
         [id: string]: {
             path: string;
-            query: IApiQuery;
-            options: IApiQueryOptions;
+            query: Query;
+            options: QueryOptions;
         };
     };
     /** Currently running transactions */
@@ -44,3 +44,4 @@ export declare class ConnectedClient {
         };
     };
 }
+//# sourceMappingURL=clients.d.ts.map

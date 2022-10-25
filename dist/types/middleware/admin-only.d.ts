@@ -17,3 +17,4 @@ import type { Response } from "../shared/http";
  */
 export declare const adminOnly: (env: RouteInitEnvironment, errorMessage?: string) => (req: RouteRequest, res: Response, next: NextFunction) => void;
 export default adminOnly;
+//# sourceMappingURL=admin-only.d.ts.map

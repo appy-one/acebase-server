@@ -1,4 +1,4 @@
-import { ColorStyle, DebugLogger, SimpleEventEmitter } from 'acebase-core';
+import { ColorStyle, DebugLogger, SimpleEventEmitter, Api } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
 import { createApp, HttpRequest, HttpResponse } from './shared/http';
 import { addWebsocketServer } from './websocket';
@@ -11,7 +11,6 @@ import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import oAuth2Providers from './oauth-providers';
 import { PathBasedRules } from './rules';
 import { DbUserAccountDetails } from './schema/user';
-import { Api } from 'acebase-core/src/api';
 import addConnectionMiddleware from './middleware/connection';
 import addCorsMiddleware from './middleware/cors';
 import addAuthenticionRoutes from './routes/auth';
@@ -105,7 +104,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         }
 
         // Open database(s)
-        const dbOptions: AceBaseLocalSettings & { info: string } = {
+        const dbOptions: Partial<AceBaseLocalSettings> = {
             logLevel: this.config.logLevel,
             info: 'realtime database server',
             // NEW: Allow storage setting like AceBaseLocalSettings - could allow using other db backend (typed, but undocumented)
@@ -114,7 +113,7 @@ export class AceBaseServer extends SimpleEventEmitter {
                 removeVoidProperties: true,
             },
             transactions: this.config.transactions,
-            ipc: this.config.ipc
+            ipc: this.config.ipc,
         };
         this.db = new AceBase(dbname, dbOptions);
 

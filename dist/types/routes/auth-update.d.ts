@@ -31,3 +31,4 @@ export declare type ResponseBody = {
 };
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
+//# sourceMappingURL=auth-update.d.ts.map

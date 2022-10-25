@@ -1,4 +1,4 @@
-import { EventSubscriptionCallback, IApiQuery, IApiQueryOptions } from "acebase-core/src/api";
+import { EventSubscriptionCallback, Query, QueryOptions } from "acebase-core";
 import { DbUserAccountDetails } from "../schema/user";
 import { HttpSocket } from "./http";
 
@@ -24,7 +24,7 @@ export class ConnectedClient {
     subscriptions: { [path: string]: Array<{ path: string, event: string, callback: EventSubscriptionCallback }> } = {};
     
     /** Active realtime query subscriptions for this client */
-    realtimeQueries: { [id: string]: { path: string; query: IApiQuery, options: IApiQueryOptions }} = {};
+    realtimeQueries: { [id: string]: { path: string; query: Query, options: QueryOptions }} = {};
     
     /** Currently running transactions */
     transactions: { [id: string]: { id: string; started: number; path: string; context: any; finish?: (val?: any) => Promise<{ cursor?: string }>; timeout: NodeJS.Timeout } } = {};

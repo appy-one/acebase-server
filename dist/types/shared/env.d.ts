@@ -6,12 +6,11 @@ import type { AceBase, DataReference } from 'acebase';
 import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
 import type { ConnectedClient } from './clients';
-import type { DebugLogger, SimpleCache } from 'acebase-core';
+import type { DebugLogger, SimpleCache, Api } from 'acebase-core';
 import type { OAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
-import { Api } from 'acebase-core/src/api';
 import { DatabaseLog } from '../logger';
 export interface RouteInitEnvironment {
     server: HttpServer | SecureHttpServer;
@@ -42,3 +41,4 @@ export interface RouteRequestEnvironment {
     };
 }
 export declare type RouteRequest<Params = any, ResBody = any, ReqBody = any, ReqQuery = any, Locals extends Record<string, any> = Record<string, any>> = Request<Params, ResBody, ReqBody, ReqQuery, Locals> & RouteRequestEnvironment;
+//# sourceMappingURL=env.d.ts.map

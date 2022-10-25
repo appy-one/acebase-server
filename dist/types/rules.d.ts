@@ -39,3 +39,4 @@ export declare class PathBasedRules {
     userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write?: boolean): HasAccessResult;
 }
 export {};
+//# sourceMappingURL=rules.d.ts.map

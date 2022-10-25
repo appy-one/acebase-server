@@ -1,5 +1,4 @@
-import { PathInfo, Transport } from 'acebase-core';
-import { ValueMutation } from 'acebase-core/src/api';
+import { PathInfo, Transport, ValueMutation } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
