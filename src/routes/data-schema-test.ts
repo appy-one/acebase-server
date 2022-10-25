@@ -1,12 +1,11 @@
 import { ISchemaCheckResult, SchemaDefinition, Transport, IAceBaseSchemaInfo } from 'acebase-core';
-import type { SerializedValue } from 'acebase-core/types/transport';
 import adminOnly from '../middleware/admin-only';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = { 
-    value: SerializedValue; 
+    value: Transport.SerializedValue; 
     partial: boolean; 
     path?: string;
     schema?: IAceBaseSchemaInfo 
