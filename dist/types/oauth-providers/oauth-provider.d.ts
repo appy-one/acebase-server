@@ -72,3 +72,4 @@ export interface IOpenIDConfiguration {
     code_challenge_methods_supported: string[];
     grant_types_supported: string[];
 }
+//# sourceMappingURL=oauth-provider.d.ts.map

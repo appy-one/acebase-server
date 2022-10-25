@@ -11,3 +11,4 @@ export declare type ResponseBody = SimpleAceBaseStorageStats;
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=meta-stats.d.ts.map

@@ -21,3 +21,4 @@ export declare const createSignedPublicToken: (obj: any, password: string) => st
  * @returns the original data object
  */
 export declare const parseSignedPublicToken: (str: string, password: string) => any;
+//# sourceMappingURL=tokens.d.ts.map

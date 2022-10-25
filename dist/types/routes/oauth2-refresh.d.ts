@@ -15,3 +15,4 @@ export declare type ResponseBody = {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=oauth2-refresh.d.ts.map

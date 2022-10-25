@@ -41,3 +41,4 @@ export interface RouteRequestEnvironment {
     };
 }
 export declare type RouteRequest<Params = any, ResBody = any, ReqBody = any, ReqQuery = any, Locals extends Record<string, any> = Record<string, any>> = Request<Params, ResBody, ReqBody, ReqQuery, Locals> & RouteRequestEnvironment;
+//# sourceMappingURL=env.d.ts.map

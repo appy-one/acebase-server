@@ -23,3 +23,4 @@ export declare const getCorsHeaders: (allowedOrigins: string, currentOrigin: str
 };
 export declare const addMiddleware: (env: RouteInitEnvironment) => void;
 export default addMiddleware;
+//# sourceMappingURL=cors.d.ts.map

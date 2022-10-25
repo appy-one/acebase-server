@@ -20,3 +20,4 @@ export declare const invalidDisplayNameError: ValidationError<'invalid_display_n
 export declare const invalidPasswordError: ValidationError<'invalid_password'>;
 export declare const invalidPictureError: ValidationError<'invalid_picture'>;
 export declare const invalidSettingsError: ValidationError<'invalid_settings'>;
+//# sourceMappingURL=validate.d.ts.map

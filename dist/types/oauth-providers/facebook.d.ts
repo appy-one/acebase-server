@@ -39,3 +39,4 @@ export declare class FacebookAuthProvider extends OAuth2Provider {
 }
 export declare const AuthProvider: typeof FacebookAuthProvider;
 export {};
+//# sourceMappingURL=facebook.d.ts.map

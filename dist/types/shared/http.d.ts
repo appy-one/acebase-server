@@ -14,3 +14,4 @@ export declare const createApp: (settings: {
     trustProxy: boolean;
     maxPayloadSize: string;
 }) => express.Express;
+//# sourceMappingURL=http.d.ts.map

@@ -83,3 +83,4 @@ export declare type DbUserAccountDetails = ({
     settings: UserSettings;
 };
 export declare const getPublicAccountDetails: (account: DbUserAccountDetails) => AceBaseUser;
+//# sourceMappingURL=user.d.ts.map

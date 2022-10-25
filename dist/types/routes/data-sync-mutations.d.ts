@@ -26,3 +26,4 @@ export declare type ResponseBody = ValueMutation[] | {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=data-sync-mutations.d.ts.map

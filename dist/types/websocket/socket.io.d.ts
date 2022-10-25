@@ -8,3 +8,4 @@ export declare class SocketIOManager extends WebSocketManager<Socket> {
     send(socket: Socket, event: string, message?: any): void;
 }
 export declare const createServer: (env: RouteInitEnvironment) => SocketIOManager;
+//# sourceMappingURL=socket.io.d.ts.map

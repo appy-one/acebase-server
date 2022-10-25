@@ -12,3 +12,4 @@ export declare type ResponseBody = Transport.SerializedValue & {
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=data-get.d.ts.map

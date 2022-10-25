@@ -17,3 +17,4 @@ export declare const getPasswordHash: (password: string, salt: string) => string
  * Backward compatibility with old saltless md5 passwords. Becomes obsolete once all passwords have been updated (probably already so)
  */
 export declare const getOldPasswordHash: (password: string) => string;
+//# sourceMappingURL=password.d.ts.map

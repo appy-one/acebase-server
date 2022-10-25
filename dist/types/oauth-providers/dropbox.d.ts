@@ -50,3 +50,4 @@ export declare class DropboxAuthProvider extends OAuth2Provider {
 }
 export declare const AuthProvider: typeof DropboxAuthProvider;
 export {};
+//# sourceMappingURL=dropbox.d.ts.map

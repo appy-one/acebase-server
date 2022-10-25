@@ -1,4 +1,4 @@
-import { QueryOperator } from 'acebase-core/types/data-reference';
+import { QueryOperator } from 'acebase-core/dist/types/data-reference';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 declare type AceBaseLogLine = {
     action: string;
@@ -18,3 +18,4 @@ export declare type ResponseBody = AceBaseLogLine[];
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=meta-logs.d.ts.map

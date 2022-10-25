@@ -48,3 +48,4 @@ export declare class InstagramAuthProvider extends OAuth2Provider {
 }
 export declare const AuthProvider: typeof InstagramAuthProvider;
 export {};
+//# sourceMappingURL=instagram.d.ts.map

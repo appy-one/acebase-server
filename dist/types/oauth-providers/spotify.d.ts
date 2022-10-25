@@ -51,3 +51,4 @@ export declare class SpotifyAuthProvider extends OAuth2Provider {
 }
 export declare const AuthProvider: typeof SpotifyAuthProvider;
 export {};
+//# sourceMappingURL=spotify.d.ts.map

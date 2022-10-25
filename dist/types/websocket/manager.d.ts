@@ -97,3 +97,4 @@ export declare abstract class WebSocketManager<SocketType> extends SimpleEventEm
         value: any;
     }>): this;
 }
+//# sourceMappingURL=manager.d.ts.map

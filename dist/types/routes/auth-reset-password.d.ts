@@ -21,3 +21,4 @@ export declare type Request = RouteRequest<any, ResponseBody, RequestBody, Reque
  */
 export declare const addRoute: (env: RouteInitEnvironment) => (clientIp: string, code: string, newPassword: string) => Promise<DbUserAccountDetails>;
 export default addRoute;
+//# sourceMappingURL=auth-reset-password.d.ts.map

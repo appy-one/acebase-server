@@ -32,3 +32,4 @@ export declare type FinishResponseBody = 'done' | {
 export declare type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
 export declare const addRoutes: (env: RouteInitEnvironment) => void;
 export default addRoutes;
+//# sourceMappingURL=data-transaction.d.ts.map

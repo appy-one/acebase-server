@@ -106,3 +106,4 @@ export declare class AceBaseServer extends SimpleEventEmitter {
     configAuthProvider(providerName: string, settings: any): OAuth2Provider;
 }
 export {};
+//# sourceMappingURL=server.d.ts.map

@@ -162,3 +162,4 @@ export declare class AceBaseServerConfig {
     readonly storage?: AceBaseStorageSettings;
     constructor(settings: AceBaseServerSettings);
 }
+//# sourceMappingURL=index.d.ts.map

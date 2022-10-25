@@ -8,3 +8,4 @@ declare const oAuth2Providers: {
     [key: string]: typeof OAuth2Provider;
 };
 export default oAuth2Providers;
+//# sourceMappingURL=index.d.ts.map

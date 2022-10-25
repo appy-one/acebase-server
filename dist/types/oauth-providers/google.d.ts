@@ -41,3 +41,4 @@ export declare class GoogleAuthProvider extends OAuth2Provider {
 }
 export declare const AuthProvider: typeof GoogleAuthProvider;
 export {};
+//# sourceMappingURL=google.d.ts.map

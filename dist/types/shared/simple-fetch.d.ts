@@ -19,3 +19,4 @@ export declare function fetch(url: string, options?: {
     };
     body?: string;
 }): Promise<SimpleFetchResponse>;
+//# sourceMappingURL=simple-fetch.d.ts.map

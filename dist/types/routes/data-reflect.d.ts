@@ -27,3 +27,4 @@ export declare type ResponseBody = IReflectionNodeInfo & IReflectionChildrenInfo
 export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
+//# sourceMappingURL=data-reflect.d.ts.map
