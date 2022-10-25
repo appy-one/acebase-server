@@ -108,7 +108,7 @@ export class PathBasedRules {
         const watchFileListener = () => {
             // Reload access rules
             const accessRules = readRules();
-            processRules('', accessRules, []);
+            processRules('', accessRules.rules, []);
             this.accessRules = accessRules;
         };
         fs.watchFile(rulesFilePath, watchFileListener);
