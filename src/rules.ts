@@ -121,14 +121,7 @@ export class PathBasedRules {
         this.accessRules = accessRules;
     }
 
-    /**
-     * 
-     * @param {DbUserAccountDetails} user 
-     * @param {string} path 
-     * @param {boolean} [write] 
-     * @param {(details: { code: string, message: string, [key:string]: any }) => void} denyDetailsCallback 
-     */
-    userHasAccess (user: Pick<DbUserAccountDetails, 'uid'>, path: string, write: boolean = false): HasAccessResult {
+    userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write: boolean = false): HasAccessResult {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
