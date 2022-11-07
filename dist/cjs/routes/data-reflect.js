@@ -65,7 +65,7 @@ const addRoute = (env) => {
                     list = result.list;
                 }
                 else if (type === 'info') {
-                    list = typeof result.children === 'object' ? result.children.list : [];
+                    list = typeof result.children === 'object' && 'list' in result.children ? result.children.list : [];
                 }
                 list && list.forEach(childInfo => {
                     childInfo.access = {
