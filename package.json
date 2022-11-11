@@ -7,7 +7,7 @@
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
+      "import": "./dist/cjs/index.js",
       "require": "./dist/cjs/index.js",
       "types": "./dist/types/index.d.ts"
     }
@@ -58,7 +58,7 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.26.1",
+    "acebase": "^1.26.2",
     "acebase-core": "^1.24.0",
     "express": "^4.17.1",
     "socket.io": "^4.5.0",
