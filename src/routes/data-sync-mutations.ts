@@ -15,7 +15,7 @@ export type ResponseBody = ValueMutation[] // 200
     | { code: 'not_authorized', message: string }           // 403
     | { code: 'unexpected', message: string };              // 500
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

@@ -4,7 +4,7 @@ import { createSignedPublicToken } from '../shared/tokens';
 export type RequestQuery = { provider: string; callbackUrl: string; [option_name: string]: string };
 export type RequestBody = null;
 export type ResponseBody = { redirectUrl: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/oauth2/${env.db.name}/init`, async (req: Request, res) => {
@@ -14,9 +14,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const callbackUrl = req.query.callbackUrl;
             const options = Object.keys(req.query).filter(key => key.startsWith('option_')).reduce((options, key) => {
                 const name = key.slice(7);
-                let value:string|number|boolean = req.query[key];
-                if (['true','false'].includes(value)) { value = value === 'true'; }
-                else if (/^\-?[0-9]+$/.test(value)) { value = parseInt(value); }
+                let value: string | number | boolean = req.query[key];
+                if (typeof value === 'string') {
+                    // Check if this should be a boolean or number
+                    if (['true','false'].includes(value)) { value = value === 'true'; }
+                    else if (/^\-?[0-9]+$/.test(value)) { value = parseInt(value); }
+                }
                 options[name] = value;
                 return options;
             }, {});

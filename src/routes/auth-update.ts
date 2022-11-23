@@ -30,7 +30,7 @@ export type RequestBody = {
 );
 
 export type ResponseBody = { user: AceBaseUser } | { code: UpdateError['code']; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/update`, async (req: Request, res) => {

@@ -14,7 +14,7 @@ export type ResponseBody = ISchemaCheckResult       // 200
     | { code: 'admin_only'; message: string }       // 403
     | { code: 'unexpected'; message: string };      // 500
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

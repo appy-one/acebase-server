@@ -3,7 +3,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 export type RequestQuery = { provider: string; refresh_token: string };
 export type RequestBody = null;
 export type ResponseBody = { provider: { name: string; access_token: string; refresh_token: string; expires_in: number } };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/oauth2/${env.db.name}/refresh`, async (req: Request, res) => {

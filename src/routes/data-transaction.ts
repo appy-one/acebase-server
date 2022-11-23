@@ -22,7 +22,7 @@ export type StartRequestBody = {
 export type StartResponseBody = ApiTransactionDetails   // 200
     | { code: string, message: string }              // 403 
     | { code: 'unexpected', message: string };       // 500
-export type StartRequest = RouteRequest<any, StartResponseBody, StartRequestBody, StartRequestQuery>;
+export type StartRequest = RouteRequest<StartRequestQuery, StartRequestBody, StartResponseBody>;
 
 export type FinishRequestQuery = null;
 export type FinishRequestBody = ApiTransactionDetails & { path: string };
@@ -31,7 +31,7 @@ export type FinishResponseBody = 'done'     // 200
     | 'transaction not found'               // 410
     | string                                // 500
 
-export type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
+export type FinishRequest = RouteRequest<FinishRequestQuery, FinishRequestBody, FinishResponseBody>;
 
 type Transaction = { id: string; started: number; path: string; context: any; finish?: (val?: any) => ReturnType<Api['transaction']>; timeout: NodeJS.Timeout };
 

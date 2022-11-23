@@ -4,7 +4,7 @@ import { sendUnauthorizedError } from '../shared/error';
 export type RequestQuery = null;
 export type RequestBody = null;
 export type ResponseBody = { exists: boolean };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
