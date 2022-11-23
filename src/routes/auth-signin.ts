@@ -15,7 +15,7 @@ export type ResponseBody = {
     user: AceBaseUser 
 };
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     if (!env.config.auth.enabled) {

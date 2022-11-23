@@ -14,7 +14,7 @@ export class ForgotPasswordError extends Error {
 export type RequestQuery = {};
 export type RequestBody = { email: string };
 export type ResponseBody = 'OK' | { code: string; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     

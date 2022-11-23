@@ -20,7 +20,7 @@ export declare type StartResponseBody = ApiTransactionDetails | {
     code: 'unexpected';
     message: string;
 };
-export declare type StartRequest = RouteRequest<any, StartResponseBody, StartRequestBody, StartRequestQuery>;
+export declare type StartRequest = RouteRequest<StartRequestQuery, StartRequestBody, StartResponseBody>;
 export declare type FinishRequestQuery = null;
 export declare type FinishRequestBody = ApiTransactionDetails & {
     path: string;
@@ -29,7 +29,7 @@ export declare type FinishResponseBody = 'done' | {
     code: string;
     message: string;
 } | 'transaction not found' | string;
-export declare type FinishRequest = RouteRequest<any, FinishResponseBody, FinishRequestBody, FinishRequestQuery>;
+export declare type FinishRequest = RouteRequest<FinishRequestQuery, FinishRequestBody, FinishResponseBody>;
 export declare const addRoutes: (env: RouteInitEnvironment) => void;
 export default addRoutes;
 //# sourceMappingURL=data-transaction.d.ts.map

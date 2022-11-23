@@ -4,7 +4,7 @@ export declare type RequestBody = null;
 export declare type ResponseBody = {
     exists: boolean;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-exists.d.ts.map

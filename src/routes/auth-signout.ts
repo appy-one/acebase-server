@@ -7,7 +7,7 @@ export type RequestBody = { client_id?: string } & {
     everywhere: boolean
 };
 export type ResponseBody = 'Bye!' | { code: string; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/signout`, async (req: Request, res) => {

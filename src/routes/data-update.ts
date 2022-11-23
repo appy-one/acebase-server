@@ -18,7 +18,7 @@ export type ResponseBody = { success: true }                    // 200
     | { code: 'schema_validation_failed', message: string }     // 422
     | { code: string, message: string }                         // 500
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

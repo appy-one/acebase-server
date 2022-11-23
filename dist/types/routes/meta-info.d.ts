@@ -6,7 +6,7 @@ export declare type ResponseBody = {
     time: number;
     process: number;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=meta-info.d.ts.map

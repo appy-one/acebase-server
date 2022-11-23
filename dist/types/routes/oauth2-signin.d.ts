@@ -11,6 +11,6 @@ export declare type ResponseBody = string | {
     code: 'admin_only';
     message: string;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 //# sourceMappingURL=oauth2-signin.d.ts.map

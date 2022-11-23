@@ -7,11 +7,14 @@ export const addRoute = (env) => {
             const options = Object.keys(req.query).filter(key => key.startsWith('option_')).reduce((options, key) => {
                 const name = key.slice(7);
                 let value = req.query[key];
-                if (['true', 'false'].includes(value)) {
-                    value = value === 'true';
-                }
-                else if (/^\-?[0-9]+$/.test(value)) {
-                    value = parseInt(value);
+                if (typeof value === 'string') {
+                    // Check if this should be a boolean or number
+                    if (['true', 'false'].includes(value)) {
+                        value = value === 'true';
+                    }
+                    else if (/^\-?[0-9]+$/.test(value)) {
+                        value = parseInt(value);
+                    }
                 }
                 options[name] = value;
                 return options;

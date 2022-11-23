@@ -5,7 +5,7 @@ import { sendUnauthorizedError } from '../shared/error';
 export type RequestQuery = { include?: string; exclude?: string; child_objects?: boolean };
 export type RequestBody = null;
 export type ResponseBody = Transport.SerializedValue & { exists: boolean };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

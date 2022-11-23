@@ -6,7 +6,7 @@ export declare type ResponseBody = {
     schema: string;
     text: string;
 } | 'Not Found';
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-schema-get.d.ts.map

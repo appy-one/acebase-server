@@ -7,7 +7,7 @@ export type RequestBody = null;
 export type ResponseBody = 
     { path: string; schema: string; text: string }[]   // 200
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

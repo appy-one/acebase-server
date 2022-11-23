@@ -47,7 +47,7 @@ export type ResponseBody = { success: true }    // 200
     | { code: 'admin_only'; message: string }   // 403
     | { code: 'unexpected'; message: string };  // 500 (TODO check if 400 is also possible)
 
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
@@ -63,7 +63,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
     };
 
-    env.app.post(`/index/${env.db.name}`, adminOnly(env), async (req: RouteRequest<any, ResponseBody, RequestBody & { action: 'create'} >, res) => {
+    env.app.post(`/index/${env.db.name}`, adminOnly(env), async (req: RouteRequest<any, RequestBody & { action: 'create'}, ResponseBody>, res) => {
         // Legacy endpoint that was designed to handle multiple actions
         // The only action ever implemented was 'create', so we'll handle that here
         if (req.body?.action !== 'create') {

@@ -12,7 +12,7 @@ const socketSignInFailed = `<html><script>window.close()</script><body>Failed to
 export type RequestQuery = { state: string; code?: string; error?: string; error_reason?: string; error_description?: string };
 export type RequestBody = null;
 export type ResponseBody = string | { code: 'admin_only', message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     

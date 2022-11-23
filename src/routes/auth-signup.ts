@@ -31,7 +31,7 @@ export type RequestBody = {
 );
 
 export type ResponseBody = { access_token: string; user: AceBaseUser } | { code: SignupError['code']; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/signup`, async (req: Request, res) => {

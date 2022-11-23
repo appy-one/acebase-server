@@ -7,7 +7,7 @@ export type RequestQuery = {
 };
 export type RequestBody = null;
 export type ResponseBody = { success: boolean; reason?: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

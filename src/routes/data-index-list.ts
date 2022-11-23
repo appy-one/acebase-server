@@ -16,7 +16,7 @@ export interface PublicDataIndex {
 export type RequestQuery = null;
 export type RequestBody = null;
 export type ResponseBody = PublicDataIndex[] | { code: string; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

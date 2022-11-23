@@ -27,7 +27,7 @@ export declare type ResponseBody = {
     code: SignupError['code'];
     message: string;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=auth-signup.d.ts.map

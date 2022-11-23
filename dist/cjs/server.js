@@ -232,31 +232,30 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                     // interval.unref();
                     server.close(err => {
                         if (err) {
-                            console.error(`server.close() error: ${err.message}`);
+                            this.debug.error(`server.close() error: ${err.message}`);
                         }
                         else {
-                            console.log(`server.close() success`);
+                            this.debug.log(`server.close() success`);
                         }
                         resolve();
                     });
                     // If for some reason connection aren't broken in time - do proceed with shutdown sequence
                     const timeout = setTimeout(() => {
-                        console.warn(`server.close() timed out, there are still open connections`);
+                        if (clients.size === 0) {
+                            return;
+                        }
+                        this.debug.warn(`server.close() timed out, there are still open connections`);
                         killConnections();
-                        // resolve();
                     }, 5000);
                     timeout.unref();
-                    console.log(`Closing ${clients.size} websocket connections`);
+                    this.debug.log(`Closing ${clients.size} websocket connections`);
                     clients.forEach((client, id) => {
                         const socket = client.socket;
                         socket.once('disconnect', reason => {
-                            console.log(`Socket ${socket.id} disconnected: ${reason}`);
+                            this.debug.log(`Socket ${socket.id} disconnected: ${reason}`);
                         });
                         socket.disconnect(true);
                     });
-                    // clients.list.slice().forEach(client => {
-                    //     client.socket.disconnect(true);
-                    // });
                 });
                 this.debug.warn('closing database');
                 yield db.close();

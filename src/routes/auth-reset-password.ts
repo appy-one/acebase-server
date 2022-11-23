@@ -14,7 +14,7 @@ export class ResetPasswordError extends Error {
 export type RequestQuery = {};
 export type RequestBody = { code: string; password: string };
 export type ResponseBody = 'OK' | { code: string; message: string };
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 /**
  * Adds the reset_password route and returns the reset function that can be used to manually reset a password

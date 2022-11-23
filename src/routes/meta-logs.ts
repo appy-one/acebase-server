@@ -12,7 +12,7 @@ type AceBaseLogLine = {
 export type RequestQuery = { take?: string; skip?: string; sort?: 'date'; filter_col?: string; filter_op?: QueryOperator; filter_val?: string };
 export type RequestBody = null;
 export type ResponseBody = AceBaseLogLine[];
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 

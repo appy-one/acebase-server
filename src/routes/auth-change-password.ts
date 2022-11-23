@@ -14,7 +14,7 @@ export class ChangePasswordError extends Error {
 export type RequestQuery = {};
 export type RequestBody = { uid: string; password: string; new_password: string };
 export type ResponseBody = { access_token: string } | { code: string; message: string } | string;
-export type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/change_password`, async (req: Request, res) => {
