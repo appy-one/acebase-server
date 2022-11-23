@@ -44,7 +44,7 @@ export declare type ResponseBody = {
     };
     map?: any;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-query.d.ts.map

@@ -23,7 +23,7 @@ export declare type ResponseBody = ValueMutation[] | {
     code: 'unexpected';
     message: string;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-sync-mutations.d.ts.map

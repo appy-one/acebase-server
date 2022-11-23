@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference types="node" />
 import { AceBaseStorageSettings } from 'acebase';
 import { AceBaseServerEmailSettings } from './email';
 export declare type AceBaseServerHttpsSettings = {

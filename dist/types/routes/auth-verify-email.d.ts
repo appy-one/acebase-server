@@ -11,7 +11,7 @@ export declare type ResponseBody = 'OK' | {
     code: string;
     message: string;
 };
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 /**
  * Adds the verify_email route and returns the verification function that can be used to manually verify an email address
  * @param env environment

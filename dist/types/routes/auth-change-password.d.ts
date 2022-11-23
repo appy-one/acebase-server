@@ -15,7 +15,7 @@ export declare type ResponseBody = {
     code: string;
     message: string;
 } | string;
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=auth-change-password.d.ts.map

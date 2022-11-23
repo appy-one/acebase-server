@@ -15,7 +15,7 @@ export declare type RequestQuery = {
 };
 export declare type RequestBody = null;
 export declare type ResponseBody = AceBaseLogLine[];
-export declare type Request = RouteRequest<any, ResponseBody, RequestBody, RequestQuery>;
+export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=meta-logs.d.ts.map
