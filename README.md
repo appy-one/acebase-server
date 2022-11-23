@@ -2,9 +2,19 @@
 
 This repository is to setup an http endpoint for a local AceBase database instance. See [AceBase](https://www.npmjs.com/package/acebase) for more information about AceBase databases and usage.
 
+![AceBase server webmanager](./img/acebase-webmanager.png)
+
+![AceBase server Swagger UI](./img/acebase-swagger-ui.png)
+
 ## Getting started
 
 Install the *acebase-server* npm package: ```npm install acebase-server``` ([github](https://github.com/appy-one/acebase-server), [npm](https://www.npmjs.com/package/acebase-server))
+
+To test running an AceBase server with authentication on localhost:3000, execute the following commands
+* `cd ./node_modules/acebase-server`
+* `npm run test`
+* Open [http://localhost:3000](http://localhost:3000) in your browser. To sign into the webmanager, use db name `default`, username `admin` and the generated password displayed in your console output. The webmanager allows browsing your database content and performing updates.
+* Open [http://localhost:3000/docs](http://localhost:3000/docs) to open the Swagger UI that is enabled in development mode. All REST API methods are documented and can be executed here.
 
 ## Creating an AceBase server
 
