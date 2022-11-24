@@ -114,6 +114,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             },
             transactions: this.config.transactions,
             ipc: this.config.ipc,
+            sponsor: this.config.sponsor,
+            logColors: this.config.logColors,
         };
         this.db = new AceBase(dbname, dbOptions);
 
