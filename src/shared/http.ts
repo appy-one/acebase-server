@@ -24,3 +24,11 @@ export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: strin
 
     return app as HttpApp;
 }
+
+/**
+ * Creates an express router
+ * @returns 
+ */
+export const createRouter = () => {
+    return createExpress.Router();
+}

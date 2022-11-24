@@ -1,6 +1,6 @@
 import { ColorStyle, DebugLogger, SimpleEventEmitter, Api } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp, HttpRequest, HttpResponse } from './shared/http';
+import { createApp, createRouter, HttpRequest, HttpResponse } from './shared/http';
 import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
@@ -63,7 +63,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.route}`;
     }
 
     readonly debug: DebugLogger;
@@ -137,10 +137,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
 
         // Initialize and start server
-        this.init({ authDb, server: this.config.server });
+        this.init({ authDb, server: this.config.server, route: this.config.route });
     }
 
-    private async init(env: { authDb?: AceBase, server?: Server }) {
+    private async init(env: { authDb?: AceBase, server?: Server, route?: string }) {
         const config = this.config;
         const db = this.db;
         const authDb = env.authDb;
@@ -166,12 +166,14 @@ export class AceBaseServer extends SimpleEventEmitter {
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
         const rules = new PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
 
+        const router = createRouter();
         const routeEnv: RouteInitEnvironment = {
             config: this.config,
             server,
             db: db as AceBase & { api: Api },
             authDb,
-            app,
+            app: router,
+            root: this.config.route,
             debug: this.debug,
             securityRef,
             authRef,
@@ -227,6 +229,9 @@ export class AceBaseServer extends SimpleEventEmitter {
         
         // Create websocket server
         addWebsocketServer(routeEnv);
+
+        // Register all the routes for the app
+        app.use(this.config.route, router);
 
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
