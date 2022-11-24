@@ -5,7 +5,7 @@ import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
 import { AceBase, AceBaseLocalSettings, AceBaseStorageSettings } from 'acebase';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { createServer as createSecureServer } from 'https';
 import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import oAuth2Providers from './oauth-providers';
@@ -29,6 +29,10 @@ type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: '
 
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
+}
+
+export class AceBaseExternalServerError extends Error {
+    constructor() { super('This method is not available with an external server'); }
 }
 
 type HttpMethod = 'get'|'GET'|'put'|'PUT'|'post'|'POST'|'delete'|'DELETE';
@@ -133,10 +137,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
 
         // Initialize and start server
-        this.init({ authDb });
+        this.init({ authDb, server: this.config.server });
     }
 
-    private async init(env: { authDb?: AceBase }) {
+    private async init(env: { authDb?: AceBase, server?: Server }) {
         const config = this.config;
         const db = this.db;
         const authDb = env.authDb;
@@ -149,7 +153,8 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Create http server
         const app = this.app;
-        const server = config.https.enabled ? createSecureServer(config.https, app) : createServer(app);
+        env.server?.on("request", app);
+        const server = env.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
         const clients = new Map<string, ConnectedClient>();
 
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
@@ -226,6 +231,40 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
         // add404Middleware(routeEnv);
+
+        // Offload shutdown control to an external server
+        if (env.server) {
+            this.pause = () => { throw new AceBaseExternalServerError() };
+            this.resume = () => { throw new AceBaseExternalServerError() };
+            this.shutdown = () => { throw new AceBaseExternalServerError() };
+            server.on("close", async function close() {
+                server.off("request", app);
+                server.off("close", close);
+
+                this.debug.log(`Closing ${clients.size} websocket connections`);
+                clients.forEach((client) => {
+                    const socket = client.socket;
+                    socket.once('disconnect', reason => {
+                        this.debug.log(`Socket ${socket.id} disconnected: ${reason}`);
+                    })
+                    socket.disconnect(true);
+                });
+
+                this.debug.warn('closing database');
+                await db.close();
+                this.debug.warn('shutdown complete');
+                this.emit('shutdown');
+            });
+            const ready = () => {
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+                server.off("listening", ready);
+            }
+            if (server.listening) ready();
+            else server.on("listening", ready);
+            return;
+        }
 
         // Start listening
         server.listen(config.port, config.host, () => {
