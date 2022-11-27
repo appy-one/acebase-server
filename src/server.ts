@@ -16,11 +16,9 @@ import addCorsMiddleware from './middleware/cors';
 import addAuthenticionRoutes from './routes/auth';
 import setupAuthentication from './auth';
 import addDataRoutes from './routes/data';
-import addDocsRoute from './routes/docs';
 import addWebManagerRoutes from './routes/webmanager';
 import addMetadataRoutes from './routes/meta';
 import add404Middleware from './middleware/404';
-import addSwaggerMiddleware from './middleware/swagger';
 import addCacheMiddleware from './middleware/cache';
 import { DatabaseLog } from './logger';
 
@@ -201,10 +199,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         addMetadataRoutes(routeEnv);
 
         // If environment is development, add API docs
-        if (process.env.NODE_ENV?.trim?.() === 'development') {
+        if (process.env.NODE_ENV === 'development') {
             this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-            addDocsRoute(routeEnv);
-            addSwaggerMiddleware(routeEnv);
+            (await import("./routes/docs")).addRoute(routeEnv);
+            (await import("./middleware/swagger")).addMiddleware(routeEnv);
         }
 
         // Add data endpoints
