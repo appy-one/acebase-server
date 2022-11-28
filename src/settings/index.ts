@@ -206,6 +206,17 @@ export type AceBaseServerSettings = Partial<{
      * Allows overriding of default storage settings used by the database. ALPHA stage 
      */
     storage: AceBaseStorageSettings;
+
+    /**
+     * You can turn this on if you are a sponsor. See https://github.com/appy-one/acebase/discussions/100 for more info
+     */
+    sponsor: boolean;
+
+    /**
+     * Whether to use colors in the console logs output
+     * @default true
+     */
+    logColors: boolean;
 }>
 
 export class AceBaseServerConfig {
@@ -222,6 +233,8 @@ export class AceBaseServerConfig {
     readonly transactions: AceBaseServerTransactionSettings;
     readonly ipc: IPCClientSettings;
     readonly storage?: AceBaseStorageSettings;
+    readonly sponsor: boolean = false;
+    readonly logColors: boolean = true;
 
     constructor(settings: AceBaseServerSettings) {
         if (typeof settings !== "object") { settings = {}; }
@@ -237,5 +250,7 @@ export class AceBaseServerConfig {
         this.transactions = new AceBaseServerTransactionSettings(settings.transactions);
         this.ipc = settings.ipc;
         if (typeof settings.storage === 'object') { this.storage = settings.storage; }
+        if (typeof settings.sponsor === 'boolean') { this.sponsor = settings.sponsor; }
+        if (typeof settings.logColors === 'boolean') { this.logColors = settings.logColors; }
     }
 }
