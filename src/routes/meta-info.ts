@@ -1,7 +1,7 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import * as os from 'os';
-//@ts-ignore
-import { version } from "../../../package.json";
+// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
+import meta from "../../../package.json" assert { type: "json" };
 
 export type RequestQuery = null;
 export type RequestBody = null;
@@ -17,7 +17,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/info/${env.db.name}`, (req: Request, res) => {
 
         const info = {
-            version, // Loaded from package.json
+            version: meta.version, // Loaded from package.json
             time: Date.now(), 
             process: process.pid
         };
