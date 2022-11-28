@@ -137,10 +137,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
 
         // Initialize and start server
-        this.init({ authDb, server: this.config.server, route: this.config.route });
+        this.init({ authDb });
     }
 
-    private async init(env: { authDb?: AceBase, server?: Server, route?: string }) {
+    private async init(env: { authDb?: AceBase }) {
         const config = this.config;
         const db = this.db;
         const authDb = env.authDb;
@@ -153,8 +153,8 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Create http server
         const app = this.app;
-        env.server?.on("request", app);
-        const server = env.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
+        this.config.server?.on("request", app);
+        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
         const clients = new Map<string, ConnectedClient>();
 
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
@@ -173,7 +173,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             db: db as AceBase & { api: Api },
             authDb,
             app: router,
-            root: this.config.route,
+            rootPath: this.config.route,
             debug: this.debug,
             securityRef,
             authRef,
@@ -237,51 +237,20 @@ export class AceBaseServer extends SimpleEventEmitter {
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
         // add404Middleware(routeEnv);
 
-        // Offload shutdown control to an external server
-        if (env.server) {
-            this.pause = () => { throw new AceBaseExternalServerError() };
-            this.resume = () => { throw new AceBaseExternalServerError() };
-            this.shutdown = () => { throw new AceBaseExternalServerError() };
-            server.on("close", async function close() {
-                server.off("request", app);
-                server.off("close", close);
-
-                this.debug.log(`Closing ${clients.size} websocket connections`);
-                clients.forEach((client) => {
-                    const socket = client.socket;
-                    socket.once('disconnect', reason => {
-                        this.debug.log(`Socket ${socket.id} disconnected: ${reason}`);
-                    })
-                    socket.disconnect(true);
-                });
-
-                this.debug.warn('closing database');
-                await db.close();
-                this.debug.warn('shutdown complete');
-                this.emit('shutdown');
-            });
-            const ready = () => {
+        // Start listening, if no external server
+        if (!this.config.server) {
+            server.listen(config.port, config.host, () => {
+                // Ready!!
                 this.debug.log(`"${db.name}" database server running at ${this.url}`);
                 this._ready = true;
                 this.emitOnce(`ready`);
-                server.off("listening", ready);
-            }
-            if (server.listening) ready();
-            else server.on("listening", ready);
-            return;
+            });
         }
-
-        // Start listening
-        server.listen(config.port, config.host, () => {
-            // Ready!!
-            this.debug.log(`"${db.name}" database server running at ${this.url}`);
-            this._ready = true;
-            this.emitOnce(`ready`);
-        });
 
         // Setup pause and resume methods
         let paused = false;
         this.pause = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
             if (paused) { throw new Error('Server is already paused'); }
             server.close();
             this.debug.warn(`Paused "${db.name}" database server at ${this.url}`);
@@ -289,6 +258,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             paused = true;
         };
         this.resume = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
             if (!paused) { throw new Error('Server is not paused'); }
             return new Promise(resolve => {
                 server.listen(config.port, config.host, () => {
@@ -365,8 +335,28 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
             this.emit('shutdown'); // Emit on AceBaseServer instance
         };
-        this.shutdown = async () => await shutdown({ sigint: false });
-        process.on('SIGINT', () => shutdown({ sigint: true }));
+        this.shutdown = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
+            await shutdown({ sigint: false });
+        };
+        // Offload shutdown control to an external server
+        if (this.config.server) {
+            server.on("close", function close() {
+                server.off("request", app);
+                server.off("close", close);
+                shutdown({ sigint: false });
+            });
+            const ready = () => {
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+                server.off("listening", ready);
+            }
+            if (server.listening) ready();
+            else server.on("listening", ready);
+        } else {
+            process.on('SIGINT', () => shutdown({ sigint: true }));
+        }
     }
 
     /**

@@ -44,7 +44,7 @@ export const createServer = (env: RouteInitEnvironment) => {
         pingInterval: 5000,     // socket.io 2.x default is 25000
         pingTimeout: 5000,      // socket.io 2.x default is 5000, 3.x default = 20000
         maxHttpBufferSize: maxPayloadBytes,
-        path: env.root + "ws",
+        path: env.rootPath + "ws",
 
         // Allow socket.io 2.x clients (using engine.io 3.x):
         allowEIO3: true,

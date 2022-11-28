@@ -8,7 +8,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
 
     // Add redirect from root to webmanager
     env.app.get('/', (req, res) => {
-        res.redirect(env.root + webManagerDir.slice(1));
+        res.redirect(env.rootPath + webManagerDir.slice(1));
     });
 
     // Serve static files from webmanager directory
