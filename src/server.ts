@@ -199,7 +199,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         addMetadataRoutes(routeEnv);
 
         // If environment is development, add API docs
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'development ') {
+        if (process.env.NODE_ENV && process.env.NODE_ENV.trim() === 'development') {
             this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
             (await import("./routes/docs")).addRoute(routeEnv);
             (await import("./middleware/swagger")).addMiddleware(routeEnv);
