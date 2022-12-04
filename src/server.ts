@@ -63,7 +63,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.route}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
     }
 
     readonly debug: DebugLogger;
@@ -173,7 +173,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             db: db as AceBase & { api: Api },
             authDb,
             app: router,
-            rootPath: this.config.route,
+            rootPath: this.config.rootPath,
             debug: this.debug,
             securityRef,
             authRef,
@@ -231,7 +231,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         addWebsocketServer(routeEnv);
 
         // Register all the routes for the app
-        app.use(this.config.route, router);
+        app.use(this.config.rootPath, router);
 
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed

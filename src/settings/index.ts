@@ -179,9 +179,9 @@ export type AceBaseServerSettings = Partial<{
     server: Server;
 
     /**
-     * Root for the AceBase routes
+     * Root path for the AceBase routes
      */
-    route: string;
+    rootPath : string;
 
     /** 
      * settings that define if and how authentication is used 
@@ -229,7 +229,7 @@ export class AceBaseServerConfig {
     readonly allowOrigin: string = '*';
     readonly https: AceBaseServerHttpsConfig;
     readonly server?: Server;
-    readonly route: string = "/";
+    readonly rootPath: string = "/";
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
@@ -243,9 +243,9 @@ export class AceBaseServerConfig {
         if (typeof settings.port === 'number') { this.port = settings.port; }
         if (typeof settings.path === 'string') { this.path = settings.path; }
         if (typeof settings.server === 'object') { this.server = settings.server; }
-        if (typeof settings.route === 'string') { 
-            this.route = settings.route; 
-            if (!this.route.endsWith("/")) this.route += "/";
+        if (typeof settings.rootPath === 'string') { 
+            this.rootPath = settings.rootPath; 
+            if (!this.rootPath.endsWith("/")) this.rootPath += "/";
         }
         this.https = new AceBaseServerHttpsConfig(settings.https);
         this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);
