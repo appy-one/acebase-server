@@ -6,32 +6,22 @@ var connection = {
     auth_token: ''
 };
 
-function connect(dbname, username, password) {
+async function connect(dbname, username, password) {
     let createNew = connection.db === null || connection.dbname !== dbname;
     if (createNew) {
         connection.db && connection.db.disconnect();
         let host = location.hostname, port = location.port, https = location.protocol === 'https:', autoConnect = true;
         connection.db = new AceBaseClient({ dbname, host, port, https, autoConnect });
     }
-    return connection.db.ready()
-    .then(() => {
-        if (username) {
-            // Only sign in when credentials are passed
-            return connection.db.auth.signIn(username, password);
-        }
-        else {
-            return null;
-        }
-    })
-    .then(signInDetails => {
-        connection.dbname = dbname;
-        if (signInDetails === null) {
-            return;
-        }
+    await connection.db.ready();
+    connection.dbname = dbname;
+    if (username) {
+        // Only sign in when credentials are passed
+        const signInDetails = await connection.db.auth.signIn(username, password);
         connection.user = signInDetails.user;
         connection.auth_token = signInDetails.accessToken;
         connection.username = (signInDetails && signInDetails.user.displayName) || username;
-    });
+    }
 }
 
 function getChildPath (path, childKey) {
@@ -246,10 +236,10 @@ function updateBrowsePath(path = '') {
 
     let ref = path ? connection.db.ref(path) : connection.db.root;
     const limit = 100; 
-    function getChildren(skip = 0) {
-        // Load path children with reflect API
-        ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
-        .then(info => {
+    async function getChildren(skip = 0) {
+        try {
+            // Load path children with reflect API
+            const info = await ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
 
             currentPathIsArray = info.type === 'array';
 
@@ -304,11 +294,11 @@ function updateBrowsePath(path = '') {
             const exportNode = document.getElementById('export_node');
             if (exportAvailable) { exportNode.classList.remove('hide'); }
             else { exportNode.classList.add('hide'); }
-        })
-        .catch(err => {
+        }
+        catch (err) {
             // Server error?
             showError('Error: ' + err.message);
-        });
+        }
     }
     getChildren(0);
 }
@@ -359,7 +349,7 @@ function specifyChildKey() {
     updateBrowsePath(targetPath);
 }
 
-document.getElementById('connect_button').addEventListener('click', () => {
+document.getElementById('connect_button').addEventListener('click', async () => {
     const successLabel = document.getElementById('connect_success');
     const failLabel = document.getElementById('connect_fail');
     const failReasonLabel = document.getElementById('fail_reason');
@@ -375,16 +365,16 @@ document.getElementById('connect_button').addEventListener('click', () => {
         return;
     }
 
-    connect(dbname, username, password)
-    .then(() => {
+    try {
+        await connect(dbname, username, password)
         successLabel.classList.remove('hide');
         connectionChanged(true);
-    })
-    .catch(err => {
+    }
+    catch (err) {
         failLabel.classList.remove('hide');
         failReasonLabel.textContent = err.message;
         connectionChanged(false);
-    });
+    }
 });
 
 document.getElementById('browse_breadcrumb_root').addEventListener('click', () => {
@@ -401,34 +391,30 @@ document.getElementById('edit_node').addEventListener('click', () => {
     document.getElementById('edit_form').classList.remove('hide');
 });
 
-document.getElementById('update_button').addEventListener('click', () => {
-    // 
+document.getElementById('update_button').addEventListener('click', async () => {
     const textarea = document.getElementById('update_json');
     let json = textarea.value;
-    if (!json.startsWith('{') || !json.endsWith('}')) { return alert('Value must be json'); }
     
-    // Parse object
-    let updates;
     try {
-        updates = JSON.parse(json);
+        // Check update value
+        if (!json.startsWith('{') || !json.endsWith('}')) { throw new Error('Value must be json'); }
+
+        // Parse object
+        const updates = JSON.parse(json);
+
         // Allow passed data to be serialized by Transport.serialize2:
         // this allows dates etc to be used: { "created": { ".type": "date", ".val": "2022-05-31T16:52:51Z" } }
         updates = acebaseclient.Transport.deserialize2(updates);
-    }
-    catch(err) {
-        return alert(err.message);
-    }
     
-    console.log(updates);
-    if (typeof updates !== 'object') { return alert('value must be an object'); }
-    // Update
-    connection.db.ref(currentPath).update(updates)
-    // .then(() => {
-    //     M.toast({ html: `Value was updated!` });
-    // })
-    .catch(err => {
+        console.log(updates);
+        if (typeof updates !== 'object') { throw new Error('value must be an object'); }
+
+        // Update
+        await connection.db.ref(currentPath).update(updates);
+    }
+    catch (err) {
         M.toast({ html: `Error: ${err.message}` });
-    });
+    }
 });
 
 // TODO: create a stand-alone PWA (Ionic?) that has more functionality, such as:
