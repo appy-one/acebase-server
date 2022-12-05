@@ -115,6 +115,9 @@ export class AceBaseServerConfig {
         this.path = '.';
         this.maxPayloadSize = '10mb';
         this.allowOrigin = '*';
+        this.rootPath = "/";
+        this.sponsor = false;
+        this.logColors = true;
         if (typeof settings !== "object") {
             settings = {};
         }
@@ -129,6 +132,14 @@ export class AceBaseServerConfig {
         }
         if (typeof settings.path === 'string') {
             this.path = settings.path;
+        }
+        if (typeof settings.server === 'object') {
+            this.server = settings.server;
+        }
+        if (typeof settings.rootPath === 'string') {
+            this.rootPath = settings.rootPath;
+            if (!this.rootPath.endsWith("/"))
+                this.rootPath += "/";
         }
         this.https = new AceBaseServerHttpsConfig(settings.https);
         this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);
@@ -145,6 +156,12 @@ export class AceBaseServerConfig {
         this.ipc = settings.ipc;
         if (typeof settings.storage === 'object') {
             this.storage = settings.storage;
+        }
+        if (typeof settings.sponsor === 'boolean') {
+            this.sponsor = settings.sponsor;
+        }
+        if (typeof settings.logColors === 'boolean') {
+            this.logColors = settings.logColors;
         }
     }
 }

@@ -1,6 +1,6 @@
 import { ColorStyle, DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerConfig } from './settings/index.js';
-import { createApp } from './shared/http.js';
+import { createApp, createRouter } from './shared/http.js';
 import { addWebsocketServer } from './websocket/index.js';
 import { AceBase } from 'acebase';
 import { createServer } from 'http';
@@ -12,15 +12,16 @@ import addCorsMiddleware from './middleware/cors.js';
 import addAuthenticionRoutes from './routes/auth.js';
 import setupAuthentication from './auth.js';
 import addDataRoutes from './routes/data.js';
-import addDocsRoute from './routes/docs.js';
 import addWebManagerRoutes from './routes/webmanager.js';
 import addMetadataRoutes from './routes/meta.js';
-import addSwaggerMiddleware from './middleware/swagger.js';
 import addCacheMiddleware from './middleware/cache.js';
 import { DatabaseLog } from './logger.js';
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
+}
+export class AceBaseExternalServerError extends Error {
+    constructor() { super('This method is not available with an external server'); }
 }
 export class AceBaseServer extends SimpleEventEmitter {
     constructor(dbname, options) {
@@ -49,6 +50,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             },
             transactions: this.config.transactions,
             ipc: this.config.ipc,
+            sponsor: this.config.sponsor,
+            logColors: this.config.logColors,
         };
         this.db = new AceBase(dbname, dbOptions);
         const otherDbsPath = `${this.config.path}/${this.db.name}.acebase`;
@@ -83,7 +86,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
     }
     async init(env) {
         const config = this.config;
@@ -96,7 +99,8 @@ export class AceBaseServer extends SimpleEventEmitter {
         ]);
         // Create http server
         const app = this.app;
-        const server = config.https.enabled ? createSecureServer(config.https, app) : createServer(app);
+        this.config.server?.on("request", app);
+        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
         const clients = new Map();
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
         const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
@@ -105,12 +109,14 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Setup rules
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
         const rules = new PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
+        const router = createRouter();
         const routeEnv = {
             config: this.config,
             server,
             db: db,
             authDb,
-            app,
+            app: router,
+            rootPath: this.config.rootPath,
             debug: this.debug,
             securityRef,
             authRef,
@@ -138,10 +144,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Add metadata endpoints
         addMetadataRoutes(routeEnv);
         // If environment is development, add API docs
-        if (process.env.NODE_ENV?.trim?.() === 'development') {
+        if (process.env.NODE_ENV && process.env.NODE_ENV.trim() === 'development') {
             this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-            addDocsRoute(routeEnv);
-            addSwaggerMiddleware(routeEnv);
+            (await import("./routes/docs.js")).addRoute(routeEnv);
+            (await import("./middleware/swagger.js")).addMiddleware(routeEnv);
         }
         // Add data endpoints
         addDataRoutes(routeEnv);
@@ -155,19 +161,25 @@ export class AceBaseServer extends SimpleEventEmitter {
         };
         // Create websocket server
         addWebsocketServer(routeEnv);
+        // Register all the routes for the app
+        app.use(this.config.rootPath, router);
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
         // add404Middleware(routeEnv);
-        // Start listening
-        server.listen(config.port, config.host, () => {
-            // Ready!!
-            this.debug.log(`"${db.name}" database server running at ${this.url}`);
-            this._ready = true;
-            this.emitOnce(`ready`);
-        });
+        // Start listening, if no external server
+        if (!this.config.server) {
+            server.listen(config.port, config.host, () => {
+                // Ready!!
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+            });
+        }
         // Setup pause and resume methods
         let paused = false;
         this.pause = async () => {
+            if (this.config.server)
+                throw new AceBaseExternalServerError();
             if (paused) {
                 throw new Error('Server is already paused');
             }
@@ -177,6 +189,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             paused = true;
         };
         this.resume = async () => {
+            if (this.config.server)
+                throw new AceBaseExternalServerError();
             if (!paused) {
                 throw new Error('Server is not paused');
             }
@@ -257,8 +271,32 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
             this.emit('shutdown'); // Emit on AceBaseServer instance
         };
-        this.shutdown = async () => await shutdown({ sigint: false });
-        process.on('SIGINT', () => shutdown({ sigint: true }));
+        this.shutdown = async () => {
+            if (this.config.server)
+                throw new AceBaseExternalServerError();
+            await shutdown({ sigint: false });
+        };
+        // Offload shutdown control to an external server
+        if (this.config.server) {
+            server.on("close", function close() {
+                server.off("request", app);
+                server.off("close", close);
+                shutdown({ sigint: false });
+            });
+            const ready = () => {
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+                server.off("listening", ready);
+            };
+            if (server.listening)
+                ready();
+            else
+                server.on("listening", ready);
+        }
+        else {
+            process.on('SIGINT', () => shutdown({ sigint: true }));
+        }
     }
     /**
      * Reset a user's password. This can also be done using the auth/reset_password API endpoint

@@ -13,4 +13,11 @@ export const createApp = (settings) => {
     app.use(express.json({ limit: settings.maxPayloadSize })); // , extended: true ?
     return app;
 };
+/**
+ * Creates an express router
+ * @returns
+ */
+export const createRouter = () => {
+    return createExpress.Router();
+};
 //# sourceMappingURL=http.js.map

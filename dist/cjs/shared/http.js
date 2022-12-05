@@ -1,7 +1,7 @@
 "use strict";
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createApp = void 0;
+exports.createRouter = exports.createApp = void 0;
 const express = require("express");
 const createExpress = (_a = express.default) !== null && _a !== void 0 ? _a : express; // ESM and CJS compatible approach
 /**
@@ -18,4 +18,12 @@ const createApp = (settings) => {
     return app;
 };
 exports.createApp = createApp;
+/**
+ * Creates an express router
+ * @returns
+ */
+const createRouter = () => {
+    return createExpress.Router();
+};
+exports.createRouter = createRouter;
 //# sourceMappingURL=http.js.map

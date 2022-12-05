@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AceBaseServer = exports.AceBaseServerNotReadyError = void 0;
+exports.AceBaseServer = exports.AceBaseExternalServerError = exports.AceBaseServerNotReadyError = void 0;
 const acebase_core_1 = require("acebase-core");
 const settings_1 = require("./settings");
 const http_1 = require("./shared/http");
@@ -24,10 +24,8 @@ const cors_1 = require("./middleware/cors");
 const auth_1 = require("./routes/auth");
 const auth_2 = require("./auth");
 const data_1 = require("./routes/data");
-const docs_1 = require("./routes/docs");
 const webmanager_1 = require("./routes/webmanager");
 const meta_1 = require("./routes/meta");
-const swagger_1 = require("./middleware/swagger");
 const cache_1 = require("./middleware/cache");
 const logger_1 = require("./logger");
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -35,6 +33,10 @@ class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
 }
 exports.AceBaseServerNotReadyError = AceBaseServerNotReadyError;
+class AceBaseExternalServerError extends Error {
+    constructor() { super('This method is not available with an external server'); }
+}
+exports.AceBaseExternalServerError = AceBaseExternalServerError;
 class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
     constructor(dbname, options) {
         super();
@@ -62,6 +64,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             },
             transactions: this.config.transactions,
             ipc: this.config.ipc,
+            sponsor: this.config.sponsor,
+            logColors: this.config.logColors,
         };
         this.db = new acebase_1.AceBase(dbname, dbOptions);
         const otherDbsPath = `${this.config.path}/${this.db.name}.acebase`;
@@ -98,10 +102,10 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
     }
     init(env) {
-        var _a, _b;
+        var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const config = this.config;
             const db = this.db;
@@ -113,7 +117,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             ]);
             // Create http server
             const app = this.app;
-            const server = config.https.enabled ? (0, https_1.createServer)(config.https, app) : (0, http_2.createServer)(app);
+            (_a = this.config.server) === null || _a === void 0 ? void 0 : _a.on("request", app);
+            const server = this.config.server || (config.https.enabled ? (0, https_1.createServer)(config.https, app) : (0, http_2.createServer)(app));
             const clients = new Map();
             const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
@@ -122,12 +127,14 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Setup rules
             const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
             const rules = new rules_1.PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
+            const router = (0, http_1.createRouter)();
             const routeEnv = {
                 config: this.config,
                 server,
                 db: db,
                 authDb,
-                app,
+                app: router,
+                rootPath: this.config.rootPath,
                 debug: this.debug,
                 securityRef,
                 authRef,
@@ -155,10 +162,10 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Add metadata endpoints
             (0, meta_1.default)(routeEnv);
             // If environment is development, add API docs
-            if (((_b = (_a = process.env.NODE_ENV) === null || _a === void 0 ? void 0 : _a.trim) === null || _b === void 0 ? void 0 : _b.call(_a)) === 'development') {
+            if (process.env.NODE_ENV && process.env.NODE_ENV.trim() === 'development') {
                 this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-                (0, docs_1.default)(routeEnv);
-                (0, swagger_1.default)(routeEnv);
+                (yield Promise.resolve().then(() => require("./routes/docs"))).addRoute(routeEnv);
+                (yield Promise.resolve().then(() => require("./middleware/swagger"))).addMiddleware(routeEnv);
             }
             // Add data endpoints
             (0, data_1.default)(routeEnv);
@@ -172,19 +179,25 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             };
             // Create websocket server
             (0, websocket_1.addWebsocketServer)(routeEnv);
+            // Register all the routes for the app
+            app.use(this.config.rootPath, router);
             // Last but not least, add 404 handler
             // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
             // add404Middleware(routeEnv);
-            // Start listening
-            server.listen(config.port, config.host, () => {
-                // Ready!!
-                this.debug.log(`"${db.name}" database server running at ${this.url}`);
-                this._ready = true;
-                this.emitOnce(`ready`);
-            });
+            // Start listening, if no external server
+            if (!this.config.server) {
+                server.listen(config.port, config.host, () => {
+                    // Ready!!
+                    this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                    this._ready = true;
+                    this.emitOnce(`ready`);
+                });
+            }
             // Setup pause and resume methods
             let paused = false;
             this.pause = () => __awaiter(this, void 0, void 0, function* () {
+                if (this.config.server)
+                    throw new AceBaseExternalServerError();
                 if (paused) {
                     throw new Error('Server is already paused');
                 }
@@ -194,6 +207,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 paused = true;
             });
             this.resume = () => __awaiter(this, void 0, void 0, function* () {
+                if (this.config.server)
+                    throw new AceBaseExternalServerError();
                 if (!paused) {
                     throw new Error('Server is not paused');
                 }
@@ -274,8 +289,32 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 }
                 this.emit('shutdown'); // Emit on AceBaseServer instance
             });
-            this.shutdown = () => __awaiter(this, void 0, void 0, function* () { return yield shutdown({ sigint: false }); });
-            process.on('SIGINT', () => shutdown({ sigint: true }));
+            this.shutdown = () => __awaiter(this, void 0, void 0, function* () {
+                if (this.config.server)
+                    throw new AceBaseExternalServerError();
+                yield shutdown({ sigint: false });
+            });
+            // Offload shutdown control to an external server
+            if (this.config.server) {
+                server.on("close", function close() {
+                    server.off("request", app);
+                    server.off("close", close);
+                    shutdown({ sigint: false });
+                });
+                const ready = () => {
+                    this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                    this._ready = true;
+                    this.emitOnce(`ready`);
+                    server.off("listening", ready);
+                };
+                if (server.listening)
+                    ready();
+                else
+                    server.on("listening", ready);
+            }
+            else {
+                process.on('SIGINT', () => shutdown({ sigint: true }));
+            }
         });
     }
     /**

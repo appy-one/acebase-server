@@ -14,4 +14,9 @@ export declare const createApp: (settings: {
     trustProxy: boolean;
     maxPayloadSize: string;
 }) => express.Express;
+/**
+ * Creates an express router
+ * @returns
+ */
+export declare const createRouter: () => any;
 //# sourceMappingURL=http.d.ts.map

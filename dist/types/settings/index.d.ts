@@ -2,6 +2,7 @@
 /// <reference types="node" />
 import { AceBaseStorageSettings } from 'acebase';
 import { AceBaseServerEmailSettings } from './email';
+import { Server } from 'http';
 export declare type AceBaseServerHttpsSettings = {
     enabled?: boolean;
     keyPath?: string;
@@ -120,6 +121,14 @@ export declare type AceBaseServerSettings = Partial<{
      */
     https: AceBaseServerHttpsSettings;
     /**
+     * Provide your own server for AceBase to use
+     */
+    server: Server;
+    /**
+     * Root path for the AceBase routes
+     */
+    rootPath: string;
+    /**
      * settings that define if and how authentication is used
      */
     authentication: Partial<AceBaseServerAuthenticationSettings>;
@@ -147,6 +156,15 @@ export declare type AceBaseServerSettings = Partial<{
      * Allows overriding of default storage settings used by the database. ALPHA stage
      */
     storage: AceBaseStorageSettings;
+    /**
+     * You can turn this on if you are a sponsor. See https://github.com/appy-one/acebase/discussions/100 for more info
+     */
+    sponsor: boolean;
+    /**
+     * Whether to use colors in the console logs output
+     * @default true
+     */
+    logColors: boolean;
 }>;
 export declare class AceBaseServerConfig {
     readonly logLevel: 'verbose' | 'log' | 'warn' | 'error';
@@ -156,11 +174,15 @@ export declare class AceBaseServerConfig {
     readonly maxPayloadSize: string;
     readonly allowOrigin: string;
     readonly https: AceBaseServerHttpsConfig;
+    readonly server?: Server;
+    readonly rootPath: string;
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
     readonly ipc: IPCClientSettings;
     readonly storage?: AceBaseStorageSettings;
+    readonly sponsor: boolean;
+    readonly logColors: boolean;
     constructor(settings: AceBaseServerSettings);
 }
 //# sourceMappingURL=index.d.ts.map

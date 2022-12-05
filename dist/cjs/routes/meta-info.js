@@ -1,19 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
-const fs_1 = require("fs");
-const rootpath_1 = require("../shared/rootpath");
-const path_1 = require("path");
 const os = require("os");
+// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
+const package_json_1 = require("../../../package.json");
 const addRoute = (env) => {
-    // Read server version from package.json
-    const filePath = (0, path_1.join)(rootpath_1.packageRootPath, '/package.json');
-    const json = (0, fs_1.readFileSync)(filePath, 'utf-8');
-    const packageInfo = JSON.parse(json);
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
-            version: packageInfo.version,
+            version: package_json_1.default.version,
             time: Date.now(),
             process: process.pid
         };

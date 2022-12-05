@@ -7,6 +7,9 @@ import { DbUserAccountDetails } from './schema/user';
 export declare class AceBaseServerNotReadyError extends Error {
     constructor();
 }
+export declare class AceBaseExternalServerError extends Error {
+    constructor();
+}
 declare type HttpMethod = 'get' | 'GET' | 'put' | 'PUT' | 'post' | 'POST' | 'delete' | 'DELETE';
 export declare class AceBaseServer extends SimpleEventEmitter {
     private _ready;

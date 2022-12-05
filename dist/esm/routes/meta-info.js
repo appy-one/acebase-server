@@ -1,16 +1,11 @@
-import { readFileSync } from 'fs';
-import { packageRootPath } from '../shared/rootpath.js';
-import { join as joinPaths } from 'path';
 import * as os from 'os';
+// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
+import meta from "../../../package.json" assert { type: "json" };
 export const addRoute = (env) => {
-    // Read server version from package.json
-    const filePath = joinPaths(packageRootPath, '/package.json');
-    const json = readFileSync(filePath, 'utf-8');
-    const packageInfo = JSON.parse(json);
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
-            version: packageInfo.version,
+            version: meta.version,
             time: Date.now(),
             process: process.pid
         };
