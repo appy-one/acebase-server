@@ -11,7 +11,8 @@
         "outDir": "./dist/esm",
         "moduleResolution": "node",
         "target": "es2020",
-        "pretty": true
+        "pretty": true,
+        "resolveJsonModule": true,
     },
     "include": [
         "./src"

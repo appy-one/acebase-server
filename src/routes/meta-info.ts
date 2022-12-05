@@ -1,8 +1,7 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-import { readFileSync } from 'fs';
-import { packageRootPath } from '../shared/rootpath';
-import { join as joinPaths } from 'path';
 import * as os from 'os';
+// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
+import meta from "../../../package.json" assert { type: "json" };
 
 export type RequestQuery = null;
 export type RequestBody = null;
@@ -14,17 +13,11 @@ export type ResponseBody = {
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-
-    // Read server version from package.json
-    const filePath = joinPaths(packageRootPath, '/package.json');
-    const json = readFileSync(filePath, 'utf-8');
-    const packageInfo = JSON.parse(json);
-
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req: Request, res) => {
 
         const info = {
-            version: packageInfo.version, // Loaded from package.json
+            version: meta.version, // Loaded from package.json
             time: Date.now(), 
             process: process.pid
         };
