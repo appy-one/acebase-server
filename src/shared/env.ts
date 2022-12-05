@@ -11,6 +11,7 @@ import type { PathBasedRules } from '../rules';
 import { DatabaseLog } from '../logger';
 
 export interface RouteInitEnvironment {
+    rootPath: string;
     server: HttpServer | SecureHttpServer;
     app: HttpApp;
     config: AceBaseServerConfig;

@@ -1,11 +1,11 @@
 import { ColorStyle, DebugLogger, SimpleEventEmitter, Api } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp, HttpRequest, HttpResponse } from './shared/http';
+import { createApp, createRouter, HttpRequest, HttpResponse } from './shared/http';
 import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
 import { AceBase, AceBaseLocalSettings, AceBaseStorageSettings } from 'acebase';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { createServer as createSecureServer } from 'https';
 import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import oAuth2Providers from './oauth-providers';
@@ -27,6 +27,10 @@ type PrivateStorageSettings = AceBaseStorageSettings & { info?: string; type?: '
 
 export class AceBaseServerNotReadyError extends Error {
     constructor() { super('Server is not ready yet'); }
+}
+
+export class AceBaseExternalServerError extends Error {
+    constructor() { super('This method is not available with an external server'); }
 }
 
 type HttpMethod = 'get'|'GET'|'put'|'PUT'|'post'|'POST'|'delete'|'DELETE';
@@ -57,7 +61,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
     }
 
     readonly debug: DebugLogger;
@@ -149,7 +153,8 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Create http server
         const app = this.app;
-        const server = config.https.enabled ? createSecureServer(config.https, app) : createServer(app);
+        this.config.server?.on("request", app);
+        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
         const clients = new Map<string, ConnectedClient>();
 
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
@@ -161,12 +166,14 @@ export class AceBaseServer extends SimpleEventEmitter {
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
         const rules = new PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
 
+        const router = createRouter();
         const routeEnv: RouteInitEnvironment = {
             config: this.config,
             server,
             db: db as AceBase & { api: Api },
             authDb,
-            app,
+            app: router,
+            rootPath: this.config.rootPath,
             debug: this.debug,
             securityRef,
             authRef,
@@ -223,21 +230,27 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Create websocket server
         addWebsocketServer(routeEnv);
 
+        // Register all the routes for the app
+        app.use(this.config.rootPath, router);
+
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
         // add404Middleware(routeEnv);
 
-        // Start listening
-        server.listen(config.port, config.host, () => {
-            // Ready!!
-            this.debug.log(`"${db.name}" database server running at ${this.url}`);
-            this._ready = true;
-            this.emitOnce(`ready`);
-        });
+        // Start listening, if no external server
+        if (!this.config.server) {
+            server.listen(config.port, config.host, () => {
+                // Ready!!
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+            });
+        }
 
         // Setup pause and resume methods
         let paused = false;
         this.pause = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
             if (paused) { throw new Error('Server is already paused'); }
             server.close();
             this.debug.warn(`Paused "${db.name}" database server at ${this.url}`);
@@ -245,6 +258,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             paused = true;
         };
         this.resume = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
             if (!paused) { throw new Error('Server is not paused'); }
             return new Promise(resolve => {
                 server.listen(config.port, config.host, () => {
@@ -321,8 +335,28 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
             this.emit('shutdown'); // Emit on AceBaseServer instance
         };
-        this.shutdown = async () => await shutdown({ sigint: false });
-        process.on('SIGINT', () => shutdown({ sigint: true }));
+        this.shutdown = async () => {
+            if (this.config.server) throw new AceBaseExternalServerError();
+            await shutdown({ sigint: false });
+        };
+        // Offload shutdown control to an external server
+        if (this.config.server) {
+            server.on("close", function close() {
+                server.off("request", app);
+                server.off("close", close);
+                shutdown({ sigint: false });
+            });
+            const ready = () => {
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+                server.off("listening", ready);
+            }
+            if (server.listening) ready();
+            else server.on("listening", ready);
+        } else {
+            process.on('SIGINT', () => shutdown({ sigint: true }));
+        }
     }
 
     /**

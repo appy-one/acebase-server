@@ -1,6 +1,7 @@
 import { AceBaseStorageSettings } from 'acebase';
 import { readFileSync } from 'fs';
 import { AceBaseServerEmailSettings } from './email';
+import { Server } from 'http';
 
 export type AceBaseServerHttpsSettings = { 
     enabled?: boolean;
@@ -172,6 +173,16 @@ export type AceBaseServerSettings = Partial<{
      */
     https: AceBaseServerHttpsSettings;
 
+    /**
+     * Provide your own server for AceBase to use
+     */
+    server: Server;
+
+    /**
+     * Root path for the AceBase routes
+     */
+    rootPath : string;
+
     /** 
      * settings that define if and how authentication is used 
      */
@@ -228,6 +239,8 @@ export class AceBaseServerConfig {
     readonly maxPayloadSize: string = '10mb';
     readonly allowOrigin: string = '*';
     readonly https: AceBaseServerHttpsConfig;
+    readonly server?: Server;
+    readonly rootPath: string = "/";
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
@@ -242,6 +255,11 @@ export class AceBaseServerConfig {
         if (typeof settings.host === 'string') { this.host = settings.host; }
         if (typeof settings.port === 'number') { this.port = settings.port; }
         if (typeof settings.path === 'string') { this.path = settings.path; }
+        if (typeof settings.server === 'object') { this.server = settings.server; }
+        if (typeof settings.rootPath === 'string') { 
+            this.rootPath = settings.rootPath; 
+            if (!this.rootPath.endsWith("/")) this.rootPath += "/";
+        }
         this.https = new AceBaseServerHttpsConfig(settings.https);
         this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);
         if (typeof settings.maxPayloadSize === 'string') { this.maxPayloadSize = settings.maxPayloadSize; }
