@@ -7,12 +7,10 @@ var connection = {
 };
 
 async function connect(dbname, username, password) {
-    let createNew = connection.db === null || connection.dbname !== dbname;
-    if (createNew) {
-        connection.db && connection.db.disconnect();
-        let host = location.hostname, port = location.port, https = location.protocol === 'https:', autoConnect = true;
-        connection.db = new AceBaseClient({ dbname, host, port, https, autoConnect });
-    }
+    connection.db?.disconnect();
+    const host = location.hostname, port = location.port, https = location.protocol === 'https:', rootPath = location.pathname.match(/^\/?(.*?)\/webmanager/)[1];
+    connection.db = new AceBaseClient({ dbname, host, port, https, autoConnect: false, rootPath });
+    await connection.db.connect(false);
     await connection.db.ready();
     connection.dbname = dbname;
     if (username) {
@@ -349,7 +347,9 @@ function specifyChildKey() {
     updateBrowsePath(targetPath);
 }
 
-document.getElementById('connect_button').addEventListener('click', async () => {
+const connectButton = document.getElementById('connect_button');
+connectButton.addEventListener('click', async () => {
+    const connectingLabel = document.getElementById('connecting');
     const successLabel = document.getElementById('connect_success');
     const failLabel = document.getElementById('connect_fail');
     const failReasonLabel = document.getElementById('fail_reason');
@@ -366,6 +366,8 @@ document.getElementById('connect_button').addEventListener('click', async () => 
     }
 
     try {
+        connectButton.classList.add('disabled');
+        connectingLabel.classList.remove('hide');
         await connect(dbname, username, password)
         successLabel.classList.remove('hide');
         connectionChanged(true);
@@ -374,6 +376,10 @@ document.getElementById('connect_button').addEventListener('click', async () => 
         failLabel.classList.remove('hide');
         failReasonLabel.textContent = err.message;
         connectionChanged(false);
+    }
+    finally {
+        connectButton.classList.remove('disabled');
+        connectingLabel.classList.add('hide');
     }
 });
 
@@ -400,7 +406,7 @@ document.getElementById('update_button').addEventListener('click', async () => {
         if (!json.startsWith('{') || !json.endsWith('}')) { throw new Error('Value must be json'); }
 
         // Parse object
-        const updates = JSON.parse(json);
+        let updates = JSON.parse(json);
 
         // Allow passed data to be serialized by Transport.serialize2:
         // this allows dates etc to be used: { "created": { ".type": "date", ".val": "2022-05-31T16:52:51Z" } }
