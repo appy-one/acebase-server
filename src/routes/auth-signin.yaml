@@ -63,8 +63,8 @@
                   - username
                   - password
                 example:
-                  method: username
-                  username: user
+                  method: account
+                  username: admin
                   password: sup3rs3cr3t
               - type: object
                 properties:

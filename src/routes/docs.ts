@@ -24,8 +24,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     email: 'me@appy.one',
                     url: 'https://github.com/appy-one/acebase-server'
                 },
-                // servers: [`http://${config.server.host}:${config.server.port}`]
             },
+            servers: [
+                { url: `http${env.config.https?.enabled ? 's' : ''}://${env.config.host}:${env.config.port}${env.config.rootPath ? `/${env.config.rootPath}` : ''}` }
+            ],
             tags: [{
                 name: 'auth',
                 description: 'User authentication endpoints'

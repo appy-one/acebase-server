@@ -18,7 +18,8 @@ const dbname = getVariable('DBNAME', 'default');
 const host = getVariable('HOST', 'localhost'); // '0.0.0.0'
 const port = +getVariable('PORT', 3000);
 const ipcPort = +getVariable('IPC_PORT', 0);
-const options: AceBaseServerSettings = { host, port, path };
+const rootPath = getVariable('ROOT_PATH', '');
+const options: AceBaseServerSettings = { host, port, path, rootPath };
 if (ipcPort > 0) {
     const role = getVariable('IPC_ROLE');
     if (!['master','worker'].includes(role)) {

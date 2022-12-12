@@ -5,7 +5,7 @@ import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
 import { AceBase, AceBaseLocalSettings, AceBaseStorageSettings } from 'acebase';
-import { createServer, Server } from 'http';
+import { createServer } from 'http';
 import { createServer as createSecureServer } from 'https';
 import { OAuth2Provider } from './oauth-providers/oauth-provider';
 import oAuth2Providers from './oauth-providers';
@@ -61,7 +61,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
     }
 
     readonly debug: DebugLogger;
@@ -231,7 +231,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         addWebsocketServer(routeEnv);
 
         // Register all the routes for the app
-        app.use(this.config.rootPath, router);
+        app.use(`/${this.config.rootPath}`, router);
 
         // Last but not least, add 404 handler
         // DISABLED because it causes server extension routes through server.extend (see above) not be be executed

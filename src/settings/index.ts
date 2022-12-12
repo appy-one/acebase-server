@@ -240,7 +240,7 @@ export class AceBaseServerConfig {
     readonly allowOrigin: string = '*';
     readonly https: AceBaseServerHttpsConfig;
     readonly server?: Server;
-    readonly rootPath: string = "/";
+    readonly rootPath: string = '';
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
@@ -257,8 +257,7 @@ export class AceBaseServerConfig {
         if (typeof settings.path === 'string') { this.path = settings.path; }
         if (typeof settings.server === 'object') { this.server = settings.server; }
         if (typeof settings.rootPath === 'string') { 
-            this.rootPath = settings.rootPath; 
-            if (!this.rootPath.endsWith("/")) this.rootPath += "/";
+            this.rootPath = settings.rootPath.replace(/^\/|\/$/g, '');
         }
         this.https = new AceBaseServerHttpsConfig(settings.https);
         this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);
