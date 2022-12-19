@@ -5,7 +5,7 @@ export const addRoute = (env) => {
         // Create indexes if not there yet
         const db = env.log.ref.db;
         const createIndexes = [
-            db.indexes.create(env.log.ref.path, 'date')
+            db.indexes.create(env.log.ref.path, 'date'),
         ];
         if (req.query.filter_col === 'action') {
             createIndexes.push(db.indexes.create(env.log.ref.path, 'action', { include: ['date'] }));

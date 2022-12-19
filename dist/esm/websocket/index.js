@@ -1,7 +1,7 @@
-import { ColorStyle, Transport } from "acebase-core";
-import { ConnectedClient } from "../shared/clients.js";
-import { decodePublicAccessToken } from "../shared/tokens.js";
-import { createServer } from "./socket.io.js";
+import { ColorStyle, Transport } from 'acebase-core';
+import { ConnectedClient } from '../shared/clients.js';
+import { decodePublicAccessToken } from '../shared/tokens.js';
+import { createServer } from './socket.io.js';
 export class SocketRequestError extends Error {
     constructor(code, message) {
         super(message);
@@ -41,14 +41,14 @@ export const addWebsocketServer = (env) => {
             //         subscr.callback
             //     })
             // });
-            let remove = [];
+            const remove = [];
             subscribedPaths.forEach(path => {
                 remove.push(...client.subscriptions[path]);
             });
             remove.forEach(subscr => {
                 // Unsubscribe them at db level and remove from our list
                 env.db.api.unsubscribe(subscr.path, subscr.event, subscr.callback); //db.ref(subscr.path).off(subscr.event, subscr.callback);
-                let pathSubs = client.subscriptions[subscr.path];
+                const pathSubs = client.subscriptions[subscr.path];
                 pathSubs.splice(pathSubs.indexOf(subscr), 1);
             });
         }
@@ -56,7 +56,7 @@ export const addWebsocketServer = (env) => {
         env.debug.verbose(`Socket disconnected, total: ${env.clients.size}`);
     });
     serverManager.on('signin', event => {
-        // client sends this request once user has been signed in, binds the user to the socket, 
+        // client sends this request once user has been signed in, binds the user to the socket,
         // deprecated since client v0.9.4, which sends client_id with signin api call
         // const client = clients.get(socket.id);
         const client = getClientBySocketId(event.socket_id, 'signin');
@@ -104,7 +104,7 @@ export const addWebsocketServer = (env) => {
         // Send acknowledgement
         serverManager.send(socket, 'result', {
             success: true,
-            req_id: requestId
+            req_id: requestId,
         });
     };
     const failRequest = (socket, requestId, code) => {
@@ -112,7 +112,7 @@ export const addWebsocketServer = (env) => {
         serverManager.send(socket, 'result', {
             success: false,
             reason: code,
-            req_id: requestId
+            req_id: requestId,
         });
     };
     serverManager.on('subscribe', event => {
@@ -150,9 +150,9 @@ export const addWebsocketServer = (env) => {
             if (err) {
                 return;
             }
-            let val = Transport.serialize({
+            const val = Transport.serialize({
                 current: currentValue,
-                previous: previousValue
+                previous: previousValue,
             });
             env.debug.verbose(`Sending data event "${event.data.event}" for path "/${path}" to client ${event.socket_id}`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
             // TODO: let large data events notify the client, then let them download the data manually so it doesn't have to be transmitted through the websocket
@@ -161,14 +161,14 @@ export const addWebsocketServer = (env) => {
                 path,
                 event: event.data.event,
                 val,
-                context
+                context,
             });
         };
         let pathSubs = client.subscriptions[subscriptionPath];
         if (!pathSubs) {
             pathSubs = client.subscriptions[subscriptionPath] = [];
         }
-        let subscr = { path: subscriptionPath, event: event.data.event, callback };
+        const subscr = { path: subscriptionPath, event: event.data.event, callback };
         pathSubs.push(subscr);
         env.db.api.subscribe(subscriptionPath, event.data.event, callback);
         acknowledgeRequest(event.socket, event.data.req_id);
@@ -181,7 +181,7 @@ export const addWebsocketServer = (env) => {
         }
         env.debug.verbose(`Client ${event.socket_id} is unsubscribing from event "${event.data.event || '(any)'}" on path "/${event.data.path}"`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
         // const client = clients.get(socket.id);
-        let pathSubs = client.subscriptions[event.data.path];
+        const pathSubs = client.subscriptions[event.data.path];
         if (!pathSubs) {
             // We have no knowledge of any active subscriptions on this path
             return acknowledgeRequest(event.socket, event.data.req_id);
@@ -236,7 +236,7 @@ export const addWebsocketServer = (env) => {
                 tx.finish(); // Finish without value cancels the transaction
                 env.log.error(LOG_ACTION, 'timeout', LOG_DETAILS);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
-            }, TRANSACTION_TIMEOUT_MS)
+            }, TRANSACTION_TIMEOUT_MS),
         };
         const access = env.rules.userHasAccess(client.user, data.path, true);
         if (!access.allow) {

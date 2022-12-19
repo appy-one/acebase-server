@@ -1,4 +1,3 @@
-;
 export const getPublicAccountDetails = (account) => {
     return {
         uid: account.uid,
@@ -15,7 +14,7 @@ export const getPublicAccountDetails = (account) => {
         changePassword: account.change_password,
         changePasswordRequested: account.change_password_requested?.toISOString(),
         changePasswordBefore: account.change_password_before?.toISOString(),
-        settings: account.settings
+        settings: account.settings,
     };
 };
 //# sourceMappingURL=user.js.map

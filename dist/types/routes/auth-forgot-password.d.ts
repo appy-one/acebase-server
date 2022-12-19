@@ -3,7 +3,7 @@ export declare class ForgotPasswordError extends Error {
     code: 'server_email_config' | 'invalid_details' | 'invalid_email';
     constructor(code: 'server_email_config' | 'invalid_details' | 'invalid_email', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     email: string;
 };

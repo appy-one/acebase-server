@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const admin_only_1 = require("../middleware/admin-only");
 const error_1 = require("../shared/error");
-;
 const addRoute = (env) => {
     env.app.get(`/index/${env.db.name}`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Get all indexes

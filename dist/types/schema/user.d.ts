@@ -1,6 +1,6 @@
 export interface UserProfilePicture {
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
     url: string;
 }
 export interface UserSettings {

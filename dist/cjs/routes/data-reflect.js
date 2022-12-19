@@ -25,12 +25,12 @@ const addRoute = (env) => {
             uid: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin' ? null : req.query.impersonate,
             read: {
                 allow: false,
-                error: null
+                error: null,
             },
             write: {
                 allow: false,
-                error: null
-            }
+                error: null,
+            },
         };
         const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
         if (impersonatedAccess.uid) {
@@ -70,7 +70,7 @@ const addRoute = (env) => {
                 list && list.forEach(childInfo => {
                     childInfo.access = {
                         read: env.rules.userHasAccess(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), false).allow,
-                        write: env.rules.userHasAccess(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), true).allow
+                        write: env.rules.userHasAccess(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), true).allow,
                     };
                 });
             }

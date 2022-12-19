@@ -7,7 +7,7 @@ export class DeleteError extends Error {
 }
 export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/delete`, async (req, res) => {
-        let details = req.body;
+        const details = req.body;
         const LOG_ACTION = 'auth.delete';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, delete_uid: details.uid };
         if (!req.user) {

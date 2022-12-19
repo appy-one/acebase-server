@@ -15,12 +15,14 @@ export const addRoute = (env) => {
     const LOG_ACTION = 'auth.verify_email';
     const verifyEmailAddress = async (clientIp, code) => {
         const LOG_DETAILS = { ip: clientIp, uid: null };
-        try {
-            var verification = parseSignedPublicToken(code, env.tokenSalt);
-        }
-        catch (err) {
-            throw new VerifyEmailError('invalid_code', err.message);
-        }
+        const verification = (() => {
+            try {
+                return parseSignedPublicToken(code, env.tokenSalt);
+            }
+            catch (err) {
+                throw new VerifyEmailError('invalid_code', err.message);
+            }
+        })();
         LOG_DETAILS.uid = verification.uid;
         const snap = await env.authRef.child(verification.uid).get();
         if (!snap.exists()) {

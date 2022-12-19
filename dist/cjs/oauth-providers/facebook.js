@@ -35,32 +35,32 @@ class FacebookAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getAccessToken(params) {
-        // Request access token with authorization code, or previously granted (short or long-lived) access_token
-        const url = `https://graph.facebook.com/v7.0/oauth/access_token?client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
-            (params.type === 'refresh'
-                ? `&grant_type=fb_exchange_token&fb_exchange_token=${params.refresh_token}`
-                : `&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`);
-        return (0, simple_fetch_1.fetch)(url)
-            .then(response => response.json())
-            .then((result) => {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Request access token with authorization code, or previously granted (short or long-lived) access_token
+            const url = `https://graph.facebook.com/v7.0/oauth/access_token?client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
+                (params.type === 'refresh'
+                    ? `&grant_type=fb_exchange_token&fb_exchange_token=${params.refresh_token}`
+                    : `&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`);
+            const response = yield (0, simple_fetch_1.fetch)(url);
+            const result = yield response.json();
             if (result.error) {
                 const error = result.error;
                 throw new Error(`${error.type} ${error.code}: ${error.message}`);
             }
             const secondsToExpiry = result.expires_in;
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
-            // A short-lived access token can be exchanged for a long-lived (60 day) token. 
-            // Not sure if a long-lived token can be used to get a new long-lived token, 
+            // A short-lived access token can be exchanged for a long-lived (60 day) token.
+            // Not sure if a long-lived token can be used to get a new long-lived token,
             // needs testing. See docs at: https://developers.facebook.com/docs/facebook-login/access-tokens/refreshing/
             result.refresh_token = result.access_token;
             return result;
         });
     }
     getUserInfo(access_token) {
-        // TODO: Check if any requested scopes have not been granted access
-        // await fetch(`https://graph.facebook.com/v7.0/me/permissions`);
-        return (0, simple_fetch_1.fetch)(`https://graph.facebook.com/v7.0/me?fields=email,name,short_name,picture&access_token=${access_token}`)
-            .then((response) => __awaiter(this, void 0, void 0, function* () {
+        return __awaiter(this, void 0, void 0, function* () {
+            // TODO: Check if any requested scopes have not been granted access
+            // await fetch(`https://graph.facebook.com/v7.0/me/permissions`);
+            const response = yield (0, simple_fetch_1.fetch)(`https://graph.facebook.com/v7.0/me?fields=email,name,short_name,picture&access_token=${access_token}`);
             const result = yield response.json();
             if (response.status !== 200) {
                 const error = result;
@@ -76,9 +76,9 @@ class FacebookAuthProvider extends oauth_provider_1.OAuth2Provider {
                 email_verified: typeof user.email === 'string',
                 other: {
                 // We haven't requested more, so we didn't get more
-                }
+                },
             };
-        }));
+        });
     }
 }
 exports.FacebookAuthProvider = FacebookAuthProvider;

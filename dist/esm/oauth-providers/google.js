@@ -1,4 +1,4 @@
-import { OAuth2Provider } from "./oauth-provider.js";
+import { OAuth2Provider } from './oauth-provider.js';
 import { fetch } from '../shared/simple-fetch.js';
 export class GoogleAuthProvider extends OAuth2Provider {
     constructor(settings) {
@@ -43,60 +43,54 @@ export class GoogleAuthProvider extends OAuth2Provider {
         // Request access & refresh tokens with authorization code, or refresh token
         const config = await this.getOpenIDConfig();
         // 'https://oauth2.googleapis.com/token'
-        return fetch(config.token_endpoint, {
+        const response = await fetch(config.token_endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=`
                 + (params.type === 'refresh'
                     ? `${params.refresh_token}&grant_type=refresh_token`
-                    : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
-        })
-            .then(response => response.json())
-            .then((result) => {
-            if (result.error) {
-                throw new Error(result.error);
-            }
-            const secondsToExpiry = result.expires_in;
-            result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
-            return result;
+                    : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`),
         });
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        const secondsToExpiry = result.expires_in;
+        result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
+        return result;
     }
     async revokeAccess(access_token) {
         const config = await this.getOpenIDConfig();
         // https://oauth2.googleapis.com/revoke
-        return fetch(`${config.revocation_endpoint}?token=${access_token}`)
-            .then(response => {
-            if (response.status !== 200) {
-                throw new Error(`Revoke failed, error ${response.status}`);
-            }
-        });
+        const response = await fetch(`${config.revocation_endpoint}?token=${access_token}`);
+        if (response.status !== 200) {
+            throw new Error(`Revoke failed, error ${response.status}`);
+        }
     }
     async getUserInfo(access_token) {
         const config = await this.getOpenIDConfig();
         // https://openidconnect.googleapis.com/v1/userinfo
-        return fetch(config.userinfo_endpoint, {
+        const response = await fetch(config.userinfo_endpoint, {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${access_token}` }
-        })
-            .then(async (response) => {
-            const result = await response.json();
-            if (response.status !== 200) {
-                const error = result;
-                throw new Error(`${error.error}: ${error.error_description}`);
-            }
-            const user = result;
-            return {
-                id: user.sub,
-                name: user.name,
-                display_name: user.nickname || user.given_name,
-                picture: user.picture ? [{ url: user.picture }] : [],
-                email: user.email,
-                email_verified: user.email_verified,
-                other: Object.keys(user)
-                    .filter(key => !['sub', 'name', 'picture', 'email', 'email_verified'].includes(key))
-                    .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {})
-            };
+            headers: { 'Authorization': `Bearer ${access_token}` },
         });
+        const result = await response.json();
+        if (response.status !== 200) {
+            const error = result;
+            throw new Error(`${error.error}: ${error.error_description}`);
+        }
+        const user = result;
+        return {
+            id: user.sub,
+            name: user.name,
+            display_name: user.nickname || user.given_name,
+            picture: user.picture ? [{ url: user.picture }] : [],
+            email: user.email,
+            email_verified: user.email_verified,
+            other: Object.keys(user)
+                .filter(key => !['sub', 'name', 'picture', 'email', 'email_verified'].includes(key))
+                .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {}),
+        };
     }
 }
 export const AuthProvider = GoogleAuthProvider;

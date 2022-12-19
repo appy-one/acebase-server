@@ -9,7 +9,7 @@ export class UpdateError extends Error {
 }
 export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/update`, async (req, res) => {
-        let details = req.body;
+        const details = req.body;
         const LOG_ACTION = 'auth.update';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, update_uid: details.uid ?? null };
         if (!req.user) {

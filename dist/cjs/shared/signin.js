@@ -94,7 +94,7 @@ const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, func
         }
         if (credentials.method === 'account' || credentials.method === 'email') {
             // Check password
-            let hash = user.password_salt ? (0, password_1.getPasswordHash)(credentials.password, user.password_salt) : (0, password_1.getOldPasswordHash)(credentials.password);
+            const hash = user.password_salt ? (0, password_1.getPasswordHash)(credentials.password, user.password_salt) : (0, password_1.getOldPasswordHash)(credentials.password);
             if (user.password !== hash) {
                 throw new SignInError('wrong_password', 'Incorrect password');
             }
@@ -105,12 +105,12 @@ const signIn = (credentials, env, req) => __awaiter(void 0, void 0, void 0, func
             prev_signin: user.last_signin,
             prev_signin_ip: user.last_signin_ip,
             last_signin: new Date(),
-            last_signin_ip: req.ip
+            last_signin_ip: req.ip,
         };
         if ('password' in credentials) {
             if (!user.password_salt) {
                 // OLD md5 password hash, convert to new salted hash
-                let pwd = (0, password_1.createPasswordHash)(credentials.password);
+                const pwd = (0, password_1.createPasswordHash)(credentials.password);
                 updates.password = pwd.hash;
                 updates.password_salt = pwd.salt;
             }

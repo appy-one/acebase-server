@@ -1,4 +1,4 @@
-import { DataReference } from "acebase-core";
+import { DataReference } from 'acebase-core';
 export declare const isValidEmail: (email: string) => boolean;
 export declare const isValidNewEmailAddress: (authRef: DataReference, email: string) => Promise<boolean>;
 export declare const isValidNewUsername: (authRef: DataReference, username: any) => Promise<boolean>;

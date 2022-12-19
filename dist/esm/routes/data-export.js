@@ -10,7 +10,7 @@ export const addRoute = (env) => {
         const format = req.query.format || 'json';
         const type_safe = req.query.type_safe !== '0';
         const write = async (chunk) => {
-            let ok = res.write(chunk);
+            const ok = res.write(chunk);
             if (!ok) {
                 await new Promise(resolve => res.once('drain', resolve));
             }

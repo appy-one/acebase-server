@@ -1,4 +1,4 @@
-import { RouteInitEnvironment } from "../shared/env";
+import { RouteInitEnvironment } from '../shared/env';
 /**
  * Gets CORS options that are compatible with the 'cors' package (used by Socket.IO 3+)
  * @param allowedOrigins

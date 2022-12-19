@@ -29,7 +29,7 @@ const addRoute = (env) => {
             }
             res.send({
                 access_token: (0, tokens_1.createPublicAccessToken)(user.uid, req.ip, user.access_token, env.tokenSalt),
-                user: (0, user_1.getPublicAccountDetails)(user)
+                user: (0, user_1.getPublicAccountDetails)(user),
             });
         }
         catch (err) {

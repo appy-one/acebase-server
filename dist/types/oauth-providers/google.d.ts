@@ -1,4 +1,4 @@
-import { IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2ProviderInitInfo, OAuth2Provider } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOpenIDToken, IOpenIDConfiguration, IOAuth2AuthCodeParams, IOAuth2RefreshTokenParams, OAuth2ProviderInitInfo, OAuth2Provider } from './oauth-provider';
 /**
  * Details of your app to access the Google API. See https://developers.google.com/identity/protocols/oauth2/scopes
  */

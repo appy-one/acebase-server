@@ -81,7 +81,7 @@ const addRoute = (env) => {
         }
         try {
             // Ok, create user
-            let pwd = (0, password_1.createPasswordHash)(details.password);
+            const pwd = (0, password_1.createPasswordHash)(details.password);
             const user = {
                 uid: null,
                 username: (_e = details.username) !== null && _e !== void 0 ? _e : null,
@@ -97,7 +97,7 @@ const addRoute = (env) => {
                 last_signin: new Date(),
                 last_signin_ip: req.ip,
                 picture: (_g = details.picture) !== null && _g !== void 0 ? _g : null,
-                settings: (_h = details.settings) !== null && _h !== void 0 ? _h : {}
+                settings: (_h = details.settings) !== null && _h !== void 0 ? _h : {},
             };
             const userRef = yield env.authRef.push(user);
             user.uid = userRef.key;
@@ -114,13 +114,13 @@ const addRoute = (env) => {
                     username: user.username,
                     email: user.email,
                     displayName: user.display_name,
-                    settings: user.settings
+                    settings: user.settings,
                 },
                 date: user.created,
                 ip: user.created_ip,
                 provider: 'acebase',
                 activationCode: (0, tokens_1.createSignedPublicToken)({ uid: user.uid }, env.tokenSalt),
-                emailVerified: false
+                emailVerified: false,
             };
             (_j = env.config.email) === null || _j === void 0 ? void 0 : _j.send(request).catch(err => {
                 env.log.error(LOG_ACTION + '.email', 'unexpected', Object.assign(Object.assign({}, LOG_DETAILS), { request }), err);
@@ -129,7 +129,7 @@ const addRoute = (env) => {
             const isAdmin = req.user && req.user.uid === 'admin';
             res.send({
                 access_token: isAdmin ? '' : (0, tokens_1.createPublicAccessToken)(user.uid, req.ip, user.access_token, env.tokenSalt),
-                user: (0, user_1.getPublicAccountDetails)(user)
+                user: (0, user_1.getPublicAccountDetails)(user),
             });
         }
         catch (err) {

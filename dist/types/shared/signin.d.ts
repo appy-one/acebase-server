@@ -1,5 +1,5 @@
-import { DbUserAccountDetails } from "../schema/user";
-import { RouteInitEnvironment, RouteRequest } from "./env";
+import { DbUserAccountDetails } from '../schema/user';
+import { RouteInitEnvironment, RouteRequest } from './env';
 export declare type SignInCredentials = {
     method: 'token';
     access_token: string;
@@ -17,8 +17,8 @@ export declare type SignInCredentials = {
 };
 export declare class SignInError extends Error {
     code: string;
-    details: Object;
-    constructor(code: string, message: string, details?: Object);
+    details: any;
+    constructor(code: string, message: string, details?: any);
 }
 /**
  * Signs in a user and logs the request. If successful, adds the user to authCache, binds the user to the http request and returns the user details.

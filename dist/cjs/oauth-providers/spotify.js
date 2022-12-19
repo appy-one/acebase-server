@@ -38,19 +38,19 @@ class SpotifyAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getAccessToken(params) {
-        // Request access & refresh tokens with authorization code
-        return (0, simple_fetch_1.fetch)('https://accounts.spotify.com/api/token', {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
-                (params.type === 'refresh'
-                    ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
-                    : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
-        })
-            .then(response => response.json())
-            .then((result) => {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Request access & refresh tokens with authorization code
+            const response = yield (0, simple_fetch_1.fetch)('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
+                    (params.type === 'refresh'
+                        ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
+                        : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`),
+            });
+            const result = yield response.json();
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -60,17 +60,17 @@ class SpotifyAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getClientAccessToken() {
-        // Gets client only access to Spotify API, without signed in user
-        return (0, simple_fetch_1.fetch)('https://accounts.spotify.com/api/token', {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`
-            },
-            body: `grant_type=client_credentials`
-        })
-            .then(response => response.json())
-            .then((result) => {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Gets client only access to Spotify API, without signed in user
+            const response = yield (0, simple_fetch_1.fetch)('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`,
+                },
+                body: `grant_type=client_credentials`,
+            });
+            const result = yield response.json();
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -78,13 +78,13 @@ class SpotifyAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getUserInfo(access_token) {
-        return (0, simple_fetch_1.fetch)('https://api.spotify.com/v1/me', {
-            method: 'GET',
-            headers: {
-                "Authorization": `Bearer ${access_token}`
-            },
-        })
-            .then((response) => __awaiter(this, void 0, void 0, function* () {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield (0, simple_fetch_1.fetch)('https://api.spotify.com/v1/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                },
+            });
             const result = yield response.json();
             if (response.status !== 200) {
                 const error = result;
@@ -103,10 +103,10 @@ class SpotifyAuthProvider extends oauth_provider_1.OAuth2Provider {
                     followers: user.followers ? user.followers.total : null,
                     country: user.country,
                     // external_urls: user.external_urls,
-                    uri: user.uri
-                }
+                    uri: user.uri,
+                },
             };
-        }));
+        });
     }
 }
 exports.SpotifyAuthProvider = SpotifyAuthProvider;

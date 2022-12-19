@@ -102,7 +102,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
      * Gets the url the server is running at
      */
     get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}${this.config.rootPath}`;
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
     }
     init(env) {
         var _a;
@@ -113,11 +113,11 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Wait for databases to be ready to use
             yield Promise.all([
                 db.ready(),
-                authDb === null || authDb === void 0 ? void 0 : authDb.ready()
+                authDb === null || authDb === void 0 ? void 0 : authDb.ready(),
             ]);
             // Create http server
             const app = this.app;
-            (_a = this.config.server) === null || _a === void 0 ? void 0 : _a.on("request", app);
+            (_a = this.config.server) === null || _a === void 0 ? void 0 : _a.on('request', app);
             const server = this.config.server || (config.https.enabled ? (0, https_1.createServer)(config.https, app) : (0, http_2.createServer)(app));
             const clients = new Map();
             const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
@@ -143,7 +143,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 clients,
                 authCache: null,
                 authProviders: this.authProviders,
-                rules
+                rules,
             };
             // Add connection middleware
             const killConnections = (0, connection_1.default)(routeEnv);
@@ -164,8 +164,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // If environment is development, add API docs
             if (process.env.NODE_ENV && process.env.NODE_ENV.trim() === 'development') {
                 this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-                (yield Promise.resolve().then(() => require("./routes/docs"))).addRoute(routeEnv);
-                (yield Promise.resolve().then(() => require("./middleware/swagger"))).addMiddleware(routeEnv);
+                (yield Promise.resolve().then(() => require('./routes/docs'))).addRoute(routeEnv);
+                (yield Promise.resolve().then(() => require('./middleware/swagger'))).addMiddleware(routeEnv);
             }
             // Add data endpoints
             (0, data_1.default)(routeEnv);
@@ -180,7 +180,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Create websocket server
             (0, websocket_1.addWebsocketServer)(routeEnv);
             // Register all the routes for the app
-            app.use(this.config.rootPath, router);
+            app.use(`/${this.config.rootPath}`, router);
             // Last but not least, add 404 handler
             // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
             // add404Middleware(routeEnv);
@@ -196,8 +196,9 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Setup pause and resume methods
             let paused = false;
             this.pause = () => __awaiter(this, void 0, void 0, function* () {
-                if (this.config.server)
+                if (this.config.server) {
                     throw new AceBaseExternalServerError();
+                }
                 if (paused) {
                     throw new Error('Server is already paused');
                 }
@@ -207,8 +208,9 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 paused = true;
             });
             this.resume = () => __awaiter(this, void 0, void 0, function* () {
-                if (this.config.server)
+                if (this.config.server) {
                     throw new AceBaseExternalServerError();
+                }
                 if (!paused) {
                     throw new Error('Server is not paused');
                 }
@@ -275,7 +277,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 this.debug.warn('closing database');
                 yield db.close();
                 this.debug.warn('shutdown complete');
-                // Emit events to let the outside world know we shut down. 
+                // Emit events to let the outside world know we shut down.
                 // This is especially important if this instance was running in a Node.js cluster: the process will
                 // not exit automatically after this shutdown because Node.js' IPC channel between worker and master is still open.
                 // By sending these events, the cluster manager can determine if it should (and when to) execute process.exit()
@@ -290,27 +292,30 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 this.emit('shutdown'); // Emit on AceBaseServer instance
             });
             this.shutdown = () => __awaiter(this, void 0, void 0, function* () {
-                if (this.config.server)
+                if (this.config.server) {
                     throw new AceBaseExternalServerError();
+                }
                 yield shutdown({ sigint: false });
             });
             // Offload shutdown control to an external server
             if (this.config.server) {
-                server.on("close", function close() {
-                    server.off("request", app);
-                    server.off("close", close);
+                server.on('close', function close() {
+                    server.off('request', app);
+                    server.off('close', close);
                     shutdown({ sigint: false });
                 });
                 const ready = () => {
                     this.debug.log(`"${db.name}" database server running at ${this.url}`);
                     this._ready = true;
                     this.emitOnce(`ready`);
-                    server.off("listening", ready);
+                    server.off('listening', ready);
                 };
-                if (server.listening)
+                if (server.listening) {
                     ready();
-                else
-                    server.on("listening", ready);
+                }
+                else {
+                    server.on('listening', ready);
+                }
             }
             else {
                 process.on('SIGINT', () => shutdown({ sigint: true }));

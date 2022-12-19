@@ -10,8 +10,8 @@ const numCPUs = 2; //os.cpus().length;
  * To do that, see https://github.com/appy-one/acebase-ipc-server
  *
  */
-let dbname = "default";
-let options = { /* default options */}; // Load from cluster.config.js!
+const dbname = 'default';
+const options = { /* default options */}; // Load from cluster.config.js!
 options.authentication = { enabled: false };
 options.https = { enabled: false };
 if (cluster.isMaster) {

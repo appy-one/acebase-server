@@ -23,7 +23,7 @@ exports.UpdateError = UpdateError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/update`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c, _d;
-        let details = req.body;
+        const details = req.body;
         const LOG_ACTION = 'auth.update';
         const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, update_uid: (_c = details.uid) !== null && _c !== void 0 ? _c : null };
         if (!req.user) {

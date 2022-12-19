@@ -1,13 +1,14 @@
 import * as os from 'os';
-// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
-import meta from "../../../package.json" assert { type: "json" };
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore path to package.json is different in builds
+import meta from '../../../package.json' assert { type: 'json' };
 export const addRoute = (env) => {
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
             version: meta.version,
             time: Date.now(),
-            process: process.pid
+            process: process.pid,
         };
         if (req.user && req.user.uid === 'admin') {
             const numberToByteSize = number => {
@@ -43,11 +44,11 @@ export const addRoute = (env) => {
                         external: numberToByteSize(mem.external),
                         heapTotal: numberToByteSize(mem.heapTotal),
                         heapUsed: numberToByteSize(mem.heapUsed),
-                        residentSet: numberToByteSize(mem.rss)
-                    }
+                        residentSet: numberToByteSize(mem.rss),
+                    },
                 },
                 cpus: os.cpus(),
-                network: os.networkInterfaces()
+                network: os.networkInterfaces(),
             };
             Object.assign(info, adminInfo);
         }

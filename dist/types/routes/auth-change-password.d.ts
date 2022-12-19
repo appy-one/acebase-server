@@ -3,7 +3,7 @@ export declare class ChangePasswordError extends Error {
     code: 'unknown_uid' | 'wrong_password' | 'wrong_access_token';
     constructor(code: 'unknown_uid' | 'wrong_password' | 'wrong_access_token', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     uid: string;
     password: string;

@@ -1,4 +1,4 @@
-import { DataReference } from "acebase-core";
+import { DataReference } from 'acebase-core';
 export declare class DatabaseLog {
     private logRef;
     constructor(logRef: DataReference);

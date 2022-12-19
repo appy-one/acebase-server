@@ -1,6 +1,6 @@
-import { ColorStyle, SimpleCache } from "acebase-core";
-import { randomBytes } from "crypto";
-import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from "./shared/password.js";
+import { ColorStyle, SimpleCache } from 'acebase-core';
+import { randomBytes } from 'crypto';
+import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from './shared/password.js';
 export const setupAuthentication = async (env) => {
     // Setup auth cache
     env.authCache = new SimpleCache({ expirySeconds: 300, cloneValues: false, maxEntries: 1000 });
@@ -8,7 +8,7 @@ export const setupAuthentication = async (env) => {
     await env.securityRef.child('token_salt').transaction(snap => {
         env.tokenSalt = snap.val();
         if (!env.tokenSalt) {
-            let length = 256;
+            const length = 256;
             env.tokenSalt = randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
             return env.tokenSalt;
         }
@@ -30,7 +30,7 @@ export const setupAuthentication = async (env) => {
                 change_password: true,
                 created: new Date(),
                 access_token: null,
-                settings: {}
+                settings: {},
             };
             env.debug.warn(`__________________________________________________________________`.colorize(ColorStyle.red));
             env.debug.warn(``.colorize(ColorStyle.red));

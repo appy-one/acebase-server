@@ -44,7 +44,7 @@ const addRoutes = (env) => {
             timeout: setTimeout(() => {
                 _transactions.delete(tx.id);
                 tx.finish(); // Finish without value cancels the transaction
-            }, exports.TRANSACTION_TIMEOUT_MS)
+            }, exports.TRANSACTION_TIMEOUT_MS),
         };
         _transactions.set(tx.id, tx);
         try {

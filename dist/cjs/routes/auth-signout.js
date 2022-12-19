@@ -28,7 +28,7 @@ const addRoute = (env) => {
                     // Remove token from cache
                     env.authCache.remove(req.user.uid);
                     // Remove user binding from all clients signed in with current user
-                    for (let client of env.clients.values()) {
+                    for (const client of env.clients.values()) {
                         if (((_c = client.user) === null || _c === void 0 ? void 0 : _c.uid) === req.user.uid) {
                             client.user = null;
                         }

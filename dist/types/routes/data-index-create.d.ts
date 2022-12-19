@@ -32,7 +32,7 @@ export declare type CreateIndexRequest = {
         rebuild?: boolean;
         textLocale?: string;
         include?: string[];
-        config?: {};
+        config?: object;
     } & ({} | FullTextIndexOptions | GeoIndexOptions | ArrayIndexOptions);
 };
 export declare type RequestQuery = null;

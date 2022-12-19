@@ -3,7 +3,7 @@ export declare class DeleteError extends Error {
     code: 'unauthenticated_delete' | 'unauthorized_delete';
     constructor(code: 'unauthenticated_delete' | 'unauthorized_delete', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     uid: string;
 };

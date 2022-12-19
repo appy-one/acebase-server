@@ -4,7 +4,7 @@ export declare class SignupError extends Error {
     code: 'admin_only' | 'conflict' | 'email_conflict' | 'username_conflict' | 'missing_details' | 'invalid_email' | 'invalid_username' | 'invalid_display_name' | 'invalid_password' | 'invalid_picture' | 'invalid_settings';
     constructor(code: 'admin_only' | 'conflict' | 'email_conflict' | 'username_conflict' | 'missing_details' | 'invalid_email' | 'invalid_username' | 'invalid_display_name' | 'invalid_password' | 'invalid_picture' | 'invalid_settings', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     username: string;
     email: string;

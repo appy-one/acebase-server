@@ -8,7 +8,7 @@ export const addRoute = (env) => {
             res.contentType('application/json').send(schemas.map(schema => ({
                 path: schema.path,
                 schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
-                text: schema.text
+                text: schema.text,
             })));
         }
         catch (err) {

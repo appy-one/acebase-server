@@ -10,7 +10,7 @@ export class ChangePasswordError extends Error {
 }
 export const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/change_password`, async (req, res) => {
-        let access_token = req.user?.access_token;
+        const access_token = req.user?.access_token;
         const details = req.body;
         const LOG_ACTION = 'auth.change_password';
         const LOG_DETAILS = { ip: req.ip, uid: details.uid ?? null };
@@ -31,21 +31,21 @@ export const addRoute = (env) => {
                 if (!snap.exists()) {
                     throw new ChangePasswordError('unknown_uid', `Unknown uid`);
                 }
-                let user = snap.val();
+                const user = snap.val();
                 user.uid = snap.key;
-                let hash = user.password_salt ? getPasswordHash(details.password, user.password_salt) : getOldPasswordHash(details.password);
+                const hash = user.password_salt ? getPasswordHash(details.password, user.password_salt) : getOldPasswordHash(details.password);
                 if (user.password !== hash) {
                     throw new ChangePasswordError('wrong_password', `Wrong password`);
                 }
                 if (access_token && access_token !== user.access_token) {
                     throw new ChangePasswordError('wrong_access_token', `Cannot change password while signed in as other user, or with an old token`);
                 }
-                let pwd = createPasswordHash(details.new_password);
+                const pwd = createPasswordHash(details.new_password);
                 const updates = {
                     access_token: ID.generate(),
                     access_token_created: new Date(),
                     password: pwd.hash,
-                    password_salt: pwd.salt
+                    password_salt: pwd.salt,
                 };
                 // Update user object
                 Object.assign(user, updates);

@@ -13,7 +13,7 @@ const oAuth2Providers = {
     facebook: FacebookAuthProvider,
     google: GoogleAuthProvider,
     instagram: InstagramAuthProvider,
-    spotify: SpotifyAuthProvider
+    spotify: SpotifyAuthProvider,
 };
 export default oAuth2Providers;
 //# sourceMappingURL=index.js.map

@@ -3,11 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseSignedPublicToken = exports.createSignedPublicToken = exports.decodePublicAccessToken = exports.createPublicAccessToken = void 0;
 const crypto = require("crypto");
 const createPublicAccessToken = (uid, ip, dbToken, password) => {
-    let obj = {
+    const obj = {
         t: dbToken,
         c: Date.now(),
         u: uid,
-        i: ip
+        i: ip,
     };
     // let str = JSON.stringify(obj);
     // str = Buffer.from(str).toString('base64');
@@ -23,7 +23,7 @@ const decodePublicAccessToken = (accessToken, password) => {
             access_token: obj.t,
             uid: obj.u,
             created: obj.c,
-            ip: obj.i
+            ip: obj.i,
         };
         if (!details.access_token || !details.uid || !details.created || !details.ip) {
             throw new Error('Invalid token');

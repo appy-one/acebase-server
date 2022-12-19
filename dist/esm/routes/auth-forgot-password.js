@@ -38,8 +38,8 @@ export const addRoute = (env) => {
                     uid: user.uid,
                     username: user.username,
                     settings: user.settings,
-                    displayName: user.display_name
-                }
+                    displayName: user.display_name,
+                },
             };
             await snap.ref.update({ password_reset_code: user.password_reset_code });
             await env.config.email.send(request).catch(err => {

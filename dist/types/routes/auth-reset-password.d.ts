@@ -4,7 +4,7 @@ export declare class ResetPasswordError extends Error {
     code: 'invalid_code' | 'unknown_user' | 'password_requirement_mismatch';
     constructor(code: 'invalid_code' | 'unknown_user' | 'password_requirement_mismatch', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     code: string;
     password: string;

@@ -1,6 +1,6 @@
-import { ID } from "acebase-core";
-import { createPasswordHash, getOldPasswordHash, getPasswordHash } from "./password.js";
-import { decodePublicAccessToken } from "./tokens.js";
+import { ID } from 'acebase-core';
+import { createPasswordHash, getOldPasswordHash, getPasswordHash } from './password.js';
+import { decodePublicAccessToken } from './tokens.js';
 export class SignInError extends Error {
     constructor(code, message, details = {}) {
         super(message);
@@ -80,7 +80,7 @@ export const signIn = async (credentials, env, req) => {
         }
         if (credentials.method === 'account' || credentials.method === 'email') {
             // Check password
-            let hash = user.password_salt ? getPasswordHash(credentials.password, user.password_salt) : getOldPasswordHash(credentials.password);
+            const hash = user.password_salt ? getPasswordHash(credentials.password, user.password_salt) : getOldPasswordHash(credentials.password);
             if (user.password !== hash) {
                 throw new SignInError('wrong_password', 'Incorrect password');
             }
@@ -91,12 +91,12 @@ export const signIn = async (credentials, env, req) => {
             prev_signin: user.last_signin,
             prev_signin_ip: user.last_signin_ip,
             last_signin: new Date(),
-            last_signin_ip: req.ip
+            last_signin_ip: req.ip,
         };
         if ('password' in credentials) {
             if (!user.password_salt) {
                 // OLD md5 password hash, convert to new salted hash
-                let pwd = createPasswordHash(credentials.password);
+                const pwd = createPasswordHash(credentials.password);
                 updates.password = pwd.hash;
                 updates.password_salt = pwd.salt;
             }

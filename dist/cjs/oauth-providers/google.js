@@ -60,64 +60,58 @@ class GoogleAuthProvider extends oauth_provider_1.OAuth2Provider {
             // Request access & refresh tokens with authorization code, or refresh token
             const config = yield this.getOpenIDConfig();
             // 'https://oauth2.googleapis.com/token'
-            return (0, simple_fetch_1.fetch)(config.token_endpoint, {
+            const response = yield (0, simple_fetch_1.fetch)(config.token_endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=`
                     + (params.type === 'refresh'
                         ? `${params.refresh_token}&grant_type=refresh_token`
-                        : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
-            })
-                .then(response => response.json())
-                .then((result) => {
-                if (result.error) {
-                    throw new Error(result.error);
-                }
-                const secondsToExpiry = result.expires_in;
-                result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
-                return result;
+                        : `${params.auth_code}&grant_type=authorization_code&redirect_uri=${encodeURIComponent(params.redirect_url)}`),
             });
+            const result = yield response.json();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            const secondsToExpiry = result.expires_in;
+            result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
+            return result;
         });
     }
     revokeAccess(access_token) {
         return __awaiter(this, void 0, void 0, function* () {
             const config = yield this.getOpenIDConfig();
             // https://oauth2.googleapis.com/revoke
-            return (0, simple_fetch_1.fetch)(`${config.revocation_endpoint}?token=${access_token}`)
-                .then(response => {
-                if (response.status !== 200) {
-                    throw new Error(`Revoke failed, error ${response.status}`);
-                }
-            });
+            const response = yield (0, simple_fetch_1.fetch)(`${config.revocation_endpoint}?token=${access_token}`);
+            if (response.status !== 200) {
+                throw new Error(`Revoke failed, error ${response.status}`);
+            }
         });
     }
     getUserInfo(access_token) {
         return __awaiter(this, void 0, void 0, function* () {
             const config = yield this.getOpenIDConfig();
             // https://openidconnect.googleapis.com/v1/userinfo
-            return (0, simple_fetch_1.fetch)(config.userinfo_endpoint, {
+            const response = yield (0, simple_fetch_1.fetch)(config.userinfo_endpoint, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${access_token}` }
-            })
-                .then((response) => __awaiter(this, void 0, void 0, function* () {
-                const result = yield response.json();
-                if (response.status !== 200) {
-                    const error = result;
-                    throw new Error(`${error.error}: ${error.error_description}`);
-                }
-                const user = result;
-                return {
-                    id: user.sub,
-                    name: user.name,
-                    display_name: user.nickname || user.given_name,
-                    picture: user.picture ? [{ url: user.picture }] : [],
-                    email: user.email,
-                    email_verified: user.email_verified,
-                    other: Object.keys(user)
-                        .filter(key => !['sub', 'name', 'picture', 'email', 'email_verified'].includes(key))
-                        .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {})
-                };
-            }));
+                headers: { 'Authorization': `Bearer ${access_token}` },
+            });
+            const result = yield response.json();
+            if (response.status !== 200) {
+                const error = result;
+                throw new Error(`${error.error}: ${error.error_description}`);
+            }
+            const user = result;
+            return {
+                id: user.sub,
+                name: user.name,
+                display_name: user.nickname || user.given_name,
+                picture: user.picture ? [{ url: user.picture }] : [],
+                email: user.email,
+                email_verified: user.email_verified,
+                other: Object.keys(user)
+                    .filter(key => !['sub', 'name', 'picture', 'email', 'email_verified'].includes(key))
+                    .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {}),
+            };
         });
     }
 }

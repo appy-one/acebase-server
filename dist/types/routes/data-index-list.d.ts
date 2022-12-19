@@ -6,7 +6,7 @@ export interface PublicDataIndex {
     textLocale: string;
     includeKeys: string[];
     indexMetadataKeys: string[];
-    type: "normal" | "array" | "fulltext" | "geo";
+    type: 'normal' | 'array' | 'fulltext' | 'geo';
     fileName: string;
     description: string;
 }
