@@ -5,7 +5,7 @@ import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedEr
 
 export const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
 
-export class DataTransactionError extends Error { 
+export class DataTransactionError extends Error {
     constructor(public code: 'invalid_serialized_value', message: string) {
         super(message);
     }
@@ -20,7 +20,7 @@ export type StartRequestBody = {
     path: string;
 };
 export type StartResponseBody = ApiTransactionDetails   // 200
-    | { code: string, message: string }              // 403 
+    | { code: string, message: string }              // 403
     | { code: 'unexpected', message: string };       // 500
 export type StartRequest = RouteRequest<StartRequestQuery, StartRequestBody, StartResponseBody>;
 
@@ -62,7 +62,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             timeout: setTimeout(() => {
                 _transactions.delete(tx.id);
                 tx.finish();  // Finish without value cancels the transaction
-            }, TRANSACTION_TIMEOUT_MS) 
+            }, TRANSACTION_TIMEOUT_MS),
         };
         _transactions.set(tx.id, tx);
 
@@ -132,15 +132,14 @@ export const addRoutes = (env: RouteInitEnvironment) => {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
-    
-            
+
             const result = await tx.finish(newValue);
-             
+
             // NEW: capture cursor and return it in the response context header
             if (!tx.context) { tx.context = {}; }
             tx.context.acebase_cursor = result.cursor;
             res.setHeader('AceBase-Context', JSON.stringify(tx.context));
-            
+
             res.send('done');
         }
         catch (err) {

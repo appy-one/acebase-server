@@ -10,8 +10,8 @@ export type HttpResponse = express.Response;
 
 /**
  * Creates an app that handles http requests, adds json body parsing.
- * @param settings 
- * @returns 
+ * @param settings
+ * @returns
  */
 export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: string }) => {
     const app = createExpress();
@@ -23,12 +23,12 @@ export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: strin
     app.use(express.json({ limit: settings.maxPayloadSize })); // , extended: true ?
 
     return app as HttpApp;
-}
+};
 
 /**
  * Creates an express router
- * @returns 
+ * @returns
  */
 export const createRouter = () => {
     return createExpress.Router();
-}
+};

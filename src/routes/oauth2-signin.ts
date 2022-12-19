@@ -15,7 +15,7 @@ export type ResponseBody = string | { code: 'admin_only', message: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    
+
     env.app.get(`/oauth2/${env.db.name}/signin`, async (req: Request, res) => {
         // This is where the user is redirected to by the provider after signin or error
 
@@ -44,28 +44,28 @@ export const addRoute = (env: RouteInitEnvironment) => {
             // Get access & refresh tokens
             const tokens = await provider.getAccessToken({ type: 'auth', auth_code: authCode, redirect_url: `${req.protocol}://${req.headers.host}/oauth2/${env.db.name}/signin` });
 
-            let user_details;
+            // let user_details;
             // TODO: Have we got an id_token?
             // if (tokens.id_token) {
             //     // decode, extract user information
             // }
             // else {
-            user_details = await provider.getUserInfo(tokens.access_token);
+            const user_details = await provider.getUserInfo(tokens.access_token);
             // }
 
             if (user_details.picture && user_details.picture.length > 0) {
                 // Download it, convert to base64
-                const best = user_details.picture.sort((a,b) => a.width * a.height > b.width * b.height ? -1 : 1)[0]
+                const best = user_details.picture.sort((a,b) => a.width * a.height > b.width * b.height ? -1 : 1)[0];
                 try {
                     const response = await fetch(best.url);
                     const contentType = response.headers.get('Content-Type');
-                    if (contentType === 'image/png') { //state.provider === 'google' && 
+                    if (contentType === 'image/png') { //state.provider === 'google' &&
                         // Don't accept image/png, because it's probably a placeholder image. Google does this by creating a png with people's initials
                         user_details.picture = [];
                     }
                     else {
                         const image = await response.arrayBuffer();
-                        let buff = Buffer.from(image);
+                        const buff = Buffer.from(image);
                         best.url = `data:${contentType};base64,${buff.toString('base64')}`;
                         user_details.picture = [best]; // Only keep the best one
                     }
@@ -78,7 +78,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             const getProviderSettings = () => {
                 // Returns an object with all info (except picture) the provider has about the user
-                const settings = { 
+                const settings: Record<string, string | number | boolean> = {
                     [`${state.provider}_id`]: user_details.id,
                     [`${state.provider}_email`]: user_details.email,
                     [`${state.provider}_email_verified`]: user_details.email_verified,
@@ -99,15 +99,15 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 // Use the signed in uid to link this account to. This allows multiple auth provider
                 // accounts (with different email addresses) to be linked to the account the user
                 // is signed into, and also allows multiple AceBase users to link to the same provider
-                // accounts, eg if a client app allows users to link their own account to a shared 
+                // accounts, eg if a client app allows users to link their own account to a shared
                 // family Spotify / Dropbox account.
-                let snap = await env.authRef.child(state.uid).get();
+                const snap = await env.authRef.child(state.uid).get();
                 if (!snap.exists()) {
                     // This is wrong!
                     throw new Error(`Invalid uid`);
                 }
                 snaps = [snap];
-                let user = snap.val();
+                const user = snap.val();
                 addToExistingAccount = user.email === user_details.email;
             }
             else {
@@ -123,8 +123,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 snaps = await query.get();
             }
             if (snaps.length === 0 && user_details.email) {
-                // Try again with providerUsername, use might previously have denied access to email, 
-                // and now has granted access. In that case, we'll already have an account with the 
+                // Try again with providerUsername, use might previously have denied access to email,
+                // and now has granted access. In that case, we'll already have an account with the
                 // generated providerUsername
                 snaps = await env.authRef.query().filter('username', '==', providerUsername).get();
             }
@@ -138,7 +138,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     // Update user details
                     user.email_verified = user.email_verified || user_details.email_verified;
                     user.email = user.email || user_details.email;
-                    if (user_details.picture && user_details.picture.length > 0) {
+                    if (user_details.picture?.length > 0) {
                         user.picture = user_details.picture[0];
                     }
                     await env.authRef.child(uid).update({
@@ -146,7 +146,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                         email_verified: user.email_verified,
                         last_signin: new Date(),
                         last_signin_ip: req.ip,
-                        picture: user.picture
+                        picture: user.picture,
                     });
                 }
                 // Add provider details
@@ -166,18 +166,18 @@ export const addRoute = (env: RouteInitEnvironment) => {
                         username: user.username,
                         email: user.email,
                         displayName: user.display_name,
-                        settings: user.settings
+                        settings: user.settings,
                     },
                     date: user.created,
                     ip: req.ip,
                     activationCode: user.email_verified ? null : createSignedPublicToken({ uid: user.uid }, env.tokenSalt),
                     emailVerified: user.email_verified,
-                    provider: state.provider
+                    provider: state.provider,
                 };
 
                 env.config.email?.send(request).catch(err => {
                     env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, uid, request }, err);
-                });                            
+                });
             }
             else if (snaps.length === 0) {
                 // User does not exist, create
@@ -189,7 +189,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 }
 
                 // Create user with Generated password
-                let pwd = createPasswordHash(generatePassword());
+                const pwd = createPasswordHash(generatePassword());
                 user = {
                     uid: null,
                     username: typeof user_details.email === 'undefined' ? providerUsername : null, // provider-accountid usernames for external accounts without email address
@@ -205,7 +205,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     last_signin: new Date(),
                     last_signin_ip: req.ip,
                     picture: user_details.picture && user_details.picture[0],
-                    settings: getProviderSettings()
+                    settings: getProviderSettings(),
                 };
 
                 const userRef = await env.authRef.push(user);
@@ -226,13 +226,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
                         username: user.username,
                         email: user.email,
                         displayName: user.display_name,
-                        settings: user.settings
+                        settings: user.settings,
                     },
                     date: user.created,
                     ip: user.created_ip,
                     activationCode: user.email_verified ? null : createSignedPublicToken({ uid: user.uid }, env.tokenSalt),
                     emailVerified: user.email_verified,
-                    provider: state.provider
+                    provider: state.provider,
                 };
 
                 env.config.email?.send(request).catch(err => {
@@ -252,17 +252,17 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 }
             }
 
-            let result = { 
+            const result = {
                 provider: {
-                    name: state.provider, 
+                    name: state.provider,
                     access_token: tokens.access_token,
                     refresh_token: tokens.refresh_token,
-                    expires_in: tokens.expires_in
+                    expires_in: tokens.expires_in,
                 },
                 access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
 
                 // Disabled sending user details because:
-                // 1) they might be too big to send as redirect header, 
+                // 1) they might be too big to send as redirect header,
                 // 2) client should verify the sent access token and get user details from the server
                 // user: getPublicAccountDetails(user)
             };

@@ -8,14 +8,14 @@ const numCPUs = 2; //os.cpus().length;
 /**
  * Node.js cluster example. You can use this as a reference how to create an AceBaseServer cluster using Node.js'
  * built-in cluster functionality.
- * 
- * If you want to run a pm2 or cloud-based cluster instead, do NOT use this code. 
+ *
+ * If you want to run a pm2 or cloud-based cluster instead, do NOT use this code.
  * To do that, see https://github.com/appy-one/acebase-ipc-server
- * 
+ *
  */
 
-let dbname = "default";
-let options: AceBaseServerSettings = { /* default options */ }; // Load from cluster.config.js!
+const dbname = 'default';
+const options: AceBaseServerSettings = { /* default options */ }; // Load from cluster.config.js!
 options.authentication = { enabled: false };
 options.https = { enabled: false };
 

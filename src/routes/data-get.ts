@@ -30,12 +30,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         if (path === '') {
             // If user has access to the root of database (NOT recommended for others than admin...)
-            // Do not return private server data. If the admin user wants access, they should use 
+            // Do not return private server data. If the admin user wants access, they should use
             // direct requests on those paths (GET /data/dbname/__auth__), or use reflection
 
             if (options.include) {
                 // Remove all includes for private paths
-                options.include = options.include.filter(path => !path.startsWith('__')); 
+                options.include = options.include.filter(path => !path.startsWith('__'));
             }
             // Add private paths to exclude
             options.exclude = [...options.exclude || [], '__auth__', '__log__'];
@@ -54,7 +54,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             res.send({
                 exists: value !== null,
                 val: serialized.val,
-                map: serialized.map
+                map: serialized.map,
             });
         }
         catch (err) {

@@ -11,11 +11,11 @@ export { GoogleAuthProvider, IGoogleAuthSettings } from './google';
 export { InstagramAuthProvider, IInstagramAuthSettings } from './instagram';
 export { SpotifyAuthProvider, ISpotifyAuthSettings } from './spotify';
 
-const oAuth2Providers: { [key: string]: typeof OAuth2Provider } = { 
+const oAuth2Providers: { [key: string]: typeof OAuth2Provider } = {
     dropbox: DropboxAuthProvider,
     facebook: FacebookAuthProvider,
     google: GoogleAuthProvider,
     instagram: InstagramAuthProvider,
-    spotify: SpotifyAuthProvider
-}
+    spotify: SpotifyAuthProvider,
+};
 export default oAuth2Providers;

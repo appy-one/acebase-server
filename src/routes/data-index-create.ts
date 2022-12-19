@@ -37,8 +37,10 @@ export type CreateIndexRequest = {
         rebuild?: boolean;
         textLocale?: string;
         include?: string[];
-        config?: {}
-    } & ({} | FullTextIndexOptions | GeoIndexOptions | ArrayIndexOptions);
+        config?: object;
+    }
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    & ({} | FullTextIndexOptions | GeoIndexOptions | ArrayIndexOptions);
 };
 
 export type RequestQuery = null;

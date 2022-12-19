@@ -1,20 +1,20 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
-export class DeleteError extends Error { 
+export class DeleteError extends Error {
     constructor(public code: 'unauthenticated_delete'|'unauthorized_delete', message: string) {
         super(message);
     }
 }
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = { uid: string };
 export type ResponseBody = 'Farewell' | { code: DeleteError['code']; message: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/delete`, async (req: Request, res) => {
-        let details = req.body;
+        const details = req.body;
         const LOG_ACTION = 'auth.delete';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, delete_uid: details.uid };
 

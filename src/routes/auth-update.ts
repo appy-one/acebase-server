@@ -3,13 +3,13 @@ import { AceBaseUser, DbUserAccountDetails, getPublicAccountDetails, UserProfile
 import { emailExistsError, invalidDisplayNameError, invalidEmailError, invalidPictureError, invalidSettingsError, invalidUsernameError, isValidDisplayName, isValidEmail, isValidNewEmailAddress, isValidNewUsername, isValidPicture, isValidSettings, isValidUsername, usernameExistsError } from '../shared/validate';
 import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
-export class UpdateError extends Error { 
+export class UpdateError extends Error {
     constructor(public code: 'unauthenticated_update'|'unauthorized_update'|'user_not_found'|'invalid_email'|'email_conflict'|'invalid_username'|'username_conflict'|'invalid_display_name'|'invalid_picture'|'invalid_settings', message: string) {
         super(message);
     }
 }
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = {
     /** admin only: specifies user account to update */
     uid: string;
@@ -35,7 +35,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/update`, async (req: Request, res) => {
 
-        let details = req.body;
+        const details = req.body;
         const LOG_ACTION = 'auth.update';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, update_uid: details.uid ?? null };
 
@@ -95,7 +95,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 }
                 user = snap.val();
                 if (details.email && details.email !== user.email) {
-                    user.email = details.email; 
+                    user.email = details.email;
                     user.email_verified = false; // TODO: send verification email
                 }
                 if (details.username) { user.username = details.username; }

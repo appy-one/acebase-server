@@ -4,7 +4,7 @@ import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
 export type RequestBody = null;
-export type ResponseBody = 
+export type ResponseBody =
     { path: string; schema: string; text: string }   // 200
     | 'Not Found';                                   // 410
 
@@ -23,7 +23,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             res.contentType('application/json').send({
                 path: schema.path,
                 schema: typeof schema.schema === 'string' ? schema.schema : schema.text,
-                text: schema.text
+                text: schema.text,
             });
         }
         catch(err) {

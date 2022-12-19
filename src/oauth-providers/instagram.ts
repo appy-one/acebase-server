@@ -1,4 +1,4 @@
-import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, OAuth2Provider, OAuth2ProviderInitInfo } from './oauth-provider';
 import { fetch } from '../shared/simple-fetch';
 
 /**
@@ -9,8 +9,8 @@ export interface IInstagramAuthSettings extends IOAuth2ProviderSettings {
     scopes?: string[]
 }
 
-interface IInstagramAuthToken { 
-    access_token: string, 
+interface IInstagramAuthToken {
+    access_token: string,
     user: IInstagramUser
 }
 interface IInstagramError { code: number, message: string, type: string }
@@ -42,7 +42,7 @@ export class InstagramAuthProvider extends OAuth2Provider {
 
     /**
      * Starts auth flow by getting the url the user should be redirected to
-     * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url 
+     * @param info.redirectUrl Url spotify will redirect to after authorizing, should be the url
      * @param info.state Optional state that will be passed to redirectUri by spotify
      */
     async init(info: OAuth2ProviderInitInfo) {
@@ -53,44 +53,40 @@ export class InstagramAuthProvider extends OAuth2Provider {
     }
 
     _userInfo: IInstagramUser;
-    getAccessToken(params: IOAuth2AuthCodeParams) {
+    async getAccessToken(params: IOAuth2AuthCodeParams) {
         // Request access & refresh tokens with authorization code
-        return fetch(`https://api.instagram.com/oauth/access_token`, {
+        const response = await fetch(`https://api.instagram.com/oauth/access_token`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`
-        })
-        .then(response => response.json())
-        .then((result: IInstagramAuthToken) => {
-            if ((result as any).error) {
-                throw new Error((result as any).error);
-            }
-            return result;
+            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`,
         });
+        const result = await response.json();
+        if ((result as any).error) {
+            throw new Error((result as any).error);
+        }
+        return result as IInstagramAuthToken;
     }
 
-    getUserInfo(access_token: string) {
-        return fetch(`https://api.instagram.com/v1/users/self/?access_token=${access_token}`)
-        .then(async response => {
-            const result = await response.json();
-            if (response.status !== 200) {
-                const error = result as IInstagramError;
-                throw new Error(`${error.code}: ${error.message}`);
-            }
+    async getUserInfo(access_token: string) {
+        const response = await fetch(`https://api.instagram.com/v1/users/self/?access_token=${access_token}`);
+        const result = await response.json();
+        if (response.status !== 200) {
+            const error = result as IInstagramError;
+            throw new Error(`${error.code}: ${error.message}`);
+        }
 
-            const user = result as IInstagramUser;
-            return {
-                id: user.id,
-                name: user.full_name,
-                display_name: user.username,
-                picture: [{ url: user.profile_picture }],
-                email: null, //NO E-MAIL! user.email,
-                email_verified: false,
-                other: Object.keys(user)
-                    .filter(key => !['id','username','full_name','profile_picture'].includes(key))
-                    .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {})
-            };
-        });
+        const user = result as IInstagramUser;
+        return {
+            id: user.id,
+            name: user.full_name,
+            display_name: user.username,
+            picture: [{ url: user.profile_picture }],
+            email: null, //NO E-MAIL! user.email,
+            email_verified: false,
+            other: Object.keys(user)
+                .filter(key => !['id','username','full_name','profile_picture'].includes(key))
+                .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {}),
+        };
     }
 
 }

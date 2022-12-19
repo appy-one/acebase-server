@@ -1,4 +1,4 @@
-import { DataReference } from "acebase-core";
+import { DataReference } from 'acebase-core';
 
 export const isValidEmail = (email: string): boolean => {
     return /[a-z0-9_.+]+@([a-z0-9\-]+\.)+[a-z]{2,}/i.test(email);
@@ -34,11 +34,11 @@ export const isValidPicture = (picture: any): boolean => {
 export const isValidSettings = (settings: any): boolean => {
     return typeof settings === 'undefined'
          || (
-             typeof settings === 'object' 
+             typeof settings === 'object'
             && Object.keys(settings).length <= 100 // max 100 settings
             && Object.keys(settings).map(key => typeof settings[key]).every(t => ['string','number','boolean'].indexOf(t) >= 0) // only string, number, boolean values
             && Object.keys(settings).filter(key => typeof settings[key] === 'string').every(key => settings[key].length <= 250) // strings values <= 250 chars
-        );
+         );
 };
 
 export type ValidationError<Code> = { code: Code, message: string };

@@ -28,7 +28,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const data = req.query;
             let targets = typeof data.path === 'string'
                 ? [{ path: data.path, events: ['value'] }]
-                : typeof data.for === 'string' 
+                : typeof data.for === 'string'
                     ? JSON.parse(data.for)
                     : null;
             if (targets === null) {

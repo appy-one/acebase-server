@@ -22,7 +22,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         // Create indexes if not there yet
         const db = (env.log.ref as any).db as AceBase;
         const createIndexes = [
-            db.indexes.create(env.log.ref.path, 'date')
+            db.indexes.create(env.log.ref.path, 'date'),
         ];
         if (req.query.filter_col === 'action') {
             createIndexes.push(db.indexes.create(env.log.ref.path, 'action', { include: ['date'] }));
@@ -42,7 +42,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 query.filter(req.query.filter_col, req.query.filter_op, req.query.filter_val);
             }
 
-            const snaps = await query.get(); 
+            const snaps = await query.get();
             const logs = snaps.getValues() as AceBaseLogLine[];
             res.send(logs);
         }

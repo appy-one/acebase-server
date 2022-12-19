@@ -4,11 +4,11 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendError } from '../shared/error';
 
 export type RequestQuery = null;
-export type RequestBody = { 
-    value: Transport.SerializedValue; 
-    partial: boolean; 
+export type RequestBody = {
+    value: Transport.SerializedValue;
+    partial: boolean;
     path?: string;
-    schema?: IAceBaseSchemaInfo 
+    schema?: IAceBaseSchemaInfo
 };
 export type ResponseBody = ISchemaCheckResult       // 200
     | { code: 'admin_only'; message: string }       // 403
@@ -41,7 +41,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         catch(err) {
             sendError(res, err);
         }
-    });    
+    });
 
 };
 

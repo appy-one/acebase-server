@@ -5,16 +5,16 @@ import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT, AuthAccessDefault } from './settings';
 
 type PathRuleFunction = ((env: any) => boolean) & { getText(): string };
-type PathRules = {} & {
-    '.schema'?: string|Object;
-    '.read'?: boolean|string|PathRuleFunction;
-    '.write'?: boolean|string|PathRuleFunction;
-    '.validate'?: string|PathRuleFunction;
+type PathRules = object & {
+    '.schema'?: string | object;
+    '.read'?: boolean | string | PathRuleFunction;
+    '.write'?: boolean | string | PathRuleFunction;
+    '.validate'?: string | PathRuleFunction;
 }
 type RulesData = {
     rules: PathRules;
 }
-export type RuleValidationFailCode = 'rule'|'no_rule'|'private'|'exception';
+export type RuleValidationFailCode = 'rule' | 'no_rule' | 'private' | 'exception';
 // type HasAccessResult = { allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any };
 type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: Error });
 
@@ -41,7 +41,7 @@ export class PathBasedRules {
                 env.debug.error(`Failed to read rules from "${rulesFilePath}": ${err.message}`);
                 return defaultRules;
             }
-        };        
+        };
         const defaultAccessRule = (def => {
             switch (def) {
                 case AUTH_ACCESS_DEFAULT.ALLOW_AUTHENTICATED: {
@@ -61,9 +61,9 @@ export class PathBasedRules {
         })(defaultAccess);
         const defaultRules:RulesData = {
             rules: {
-                ".read": defaultAccessRule,
-                ".write": defaultAccessRule
-            }
+                '.read': defaultAccessRule,
+                '.write': defaultAccessRule,
+            },
         };
         let accessRules = defaultRules;
         if (!fs.existsSync(rulesFilePath)) {
@@ -84,15 +84,15 @@ export class PathBasedRules {
                     rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
                     rule.getText = () => {
                         return text;
-                    }
+                    };
                     return parent[key] = rule;
                 }
                 else if (key === '.schema') {
                     // Add schema
                     return env.db.schema.set(path, rule)
-                    .catch(err => {
-                        env.debug.error(`Error parsing ${path}/.schema: ${err.message}`)
-                    });
+                        .catch(err => {
+                            env.debug.error(`Error parsing ${path}/.schema: ${err.message}`);
+                        });
                 }
                 else if (key.startsWith('$')) {
                     variables.push(key);
@@ -114,14 +114,14 @@ export class PathBasedRules {
         fs.watchFile(rulesFilePath, watchFileListener);
         this.stop = () => {
             fs.unwatchFile(rulesFilePath, watchFileListener);
-        }
+        };
         process.on('SIGINT', this.stop);
 
         this.authEnabled = env.authEnabled;
         this.accessRules = accessRules;
     }
 
-    userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write: boolean = false): HasAccessResult {
+    userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write = false): HasAccessResult {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
@@ -136,22 +136,22 @@ export class PathBasedRules {
             return allow;
         }
         else if (path.startsWith('__')) {
-            // NEW: with the auth database now integrated into the main database, 
+            // NEW: with the auth database now integrated into the main database,
             // deny access to private resources starting with '__' for non-admins
             return { allow: false, code: 'private', message: `Access to private resource "${path}" not allowed` };
         }
 
-        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true" 
+        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true"
         const pathKeys = PathInfo.getPathKeys(path);
         let rule = this.accessRules.rules;
-        let rulePath = [];
+        const rulePath = [];
         while(true) {
-            if (!rule) { 
+            if (!rule) {
                 // TODO: check if this one is redundant with the pathKeys.length === 0 near the end
                 return { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
             }
-            let checkRule = write ? rule['.write'] : rule['.read'];
-            if (typeof checkRule === 'boolean') { 
+            const checkRule = write ? rule['.write'] : rule['.read'];
+            if (typeof checkRule === 'boolean') {
                 if (!checkRule) {
                     return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') };
                 }
@@ -174,7 +174,7 @@ export class PathBasedRules {
                 return { allow: false, code: 'no_rule', message: `No rule found for path ${path}` };
             }
             let nextKey = pathKeys.shift();
-            // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
+            // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
             // need to change things here for usage of wildcard paths in subscriptions
             if (typeof rule[nextKey] === 'undefined') {
                 // Check if current rule has a wildcard child
@@ -185,5 +185,5 @@ export class PathBasedRules {
             nextKey && rulePath.push(nextKey);
             rule = rule[nextKey];
         }
-    }  
+    }
 }

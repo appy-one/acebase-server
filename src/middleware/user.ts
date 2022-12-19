@@ -1,7 +1,7 @@
-import { RouteInitEnvironment, RouteRequest } from "../shared/env";
-import { sendNotAuthenticatedError } from "../shared/error";
-import { signIn } from "../shared/signin";
-import { decodePublicAccessToken } from "../shared/tokens";
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import { sendNotAuthenticatedError } from '../shared/error';
+import { signIn } from '../shared/signin';
+import { decodePublicAccessToken } from '../shared/tokens';
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
 

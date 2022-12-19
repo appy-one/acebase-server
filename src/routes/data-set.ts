@@ -4,7 +4,7 @@ import { RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
-export class SetDataError extends Error { 
+export class SetDataError extends Error {
     constructor(public code: 'invalid_serialized_value', message: string) {
         super(message);
     }
@@ -44,7 +44,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(val).filter(key => key.startsWith('__')).forEach(key => delete val[key]);
             }
-            
+
             // Schema validation moved to storage, no need to check here but an early check won't do no harm!
             const validation = await env.db.schema.check(path, val, false);
             if (!validation.ok) {

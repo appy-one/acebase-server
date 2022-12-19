@@ -1,8 +1,8 @@
-import { ColorStyle, SimpleCache } from "acebase-core";
-import { randomBytes } from "crypto";
-import { DbUserAccountDetails } from "./schema/user";
-import { RouteInitEnvironment } from "./shared/env";
-import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from "./shared/password";
+import { ColorStyle, SimpleCache } from 'acebase-core';
+import { randomBytes } from 'crypto';
+import { DbUserAccountDetails } from './schema/user';
+import { RouteInitEnvironment } from './shared/env';
+import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from './shared/password';
 
 export const setupAuthentication = async (env: RouteInitEnvironment) => {
 
@@ -13,8 +13,8 @@ export const setupAuthentication = async (env: RouteInitEnvironment) => {
     await env.securityRef.child('token_salt').transaction(snap => {
         env.tokenSalt = snap.val();
         if (!env.tokenSalt) {
-            let length = 256;
-            env.tokenSalt = randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);                        
+            const length = 256;
+            env.tokenSalt = randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
             return env.tokenSalt;
         }
     });
@@ -38,7 +38,7 @@ export const setupAuthentication = async (env: RouteInitEnvironment) => {
                 change_password: true,  // flags that password must be changed. Not implemented yet
                 created: new Date(),
                 access_token: null, // Will be set upon login, so bearer authentication strategy can find user with this token
-                settings: {}
+                settings: {},
             };
             env.debug.warn(`__________________________________________________________________`.colorize(ColorStyle.red));
             env.debug.warn(``.colorize(ColorStyle.red));
@@ -81,7 +81,7 @@ export const setupAuthentication = async (env: RouteInitEnvironment) => {
     env.authDb.indexes.create(env.authRef.path, 'username');
     env.authDb.indexes.create(env.authRef.path, 'email');
     env.authDb.indexes.create(env.authRef.path, 'access_token');
-    
+
 };
 
 export default setupAuthentication;

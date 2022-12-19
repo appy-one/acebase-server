@@ -1,12 +1,13 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import * as os from 'os';
-// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
-import meta from "../../../package.json" assert { type: "json" };
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore path to package.json is different in builds
+import meta from '../../../package.json' assert { type: 'json' };
 
 export type RequestQuery = null;
 export type RequestBody = null;
-export type ResponseBody = { 
-    version: string; 
+export type ResponseBody = {
+    version: string;
     time: number;
     process: number;
 };
@@ -18,13 +19,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         const info = {
             version: meta.version, // Loaded from package.json
-            time: Date.now(), 
-            process: process.pid
+            time: Date.now(),
+            process: process.pid,
         };
         if (req.user && req.user.uid === 'admin') {
             const numberToByteSize = number => {
                 return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
-            }
+            };
             const sPerMinute = 60;
             const sPerHour = sPerMinute * 60;
             const sPerDay = sPerHour * 24;
@@ -55,12 +56,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
                         external: numberToByteSize(mem.external),
                         heapTotal: numberToByteSize(mem.heapTotal),
                         heapUsed: numberToByteSize(mem.heapUsed),
-                        residentSet: numberToByteSize(mem.rss)
-                    }
+                        residentSet: numberToByteSize(mem.rss),
+                    },
                 },
                 cpus: os.cpus(),
-                network: os.networkInterfaces()
-            }
+                network: os.networkInterfaces(),
+            };
             Object.assign(info, adminInfo);
         }
         // for (let i = 0; i < 1000000000; i++) {

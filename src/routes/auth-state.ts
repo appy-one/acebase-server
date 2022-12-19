@@ -1,8 +1,8 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { AceBaseUser, getPublicAccountDetails } from '../schema/user';
 
-export type RequestQuery = {};
-export type RequestBody = {};
+export type RequestQuery = never;
+export type RequestBody = never;
 export type ResponseBody = { signed_in: false } | { signed_in: true; user: AceBaseUser };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
