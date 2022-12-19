@@ -1,4 +1,4 @@
-import { sendUnauthorizedError } from "../shared/error.js";
+import { sendUnauthorizedError } from '../shared/error.js';
 /**
  * Middleware function that checks if the current user is `admin`. An 403 Forbidden error will be sent in the response if
  * authentication is enabled on the server and the user is not signed in as admin.

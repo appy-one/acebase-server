@@ -42,18 +42,18 @@ class DropboxAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getAccessToken(params) {
-        // Request access & refresh tokens with authorization code
-        return (0, simple_fetch_1.fetch)('https://api.dropbox.com/oauth2/token', {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
-                (params.type === 'refresh'
-                    ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
-                    : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
-        })
-            .then((response) => __awaiter(this, void 0, void 0, function* () {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Request access & refresh tokens with authorization code
+            const response = yield (0, simple_fetch_1.fetch)('https://api.dropbox.com/oauth2/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
+                    (params.type === 'refresh'
+                        ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
+                        : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`),
+            });
             if (response.status !== 200) {
                 // Handle error
                 const code = response.status;
@@ -65,16 +65,16 @@ class DropboxAuthProvider extends oauth_provider_1.OAuth2Provider {
             const secondsToExpiry = result.expires_in;
             result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
             return result;
-        }));
+        });
     }
     getUserInfo(access_token) {
-        return (0, simple_fetch_1.fetch)(`https://api.dropboxapi.com/2/users/get_current_account`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${access_token}`
-            }
-        })
-            .then((response) => __awaiter(this, void 0, void 0, function* () {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield (0, simple_fetch_1.fetch)(`https://api.dropboxapi.com/2/users/get_current_account`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                },
+            });
             if (response.status !== 200) {
                 const code = response.status;
                 const hasJSON = response.headers.get('Content-Type') === 'application/json';
@@ -100,9 +100,9 @@ class DropboxAuthProvider extends oauth_provider_1.OAuth2Provider {
                     // team_id: user.team.id,
                     // team_name: user.team.name,
                     // team_member_id: user.team_member_id
-                }
+                },
             };
-        }));
+        });
     }
 }
 exports.DropboxAuthProvider = DropboxAuthProvider;

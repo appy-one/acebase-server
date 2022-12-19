@@ -14,12 +14,14 @@ export class ResetPasswordError extends Error {
  */
 export const addRoute = (env) => {
     const resetPassword = async (clientIp, code, newPassword) => {
-        try {
-            var verification = parseSignedPublicToken(code, env.tokenSalt);
-        }
-        catch (err) {
-            throw new ResetPasswordError('invalid_code', err.message);
-        }
+        const verification = (() => {
+            try {
+                return parseSignedPublicToken(code, env.tokenSalt);
+            }
+            catch (err) {
+                throw new ResetPasswordError('invalid_code', err.message);
+            }
+        })();
         const snap = await env.authRef.child(verification.uid).get();
         if (!snap.exists()) {
             throw new ResetPasswordError('unknown_user', 'Uknown user');
@@ -37,7 +39,7 @@ export const addRoute = (env) => {
         await snap.ref.update({
             password: pwd.hash,
             password_salt: pwd.salt,
-            password_reset_code: null
+            password_reset_code: null,
         });
         // Send confirmation email
         const request = {
@@ -49,8 +51,8 @@ export const addRoute = (env) => {
                 email: user.email,
                 username: user.username,
                 displayName: user.display_name,
-                settings: user.settings
-            }
+                settings: user.settings,
+            },
         };
         env.config.email?.send(request);
         return user;

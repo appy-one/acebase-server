@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPublicAccountDetails = void 0;
-;
 const getPublicAccountDetails = (account) => {
     var _a, _b, _c, _d, _e;
     return {
@@ -19,7 +18,7 @@ const getPublicAccountDetails = (account) => {
         changePassword: account.change_password,
         changePasswordRequested: (_d = account.change_password_requested) === null || _d === void 0 ? void 0 : _d.toISOString(),
         changePasswordBefore: (_e = account.change_password_before) === null || _e === void 0 ? void 0 : _e.toISOString(),
-        settings: account.settings
+        settings: account.settings,
     };
 };
 exports.getPublicAccountDetails = getPublicAccountDetails;

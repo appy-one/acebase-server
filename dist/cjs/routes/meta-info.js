@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const os = require("os");
-// @ts-ignore We need it here, so TypeScript doesn't get mad about the file in not being in the source directory
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore path to package.json is different in builds
 const package_json_1 = require("../../../package.json");
 const addRoute = (env) => {
     // Add info endpoint
@@ -10,7 +11,7 @@ const addRoute = (env) => {
         const info = {
             version: package_json_1.default.version,
             time: Date.now(),
-            process: process.pid
+            process: process.pid,
         };
         if (req.user && req.user.uid === 'admin') {
             const numberToByteSize = number => {
@@ -46,11 +47,11 @@ const addRoute = (env) => {
                         external: numberToByteSize(mem.external),
                         heapTotal: numberToByteSize(mem.heapTotal),
                         heapUsed: numberToByteSize(mem.heapUsed),
-                        residentSet: numberToByteSize(mem.rss)
-                    }
+                        residentSet: numberToByteSize(mem.rss),
+                    },
                 },
                 cpus: os.cpus(),
-                network: os.networkInterfaces()
+                network: os.networkInterfaces(),
             };
             Object.assign(info, adminInfo);
         }

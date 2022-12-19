@@ -8,7 +8,6 @@ export const sendUnauthorizedError = (res, code, message) => {
     res.statusMessage = 'Unauthorized';
     res.contentType('application/json').send({ code, message });
 };
-;
 export const sendError = (res, err) => {
     res.contentType('application/json');
     if (typeof err.code === 'string') {

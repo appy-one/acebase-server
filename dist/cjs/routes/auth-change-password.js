@@ -24,7 +24,7 @@ exports.ChangePasswordError = ChangePasswordError;
 const addRoute = (env) => {
     env.app.post(`/auth/${env.db.name}/change_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
-        let access_token = (_a = req.user) === null || _a === void 0 ? void 0 : _a.access_token;
+        const access_token = (_a = req.user) === null || _a === void 0 ? void 0 : _a.access_token;
         const details = req.body;
         const LOG_ACTION = 'auth.change_password';
         const LOG_DETAILS = { ip: req.ip, uid: (_b = details.uid) !== null && _b !== void 0 ? _b : null };
@@ -45,21 +45,21 @@ const addRoute = (env) => {
                 if (!snap.exists()) {
                     throw new ChangePasswordError('unknown_uid', `Unknown uid`);
                 }
-                let user = snap.val();
+                const user = snap.val();
                 user.uid = snap.key;
-                let hash = user.password_salt ? (0, password_1.getPasswordHash)(details.password, user.password_salt) : (0, password_1.getOldPasswordHash)(details.password);
+                const hash = user.password_salt ? (0, password_1.getPasswordHash)(details.password, user.password_salt) : (0, password_1.getOldPasswordHash)(details.password);
                 if (user.password !== hash) {
                     throw new ChangePasswordError('wrong_password', `Wrong password`);
                 }
                 if (access_token && access_token !== user.access_token) {
                     throw new ChangePasswordError('wrong_access_token', `Cannot change password while signed in as other user, or with an old token`);
                 }
-                let pwd = (0, password_1.createPasswordHash)(details.new_password);
+                const pwd = (0, password_1.createPasswordHash)(details.new_password);
                 const updates = {
                     access_token: acebase_core_1.ID.generate(),
                     access_token_created: new Date(),
                     password: pwd.hash,
-                    password_salt: pwd.salt
+                    password_salt: pwd.salt,
                 };
                 // Update user object
                 Object.assign(user, updates);

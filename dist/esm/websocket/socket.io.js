@@ -33,11 +33,11 @@ export const createServer = (env) => {
         pingInterval: 5000,
         pingTimeout: 5000,
         maxHttpBufferSize: maxPayloadBytes,
-        path: env.rootPath + "socket.io",
+        path: `/${env.rootPath ? `${env.rootPath}/` : ''}socket.io`,
         // Allow socket.io 2.x clients (using engine.io 3.x):
         allowEIO3: true,
         // socket.io 3+ uses cors package:
-        cors: getCorsOptions(env.config.allowOrigin)
+        cors: getCorsOptions(env.config.allowOrigin),
     });
     // Setup event emitter for communication with consuming server
     const manager = new SocketIOManager();

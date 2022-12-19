@@ -56,7 +56,7 @@ const addRoute = (env) => {
             }
             const response = {
                 count: results.length,
-                list: results // []
+                list: results, // []
             };
             res.setHeader('AceBase-Context', JSON.stringify(context));
             res.send(acebase_core_1.Transport.serialize(response));

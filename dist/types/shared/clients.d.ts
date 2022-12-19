@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import { EventSubscriptionCallback, Query, QueryOptions } from "acebase-core";
-import { DbUserAccountDetails } from "../schema/user";
-import { HttpSocket } from "./http";
+import { EventSubscriptionCallback, Query, QueryOptions } from 'acebase-core';
+import { DbUserAccountDetails } from '../schema/user';
+import { HttpSocket } from './http';
 export declare class ConnectedClient {
     socket: HttpSocket;
     readonly id: string;

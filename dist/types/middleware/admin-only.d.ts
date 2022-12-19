@@ -1,6 +1,6 @@
-import { NextFunction } from "express";
-import { RouteInitEnvironment, RouteRequest } from "../shared/env";
-import type { Response } from "../shared/http";
+import { NextFunction } from 'express';
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
+import type { Response } from '../shared/http';
 /**
  * Middleware function that checks if the current user is `admin`. An 403 Forbidden error will be sent in the response if
  * authentication is enabled on the server and the user is not signed in as admin.

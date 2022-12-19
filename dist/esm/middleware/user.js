@@ -1,6 +1,6 @@
-import { sendNotAuthenticatedError } from "../shared/error.js";
-import { signIn } from "../shared/signin.js";
-import { decodePublicAccessToken } from "../shared/tokens.js";
+import { sendNotAuthenticatedError } from '../shared/error.js';
+import { signIn } from '../shared/signin.js';
+import { decodePublicAccessToken } from '../shared/tokens.js';
 export const addMiddleware = (env) => {
     // Add bearer authentication middleware
     env.app.use(async (req, res, next) => {

@@ -1,4 +1,4 @@
-import { OAuth2Provider } from "./oauth-provider.js";
+import { OAuth2Provider } from './oauth-provider.js';
 import { fetch } from '../shared/simple-fetch.js';
 export class SpotifyAuthProvider extends OAuth2Provider {
     constructor(settings) {
@@ -23,76 +23,70 @@ export class SpotifyAuthProvider extends OAuth2Provider {
         const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}&state=${encodeURIComponent(info.state)}`;
         return authUrl;
     }
-    getAccessToken(params) {
+    async getAccessToken(params) {
         // Request access & refresh tokens with authorization code
-        return fetch('https://accounts.spotify.com/api/token', {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}` +
                 (params.type === 'refresh'
                     ? `&grant_type=refresh_token&refresh_token=${params.refresh_token}`
-                    : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`)
-        })
-            .then(response => response.json())
-            .then((result) => {
-            if (result.error) {
-                throw new Error(result.error);
-            }
-            const secondsToExpiry = result.expires_in;
-            result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
-            return result;
+                    : `&grant_type=authorization_code&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`),
         });
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        const secondsToExpiry = result.expires_in;
+        result.expires = new Date(Date.now() + (secondsToExpiry * 1000));
+        return result;
     }
-    getClientAccessToken() {
+    async getClientAccessToken() {
         // Gets client only access to Spotify API, without signed in user
-        return fetch('https://accounts.spotify.com/api/token', {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${Buffer.from(`${this.settings.client_id}:${this.settings.client_secret}`).toString('base64')}`,
             },
-            body: `grant_type=client_credentials`
-        })
-            .then(response => response.json())
-            .then((result) => {
-            if (result.error) {
-                throw new Error(result.error);
-            }
-            return result;
+            body: `grant_type=client_credentials`,
         });
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        return result;
     }
-    getUserInfo(access_token) {
-        return fetch('https://api.spotify.com/v1/me', {
+    async getUserInfo(access_token) {
+        const response = await fetch('https://api.spotify.com/v1/me', {
             method: 'GET',
             headers: {
-                "Authorization": `Bearer ${access_token}`
+                'Authorization': `Bearer ${access_token}`,
             },
-        })
-            .then(async (response) => {
-            const result = await response.json();
-            if (response.status !== 200) {
-                const error = result;
-                throw new Error(`${error.status}: ${error.message}`);
-            }
-            const user = result;
-            return {
-                id: user.id,
-                name: user.display_name,
-                display_name: user.display_name,
-                picture: user.images,
-                email: user.email,
-                email_verified: false,
-                other: {
-                    premium: user.product === 'premium',
-                    followers: user.followers ? user.followers.total : null,
-                    country: user.country,
-                    // external_urls: user.external_urls,
-                    uri: user.uri
-                }
-            };
         });
+        const result = await response.json();
+        if (response.status !== 200) {
+            const error = result;
+            throw new Error(`${error.status}: ${error.message}`);
+        }
+        const user = result;
+        return {
+            id: user.id,
+            name: user.display_name,
+            display_name: user.display_name,
+            picture: user.images,
+            email: user.email,
+            email_verified: false,
+            other: {
+                premium: user.product === 'premium',
+                followers: user.followers ? user.followers.total : null,
+                country: user.country,
+                // external_urls: user.external_urls,
+                uri: user.uri,
+            },
+        };
     }
 }
 export const AuthProvider = SpotifyAuthProvider;

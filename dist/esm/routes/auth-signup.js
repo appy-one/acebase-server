@@ -67,7 +67,7 @@ export const addRoute = (env) => {
         }
         try {
             // Ok, create user
-            let pwd = createPasswordHash(details.password);
+            const pwd = createPasswordHash(details.password);
             const user = {
                 uid: null,
                 username: details.username ?? null,
@@ -83,7 +83,7 @@ export const addRoute = (env) => {
                 last_signin: new Date(),
                 last_signin_ip: req.ip,
                 picture: details.picture ?? null,
-                settings: details.settings ?? {}
+                settings: details.settings ?? {},
             };
             const userRef = await env.authRef.push(user);
             user.uid = userRef.key;
@@ -100,13 +100,13 @@ export const addRoute = (env) => {
                     username: user.username,
                     email: user.email,
                     displayName: user.display_name,
-                    settings: user.settings
+                    settings: user.settings,
                 },
                 date: user.created,
                 ip: user.created_ip,
                 provider: 'acebase',
                 activationCode: createSignedPublicToken({ uid: user.uid }, env.tokenSalt),
-                emailVerified: false
+                emailVerified: false,
             };
             env.config.email?.send(request).catch(err => {
                 env.log.error(LOG_ACTION + '.email', 'unexpected', { ...LOG_DETAILS, request }, err);
@@ -115,7 +115,7 @@ export const addRoute = (env) => {
             const isAdmin = req.user && req.user.uid === 'admin';
             res.send({
                 access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
-                user: getPublicAccountDetails(user)
+                user: getPublicAccountDetails(user),
             });
         }
         catch (err) {

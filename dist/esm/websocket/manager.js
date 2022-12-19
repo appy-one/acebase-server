@@ -1,4 +1,4 @@
-import { SimpleEventEmitter } from "acebase-core";
+import { SimpleEventEmitter } from 'acebase-core';
 export class WebSocketManager extends SimpleEventEmitter {
     constructor(framework) {
         super();

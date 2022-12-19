@@ -1,5 +1,5 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     client_id?: string;
 } & {

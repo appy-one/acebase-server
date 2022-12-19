@@ -3,7 +3,7 @@ export declare class VerifyEmailError extends Error {
     code: 'invalid_code' | 'unknown_user';
     constructor(code: 'invalid_code' | 'unknown_user', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     code: string;
 };

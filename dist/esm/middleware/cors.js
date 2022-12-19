@@ -7,7 +7,7 @@ export const getCorsOptions = (allowedOrigins) => {
     return {
         origin: allowedOrigins === '*' ? true : allowedOrigins === '' ? false : allowedOrigins.split(/,\s*/),
         methods: 'GET,PUT,POST,DELETE,OPTIONS',
-        allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context'
+        allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context',
     };
 };
 /**
@@ -25,13 +25,13 @@ export const getCorsHeaders = (allowedOrigins, currentOrigin) => {
         'Access-Control-Allow-Origin': origins,
         'Access-Control-Allow-Methods': corsOptions.methods,
         'Access-Control-Allow-Headers': corsOptions.allowedHeaders,
-        'Access-Control-Expose-Headers': 'Date, AceBase-Context' // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
+        'Access-Control-Expose-Headers': 'Date, AceBase-Context', // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
     };
 };
 export const addMiddleware = (env) => {
     env.app.use((req, res, next) => {
         const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
-        for (let name in headers) {
+        for (const name in headers) {
             res.setHeader(name, headers[name]);
         }
         if (req.method === 'OPTIONS') {

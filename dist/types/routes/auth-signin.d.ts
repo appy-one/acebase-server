@@ -1,6 +1,6 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { AceBaseUser } from '../schema/user';
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     client_id?: string;
 } & ({

@@ -11,12 +11,7 @@ export class OAuth2Provider {
         this.settings = settings;
     }
     init(info) { throw new NotImplementedError(); }
-    ;
     getAccessToken(param) { throw new NotImplementedError(); }
-    ;
-    ;
     getUserInfo(access_token) { throw new NotImplementedError(); }
-    ;
-    ;
 }
 //# sourceMappingURL=oauth-provider.js.map

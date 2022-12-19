@@ -11,6 +11,7 @@ const path_1 = require("path");
 const yamlPath = (0, path_1.join)(rootpath_1.packageRootPath, '/src/routes/*.yaml');
 // console.log(`Using path ${yamlPath} for Swagger documentation`);
 const addRoute = (env) => {
+    var _a;
     // Generate docs from all yaml files
     const options = {
         definition: {
@@ -22,36 +23,38 @@ const addRoute = (env) => {
                 contact: {
                     name: 'AceBase API Support',
                     email: 'me@appy.one',
-                    url: 'https://github.com/appy-one/acebase-server'
+                    url: 'https://github.com/appy-one/acebase-server',
                 },
-                // servers: [`http://${config.server.host}:${config.server.port}`]
             },
+            servers: [
+                { url: `http${((_a = env.config.https) === null || _a === void 0 ? void 0 : _a.enabled) ? 's' : ''}://${env.config.host}:${env.config.port}${env.config.rootPath ? `/${env.config.rootPath}` : ''}` },
+            ],
             tags: [{
                     name: 'auth',
-                    description: 'User authentication endpoints'
+                    description: 'User authentication endpoints',
                 }, {
                     name: 'oauth2',
-                    description: 'User authentication using 3rd party OAuth2 providers'
+                    description: 'User authentication using 3rd party OAuth2 providers',
                 }, {
                     name: 'data',
-                    description: 'Data manipulation and query endpoints'
+                    description: 'Data manipulation and query endpoints',
                 }, {
                     name: 'indexes',
-                    description: 'Index management endpoints'
+                    description: 'Index management endpoints',
                 }, {
                     name: 'schemas',
-                    description: 'Data schema management endpoints'
+                    description: 'Data schema management endpoints',
                 }, {
                     name: 'metadata',
-                    description: 'Metadata endpoints'
+                    description: 'Metadata endpoints',
                 }],
             components: {
                 securitySchemes: {
                     bearerAuth: {
                         type: 'http',
                         scheme: 'bearer',
-                        bearerFormat: 'token' // switch to JWT in the future?
-                    }
+                        bearerFormat: 'token', // switch to JWT in the future?
+                    },
                 },
                 schemas: {
                     User: {
@@ -66,8 +69,8 @@ const addRoute = (env) => {
                                 properties: {
                                     width: { type: 'number', example: 500 },
                                     height: { type: 'number', example: 500 },
-                                    url: { type: 'string', example: 'https://profile.pic/user.jpg' }
-                                }
+                                    url: { type: 'string', example: 'https://profile.pic/user.jpg' },
+                                },
                             },
                             emailVerified: { type: 'boolean', example: true },
                             created: { type: 'string', example: '2022-03-09T15:38:57.361Z' },
@@ -78,36 +81,36 @@ const addRoute = (env) => {
                             changePassword: { type: 'boolean', example: false },
                             changePasswordRequested: { type: 'boolean', example: false },
                             changePasswordBefore: { type: 'string', example: '2022-03-09T15:38:57.361Z' },
-                            settings: { type: 'object' }
-                        }
+                            settings: { type: 'object' },
+                        },
                     },
                     Error: {
                         type: 'object',
                         properties: {
                             code: { type: 'string', description: 'error code', example: 'invalid_request' },
-                            message: { type: 'string', description: 'The error message', example: 'Invalid request for this endpoint' }
-                        }
+                            message: { type: 'string', description: 'The error message', example: 'Invalid request for this endpoint' },
+                        },
                     },
                     UnexpectedError: {
                         type: 'object',
                         properties: {
                             code: { type: 'string', value: 'unexpected', description: 'The string `"unexpected"`' },
-                            message: { type: 'string', description: 'The server error message' }
-                        }
+                            message: { type: 'string', description: 'The server error message' },
+                        },
                     },
                     UnknownError: {
                         type: 'object',
                         properties: {
                             code: { type: 'string', value: 'unknown', description: 'The string `"unknown"`' },
-                            message: { type: 'string', description: 'The server error message' }
-                        }
+                            message: { type: 'string', description: 'The server error message' },
+                        },
                     },
                     SchemaValidationError: {
                         type: 'object',
                         properties: {
                             code: { type: 'string', description: 'The string `"schema_validation_failed"`', example: 'schema_validation_failed' },
-                            message: { type: 'string', description: 'The server error message', example: 'Property at path "path/property" is of the wrong type' }
-                        }
+                            message: { type: 'string', description: 'The server error message', example: 'Property at path "path/property" is of the wrong type' },
+                        },
                     },
                     SerializedValue: {
                         type: 'object',
@@ -120,26 +123,26 @@ const addRoute = (env) => {
                                     { type: 'integer' },
                                     { type: 'boolean' },
                                     { type: 'object' },
-                                    { type: 'array' }
+                                    { type: 'array' },
                                 ],
                                 example: '2022-04-07T16:36:21Z',
-                                required: true
+                                required: true,
                             },
                             map: {
                                 description: 'If the value has been serialized for transport, contains a string defining `val`s data type (eg `"date"` or `"binary"`), or an object with deep property mappings for an object value in `val`',
                                 oneOf: [
                                     { type: 'string', example: 'date' },
-                                    { type: 'object', example: { 'stats/created': 'date' } }
+                                    { type: 'object', example: { 'stats/created': 'date' } },
                                 ],
                                 example: 'date',
-                                required: false
-                            }
+                                required: false,
+                            },
                         },
                         required: ['val'],
                         example: {
                             val: { name: 'My todo list', stats: { size: 216, created: '2022-04-07T15:11:42Z', modified: '2022-03-08T12:24:05Z' } },
-                            map: { 'stats/created': 'date', 'stats/modified': 'date' }
-                        }
+                            map: { 'stats/created': 'date', 'stats/modified': 'date' },
+                        },
                     },
                     ReflectionNodeInfo: {
                         type: 'object',
@@ -150,28 +153,28 @@ const addRoute = (env) => {
                                 oneOf: [{
                                         type: 'string',
                                         description: 'key of the node',
-                                        example: 'jld2cjxh0000qzrmn831i7rn'
+                                        example: 'jld2cjxh0000qzrmn831i7rn',
                                     }, {
                                         type: 'number',
                                         description: 'index of the node (parent node is an array)',
-                                        example: 12
-                                    }]
+                                        example: 12,
+                                    }],
                             },
                             exists: {
                                 type: 'boolean',
                                 description: 'whether the target path exists',
-                                example: true
+                                example: true,
                             },
                             type: {
                                 type: 'string',
                                 enum: ['unknown', 'object', 'array', 'number', 'boolean', 'string', 'date', 'binary', 'reference'],
                                 description: 'data type of the target path',
-                                example: 'object'
+                                example: 'object',
                             },
                             value: {
                                 oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'array' }, { type: 'object' }],
                                 description: `target node's stored value if it is a boolean, number or date, a small string or binary value (less than configured max inline value size), or an empty object or array`,
-                                example: {}
+                                example: {},
                             },
                             address: {
                                 type: 'object',
@@ -179,8 +182,8 @@ const addRoute = (env) => {
                                 required: ['pageNr', 'recordNr'],
                                 properties: {
                                     pageNr: { type: 'integer' },
-                                    recordNr: { type: 'integer' }
-                                }
+                                    recordNr: { type: 'integer' },
+                                },
                             },
                             children: {
                                 type: 'object',
@@ -190,27 +193,27 @@ const addRoute = (env) => {
                                     count: {
                                         type: 'integer',
                                         description: 'The total number of children',
-                                        example: 2865
+                                        example: 2865,
                                     },
                                     more: {
                                         type: 'boolean',
                                         description: 'If there are more children than the ones in list',
-                                        example: true
+                                        example: true,
                                     },
                                     list: {
                                         type: 'array',
                                         description: 'Reflection info about the requested children',
                                         items: {
-                                            $ref: '#/components/schemas/ReflectionNodeInfo'
+                                            $ref: '#/components/schemas/ReflectionNodeInfo',
                                         },
                                         example: [{
                                                 key: 'name',
                                                 type: 'string',
-                                                value: 'My name'
-                                            }]
-                                    }
-                                }
-                            }
+                                                value: 'My name',
+                                            }],
+                                    },
+                                },
+                            },
                         },
                         example: {
                             key: 'jld2cjxh0000qzrmn831i7rn',
@@ -223,23 +226,23 @@ const addRoute = (env) => {
                                 list: [{
                                         key: 'l260qein000009jy3yjig8h9',
                                         type: 'object',
-                                        address: { pageNr: 1, recordNr: 25 }
+                                        address: { pageNr: 1, recordNr: 25 },
                                     }, {
                                         key: 'l260rp5b000109jy98ykf7x2',
                                         type: 'object',
-                                        address: { pageNr: 1, recordNr: 54 }
-                                    }]
-                            }
-                        }
-                    }
-                }
+                                        address: { pageNr: 1, recordNr: 54 },
+                                    }],
+                            },
+                        },
+                    },
+                },
             },
             security: [
                 // Enable bearer auth globally
-                { bearerAuth: [] }
+                { bearerAuth: [] },
             ],
         },
-        apis: [yamlPath]
+        apis: [yamlPath],
     };
     const swaggerDocs = createSwaggerDocs(options);
     env.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

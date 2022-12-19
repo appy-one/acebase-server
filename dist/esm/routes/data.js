@@ -1,4 +1,4 @@
-import addContextMiddleware from "../middleware/context.js";
+import addContextMiddleware from '../middleware/context.js';
 import addGetDataRoute from './data-get.js';
 import addUpdateDataRoute from './data-update.js';
 import addSetDataRoute from './data-set.js';

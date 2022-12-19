@@ -1,4 +1,4 @@
-import { SimpleEventEmitter } from "acebase-core";
+import { SimpleEventEmitter } from 'acebase-core';
 export declare type WebSocketEventData<SocketType, DataType = undefined> = {
     socket: SocketType;
     socket_id: string;

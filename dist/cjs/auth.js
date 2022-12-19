@@ -20,7 +20,7 @@ const setupAuthentication = (env) => __awaiter(void 0, void 0, void 0, function*
     yield env.securityRef.child('token_salt').transaction(snap => {
         env.tokenSalt = snap.val();
         if (!env.tokenSalt) {
-            let length = 256;
+            const length = 256;
             env.tokenSalt = (0, crypto_1.randomBytes)(Math.ceil(length / 2)).toString('hex').slice(0, length);
             return env.tokenSalt;
         }
@@ -42,7 +42,7 @@ const setupAuthentication = (env) => __awaiter(void 0, void 0, void 0, function*
                 change_password: true,
                 created: new Date(),
                 access_token: null,
-                settings: {}
+                settings: {},
             };
             env.debug.warn(`__________________________________________________________________`.colorize(acebase_core_1.ColorStyle.red));
             env.debug.warn(``.colorize(acebase_core_1.ColorStyle.red));

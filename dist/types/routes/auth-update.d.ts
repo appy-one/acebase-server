@@ -4,7 +4,7 @@ export declare class UpdateError extends Error {
     code: 'unauthenticated_update' | 'unauthorized_update' | 'user_not_found' | 'invalid_email' | 'email_conflict' | 'invalid_username' | 'username_conflict' | 'invalid_display_name' | 'invalid_picture' | 'invalid_settings';
     constructor(code: 'unauthenticated_update' | 'unauthorized_update' | 'user_not_found' | 'invalid_email' | 'email_conflict' | 'invalid_username' | 'username_conflict' | 'invalid_display_name' | 'invalid_picture' | 'invalid_settings', message: string);
 }
-export declare type RequestQuery = {};
+export declare type RequestQuery = never;
 export declare type RequestBody = {
     /** admin only: specifies user account to update */
     uid: string;

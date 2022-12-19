@@ -22,7 +22,7 @@ const addRoute = (env) => {
         const format = req.query.format || 'json';
         const type_safe = req.query.type_safe !== '0';
         const write = (chunk) => __awaiter(void 0, void 0, void 0, function* () {
-            let ok = res.write(chunk);
+            const ok = res.write(chunk);
             if (!ok) {
                 yield new Promise(resolve => res.once('drain', resolve));
             }

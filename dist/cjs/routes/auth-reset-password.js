@@ -28,12 +28,14 @@ exports.ResetPasswordError = ResetPasswordError;
 const addRoute = (env) => {
     const resetPassword = (clientIp, code, newPassword) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
-        try {
-            var verification = (0, tokens_1.parseSignedPublicToken)(code, env.tokenSalt);
-        }
-        catch (err) {
-            throw new ResetPasswordError('invalid_code', err.message);
-        }
+        const verification = (() => {
+            try {
+                return (0, tokens_1.parseSignedPublicToken)(code, env.tokenSalt);
+            }
+            catch (err) {
+                throw new ResetPasswordError('invalid_code', err.message);
+            }
+        })();
         const snap = yield env.authRef.child(verification.uid).get();
         if (!snap.exists()) {
             throw new ResetPasswordError('unknown_user', 'Uknown user');
@@ -51,7 +53,7 @@ const addRoute = (env) => {
         yield snap.ref.update({
             password: pwd.hash,
             password_salt: pwd.salt,
-            password_reset_code: null
+            password_reset_code: null,
         });
         // Send confirmation email
         const request = {
@@ -63,8 +65,8 @@ const addRoute = (env) => {
                 email: user.email,
                 username: user.username,
                 displayName: user.display_name,
-                settings: user.settings
-            }
+                settings: user.settings,
+            },
         };
         (_a = env.config.email) === null || _a === void 0 ? void 0 : _a.send(request);
         return user;

@@ -1,4 +1,4 @@
-import { RouteInitEnvironment } from "../shared/env";
+import { RouteInitEnvironment } from '../shared/env';
 /**
  * Adds 404 middleware. Add this as very last handler!
  * @param env

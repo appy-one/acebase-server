@@ -21,9 +21,9 @@ function fetch(url, options) {
         const method = (options === null || options === void 0 ? void 0 : options.method) || 'GET';
         const headers = options === null || options === void 0 ? void 0 : options.headers;
         const req = (0, https_1.request)(url, { method, headers }, res => {
-            // res.setEncoding('binary'); // will result in strings!!!! 
+            // res.setEncoding('binary'); // will result in strings!!!!
             const ready = new Promise((resolve, reject) => {
-                let chunks = [];
+                const chunks = [];
                 res.on('data', data => {
                     chunks.push(data);
                 });
@@ -40,12 +40,12 @@ function fetch(url, options) {
                 get headers() {
                     return {
                         get(name) {
-                            let val = res.headers[name.toLowerCase()];
+                            const val = res.headers[name.toLowerCase()];
                             if (val instanceof Array) {
                                 return val.join(', ');
                             }
                             return val;
-                        }
+                        },
                     };
                 },
                 text() {
@@ -64,7 +64,7 @@ function fetch(url, options) {
                         const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
                         return arrayBuffer;
                     });
-                }
+                },
             };
             resolve(response);
         });

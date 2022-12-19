@@ -39,14 +39,14 @@ class InstagramAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getAccessToken(params) {
-        // Request access & refresh tokens with authorization code
-        return (0, simple_fetch_1.fetch)(`https://api.instagram.com/oauth/access_token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`
-        })
-            .then(response => response.json())
-            .then((result) => {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Request access & refresh tokens with authorization code
+            const response = yield (0, simple_fetch_1.fetch)(`https://api.instagram.com/oauth/access_token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `client_id=${this.settings.client_id}&client_secret=${this.settings.client_secret}&code=${params.auth_code}&redirect_uri=${encodeURIComponent(params.redirect_url)}`,
+            });
+            const result = yield response.json();
             if (result.error) {
                 throw new Error(result.error);
             }
@@ -54,8 +54,8 @@ class InstagramAuthProvider extends oauth_provider_1.OAuth2Provider {
         });
     }
     getUserInfo(access_token) {
-        return (0, simple_fetch_1.fetch)(`https://api.instagram.com/v1/users/self/?access_token=${access_token}`)
-            .then((response) => __awaiter(this, void 0, void 0, function* () {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield (0, simple_fetch_1.fetch)(`https://api.instagram.com/v1/users/self/?access_token=${access_token}`);
             const result = yield response.json();
             if (response.status !== 200) {
                 const error = result;
@@ -71,9 +71,9 @@ class InstagramAuthProvider extends oauth_provider_1.OAuth2Provider {
                 email_verified: false,
                 other: Object.keys(user)
                     .filter(key => !['id', 'username', 'full_name', 'profile_picture'].includes(key))
-                    .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {})
+                    .reduce((obj, key) => { obj[key] = user[key]; return obj; }, {}),
             };
-        }));
+        });
     }
 }
 exports.InstagramAuthProvider = InstagramAuthProvider;

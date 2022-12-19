@@ -41,9 +41,9 @@ class PathBasedRules {
         })(defaultAccess);
         const defaultRules = {
             rules: {
-                ".read": defaultAccessRule,
-                ".write": defaultAccessRule
-            }
+                '.read': defaultAccessRule,
+                '.write': defaultAccessRule,
+            },
         };
         let accessRules = defaultRules;
         if (!fs.existsSync(rulesFilePath)) {
@@ -112,20 +112,20 @@ class PathBasedRules {
             return allow;
         }
         else if (path.startsWith('__')) {
-            // NEW: with the auth database now integrated into the main database, 
+            // NEW: with the auth database now integrated into the main database,
             // deny access to private resources starting with '__' for non-admins
             return { allow: false, code: 'private', message: `Access to private resource "${path}" not allowed` };
         }
-        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true" 
+        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true"
         const pathKeys = acebase_core_1.PathInfo.getPathKeys(path);
         let rule = this.accessRules.rules;
-        let rulePath = [];
+        const rulePath = [];
         while (true) {
             if (!rule) {
                 // TODO: check if this one is redundant with the pathKeys.length === 0 near the end
                 return { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
             }
-            let checkRule = write ? rule['.write'] : rule['.read'];
+            const checkRule = write ? rule['.write'] : rule['.read'];
             if (typeof checkRule === 'boolean') {
                 if (!checkRule) {
                     return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') };
@@ -149,7 +149,7 @@ class PathBasedRules {
                 return { allow: false, code: 'no_rule', message: `No rule found for path ${path}` };
             }
             let nextKey = pathKeys.shift();
-            // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no 
+            // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
             // need to change things here for usage of wildcard paths in subscriptions
             if (typeof rule[nextKey] === 'undefined') {
                 // Check if current rule has a wildcard child

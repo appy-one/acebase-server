@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 export class AceBaseServerHttpsConfig {
     constructor(settings) {
         this.enabled = true;
-        this.enabled = typeof settings === "object" && settings.enabled !== false;
+        this.enabled = typeof settings === 'object' && settings.enabled !== false;
         if (!this.enabled) {
             return;
         }
@@ -19,7 +19,7 @@ export class AceBaseServerHttpsConfig {
 export const AUTH_ACCESS_DEFAULT = {
     DENY_ALL: 'deny',
     ALLOW_ALL: 'allow',
-    ALLOW_AUTHENTICATED: 'auth'
+    ALLOW_AUTHENTICATED: 'auth',
 };
 export class AceBaseServerAuthenticationSettings {
     constructor(settings) {
@@ -47,7 +47,7 @@ export class AceBaseServerAuthenticationSettings {
          * Whether to use a separate database for auth and logging. 'v2' will store data in auth.db, which is NOT TESTED YET!
          */
         this.separateDb = false;
-        if (typeof settings !== "object") {
+        if (typeof settings !== 'object') {
             settings = {};
         }
         if (typeof settings.enabled === 'boolean') {
@@ -115,10 +115,10 @@ export class AceBaseServerConfig {
         this.path = '.';
         this.maxPayloadSize = '10mb';
         this.allowOrigin = '*';
-        this.rootPath = "/";
+        this.rootPath = '';
         this.sponsor = false;
         this.logColors = true;
-        if (typeof settings !== "object") {
+        if (typeof settings !== 'object') {
             settings = {};
         }
         if (typeof settings.logLevel === 'string') {
@@ -137,9 +137,7 @@ export class AceBaseServerConfig {
             this.server = settings.server;
         }
         if (typeof settings.rootPath === 'string') {
-            this.rootPath = settings.rootPath;
-            if (!this.rootPath.endsWith("/"))
-                this.rootPath += "/";
+            this.rootPath = settings.rootPath.replace(/^\/|\/$/g, '');
         }
         this.https = new AceBaseServerHttpsConfig(settings.https);
         this.auth = new AceBaseServerAuthenticationSettings(settings.authentication);

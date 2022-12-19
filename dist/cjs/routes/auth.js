@@ -47,7 +47,7 @@ const addAuthenticionRoutes = (env) => {
     // Return auth functions that can be used directly through an AceBaseServer instance
     return {
         verifyEmailAddress,
-        resetPassword
+        resetPassword,
     };
 };
 exports.addAuthenticionRoutes = addAuthenticionRoutes;

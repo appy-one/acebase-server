@@ -52,8 +52,8 @@ const addRoute = (env) => {
                     uid: user.uid,
                     username: user.username,
                     settings: user.settings,
-                    displayName: user.display_name
-                }
+                    displayName: user.display_name,
+                },
             };
             yield snap.ref.update({ password_reset_code: user.password_reset_code });
             yield env.config.email.send(request).catch(err => {

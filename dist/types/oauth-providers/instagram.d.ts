@@ -1,4 +1,4 @@
-import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, OAuth2Provider, OAuth2ProviderInitInfo } from "./oauth-provider";
+import { IOAuth2ProviderSettings, IOAuth2AuthCodeParams, OAuth2Provider, OAuth2ProviderInitInfo } from './oauth-provider';
 /**
  * Details of your app to access the Legacy Instagram API.
  */
