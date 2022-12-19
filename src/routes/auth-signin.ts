@@ -4,15 +4,15 @@ import { sendNotAuthenticatedError, sendUnexpectedError } from '../shared/error'
 import { createPublicAccessToken } from '../shared/tokens';
 import { signIn, SignInCredentials } from '../shared/signin';
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = { client_id?: string } & (
-    { method: 'token'; access_token: string } | 
+    { method: 'token'; access_token: string } |
     { method: 'email'; email: string; password: string } |
     { method: 'account', username: string, password: string }
 );
 export type ResponseBody = {
-    access_token: string; 
-    user: AceBaseUser 
+    access_token: string;
+    user: AceBaseUser;
 };
 
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
@@ -33,13 +33,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 const client = env.clients.get(clientId);
                 client.user = user; // Bind user to client socket
             }
-            res.send({ 
-                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt), 
-                user: getPublicAccountDetails(user) 
+            res.send({
+                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
+                user: getPublicAccountDetails(user),
             });
         }
         catch (err) {
-            
+
             if (typeof err.code === 'string') {
                 // Authentication error
                 return sendNotAuthenticatedError(res, err.code, err.message);

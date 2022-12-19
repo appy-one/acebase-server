@@ -2,7 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import type { ServerOptions as SocketIOServerOptions } from 'socket.io';
 const createSocketIOServer = (httpServer: any, options: Partial<SocketIOServerOptions>) => {
     return new SocketIOServer(httpServer, options);
-}
+};
 
 import type { Socket } from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
@@ -24,8 +24,7 @@ export class SocketIOManager extends WebSocketManager<Socket> {
 }
 
 export const createServer = (env: RouteInitEnvironment) => {
-    
-    
+
     // TODO: determine max socket payload using env.config.maxPayloadSize which is now only used for json POST data
     // const maxPayloadBytes = ((payloadStr) => {
     //     const match = payloadStr.match(/^([0-9]+)(?:mb|kb|b)$/i);
@@ -50,7 +49,7 @@ export const createServer = (env: RouteInitEnvironment) => {
         allowEIO3: true,
 
         // socket.io 3+ uses cors package:
-        cors: getCorsOptions(env.config.allowOrigin)
+        cors: getCorsOptions(env.config.allowOrigin),
     });
 
     // Setup event emitter for communication with consuming server
@@ -88,4 +87,4 @@ export const createServer = (env: RouteInitEnvironment) => {
     });
 
     return manager;
-}
+};

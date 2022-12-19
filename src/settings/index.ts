@@ -3,27 +3,28 @@ import { readFileSync } from 'fs';
 import { AceBaseServerEmailSettings } from './email';
 import { Server } from 'http';
 
-export type AceBaseServerHttpsSettings = { 
+export type AceBaseServerHttpsSettings = {
     enabled?: boolean;
-    keyPath?: string; 
+    keyPath?: string;
     certPath?: string
-    pfxPath?: string; 
+    pfxPath?: string;
     passphrase?: string
 } & (
     { keyPath: string; certPath: string } |
     { pfxPath: string; passphrase: string } |
+    // eslint-disable-next-line @typescript-eslint/ban-types
     {}
 )
 
 export class AceBaseServerHttpsConfig {
-    enabled: boolean = true;
+    enabled = true;
     key?: Buffer;
     cert?: Buffer;
     pfx?: Buffer;
     passphrase?: string;
 
     constructor(settings: AceBaseServerHttpsSettings) {
-        this.enabled = typeof settings === "object" && settings.enabled !== false;
+        this.enabled = typeof settings === 'object' && settings.enabled !== false;
         if (!this.enabled) { return; }
         if (settings.keyPath) {
             this.key = readFileSync(settings.keyPath);
@@ -40,7 +41,7 @@ export type AuthAccessDefault = 'deny'|'allow'|'auth';
 export const AUTH_ACCESS_DEFAULT: { [key: string]: AuthAccessDefault } = {
     DENY_ALL: 'deny',
     ALLOW_ALL: 'allow',
-    ALLOW_AUTHENTICATED: 'auth'
+    ALLOW_AUTHENTICATED: 'auth',
 };
 
 export class AceBaseServerAuthenticationSettings {
@@ -81,7 +82,7 @@ export class AceBaseServerAuthenticationSettings {
     readonly separateDb: boolean|'v2' = false;
 
     constructor(settings: Partial<AceBaseServerAuthenticationSettings>) {
-        if (typeof settings !== "object") { settings = {}; }
+        if (typeof settings !== 'object') { settings = {}; }
         if (typeof settings.enabled === 'boolean') { this.enabled = settings.enabled; }
         if (typeof settings.allowUserSignup === 'boolean') { this.allowUserSignup = settings.allowUserSignup; }
         if (typeof settings.newUserRateLimit === 'number') { this.newUserRateLimit = settings.newUserRateLimit; }
@@ -100,17 +101,17 @@ export class AceBaseServerTransactionSettings {
     /**
      * Whether to enable transaction logging
      */
-    log: boolean = false;
+    log = false;
 
     /**
      * Max age in days to keep transactions in the log file
      */
-    maxAge: number = 30;
+    maxAge = 30;
 
     /**
      * Whether database write operations should not wait until transaction has been logged
      */
-    noWait: boolean = false;
+    noWait = false;
 
     constructor(settings: Partial<AceBaseServerTransactionSettings>) {
         if (typeof settings !== 'object') { return; }
@@ -148,28 +149,28 @@ export interface IPCClientSettings {
 }
 
 export type AceBaseServerSettings = Partial<{
-    /** 
-     * Level of messages logged to console 
+    /**
+     * Level of messages logged to console
     */
     logLevel: 'verbose'|'log'|'warn'|'error';
 
-    /** 
-     * ip or hostname to start the server on 
+    /**
+     * ip or hostname to start the server on
     */
     host: string;
 
-    /** 
-     * port number the server will be listening 
+    /**
+     * port number the server will be listening
      */
     port: number;
 
-    /** 
-     * target directory path to store/open the database. Default is '.' 
+    /**
+     * target directory path to store/open the database. Default is '.'
      */
     path: string;
 
-    /** 
-     * Whether to use secure sockets layer (ssl) 
+    /**
+     * Whether to use secure sockets layer (ssl)
      */
     https: AceBaseServerHttpsSettings;
 
@@ -183,38 +184,38 @@ export type AceBaseServerSettings = Partial<{
      */
     rootPath : string;
 
-    /** 
-     * settings that define if and how authentication is used 
+    /**
+     * settings that define if and how authentication is used
      */
     authentication: Partial<AceBaseServerAuthenticationSettings>;
 
-    /** 
-     * maximum size to allow for posted data, eg for updating nodes. Default is '10mb' 
+    /**
+     * maximum size to allow for posted data, eg for updating nodes. Default is '10mb'
      */
     maxPayloadSize: string;
 
-    /** 
-     * Value to use for Access-Control-Allow-Origin CORS header. Default is '*' 
+    /**
+     * Value to use for Access-Control-Allow-Origin CORS header. Default is '*'
      */
     allowOrigin: string;
 
-    /** 
-     * Email settings that enable AceBaseServer to send e-mails, eg for welcoming new users, to reset passwords, notify of new sign ins etc 
+    /**
+     * Email settings that enable AceBaseServer to send e-mails, eg for welcoming new users, to reset passwords, notify of new sign ins etc
      */
     email: AceBaseServerEmailSettings;
 
-    /** 
-     * Transaction logging settings. Warning: BETA stage, do NOT use in production yet 
+    /**
+     * Transaction logging settings. Warning: BETA stage, do NOT use in production yet
      */
     transactions: Partial<AceBaseServerTransactionSettings>;
 
-    /** 
-     * IPC settings for pm2 or cloud-based clusters. BETA stage, see https://github.com/appy-one/acebase-ipc-server 
+    /**
+     * IPC settings for pm2 or cloud-based clusters. BETA stage, see https://github.com/appy-one/acebase-ipc-server
      */
     ipc: IPCClientSettings;
 
-    /** 
-     * Allows overriding of default storage settings used by the database. ALPHA stage 
+    /**
+     * Allows overriding of default storage settings used by the database. ALPHA stage
      */
     storage: AceBaseStorageSettings;
 
@@ -250,13 +251,13 @@ export class AceBaseServerConfig {
     readonly logColors: boolean = true;
 
     constructor(settings: AceBaseServerSettings) {
-        if (typeof settings !== "object") { settings = {}; }
+        if (typeof settings !== 'object') { settings = {}; }
         if (typeof settings.logLevel === 'string') { this.logLevel = settings.logLevel; }
         if (typeof settings.host === 'string') { this.host = settings.host; }
         if (typeof settings.port === 'number') { this.port = settings.port; }
         if (typeof settings.path === 'string') { this.path = settings.path; }
         if (typeof settings.server === 'object') { this.server = settings.server; }
-        if (typeof settings.rootPath === 'string') { 
+        if (typeof settings.rootPath === 'string') {
             this.rootPath = settings.rootPath.replace(/^\/|\/$/g, '');
         }
         this.https = new AceBaseServerHttpsConfig(settings.https);

@@ -1,17 +1,17 @@
-import { ID } from "acebase-core";
-import { DbUserAccountDetails } from "../schema/user";
-import { RouteInitEnvironment, RouteRequest } from "./env";
-import { createPasswordHash, getOldPasswordHash, getPasswordHash } from "./password";
-import { decodePublicAccessToken } from "./tokens";
+import { ID } from 'acebase-core';
+import { DbUserAccountDetails } from '../schema/user';
+import { RouteInitEnvironment, RouteRequest } from './env';
+import { createPasswordHash, getOldPasswordHash, getPasswordHash } from './password';
+import { decodePublicAccessToken } from './tokens';
 
-export type SignInCredentials = 
-    { method: 'token'; access_token: string } | 
-    { method: 'internal'; access_token: string } | 
+export type SignInCredentials =
+    { method: 'token'; access_token: string } |
+    { method: 'internal'; access_token: string } |
     { method: 'email'; email: string; password: string } |
     { method: 'account', username: string, password: string };
 
 export class SignInError extends Error {
-    constructor(public code: string, message: string, public details: Object = {}) {
+    constructor(public code: string, message: string, public details: any = {}) {
         super(message);
     }
 }
@@ -22,10 +22,10 @@ export class SignInError extends Error {
  * @param credentials credentials to sign in the user with
  * @param env environment state
  * @param req current http request
- * @returns 
+ * @returns
  */
 export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, req: RouteRequest) => {
-    
+
     const LOG_ACTION = 'auth.signin';
     const LOG_DETAILS = { ip: req.ip, method: credentials.method };
 
@@ -93,7 +93,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         }
         if (credentials.method === 'account' || credentials.method === 'email') {
             // Check password
-            let hash = user.password_salt ? getPasswordHash(credentials.password, user.password_salt) : getOldPasswordHash(credentials.password);
+            const hash = user.password_salt ? getPasswordHash(credentials.password, user.password_salt) : getOldPasswordHash(credentials.password);
             if (user.password !== hash) {
                 throw new SignInError('wrong_password', 'Incorrect password');
             }
@@ -105,13 +105,13 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
             prev_signin: user.last_signin,
             prev_signin_ip: user.last_signin_ip,
             last_signin: new Date(),
-            last_signin_ip: req.ip
+            last_signin_ip: req.ip,
         };
-        
+
         if ('password' in credentials) {
             if (!user.password_salt) {
                 // OLD md5 password hash, convert to new salted hash
-                let pwd = createPasswordHash(credentials.password);
+                const pwd = createPasswordHash(credentials.password);
                 updates.password = pwd.hash;
                 updates.password_salt = pwd.salt;
             }
@@ -146,4 +146,4 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
         throw err;
     }
-}
+};

@@ -1,10 +1,10 @@
-import { ColorStyle, Transport, EventSubscriptionCallback } from "acebase-core";
-import { ConnectedClient } from "../shared/clients";
-import { RouteInitEnvironment } from "../shared/env";
-import { decodePublicAccessToken } from "../shared/tokens";
-import { createServer, SocketType } from "./socket.io";
+import { ColorStyle, Transport, EventSubscriptionCallback } from 'acebase-core';
+import { ConnectedClient } from '../shared/clients';
+import { RouteInitEnvironment } from '../shared/env';
+import { decodePublicAccessToken } from '../shared/tokens';
+import { createServer, SocketType } from './socket.io';
 
-export class SocketRequestError extends Error { 
+export class SocketRequestError extends Error {
     constructor(public code: string, message: string) {
         super(message);
     }
@@ -17,7 +17,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
 
     const getClientBySocketId = (id: string, event: string) => {
         const client = env.clients.get(id);
-        if (!client) { 
+        if (!client) {
             env.debug.error(`Cannot find client "${id}" for socket event "${event}"`);
         }
         return client;
@@ -48,7 +48,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             //     })
             // });
 
-            let remove: {
+            const remove: {
                 path: string;
                 event: string;
                 callback: EventSubscriptionCallback;
@@ -59,7 +59,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             remove.forEach(subscr => {
                 // Unsubscribe them at db level and remove from our list
                 env.db.api.unsubscribe(subscr.path, subscr.event, subscr.callback); //db.ref(subscr.path).off(subscr.event, subscr.callback);
-                let pathSubs = client.subscriptions[subscr.path];
+                const pathSubs = client.subscriptions[subscr.path];
                 pathSubs.splice(pathSubs.indexOf(subscr), 1);
             });
         }
@@ -68,7 +68,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
     });
 
     serverManager.on('signin', event => {
-        // client sends this request once user has been signed in, binds the user to the socket, 
+        // client sends this request once user has been signed in, binds the user to the socket,
         // deprecated since client v0.9.4, which sends client_id with signin api call
         // const client = clients.get(socket.id);
         const client = getClientBySocketId(event.socket_id, 'signin');
@@ -89,7 +89,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         // const client = clients.get(socket.id);
         const client = getClientBySocketId(event.socket_id, 'signout');
         if (!client) { return; }
-        client.user = null;        
+        client.user = null;
     });
 
     serverManager.on('oauth2-signin', async event => {
@@ -103,7 +103,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             const provider = env.authProviders[providerName];
             const state = Buffer.from(JSON.stringify({ flow: 'socket', provider: providerName, client_id: client.id })).toString('base64');
             const clientAuthUrl = await provider.init({ redirect_url: `${request.server.protocol}://${request.server.host}:${request.server.port}/ouath2/${env.db.name}/signin`, state, options: request.options });
-            
+
             serverManager.send(event.socket, 'oauth2-signin', { action: 'auth', url: clientAuthUrl });
         }
         catch(err) {
@@ -116,7 +116,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         // Send acknowledgement
         serverManager.send(socket, 'result', {
             success: true,
-            req_id: requestId
+            req_id: requestId,
         });
     };
     const failRequest = (socket: SocketType, requestId: string, code: string) => {
@@ -124,7 +124,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         serverManager.send(socket, 'result', {
             success: false,
             reason: code,
-            req_id: requestId
+            req_id: requestId,
         });
     };
 
@@ -135,7 +135,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
 
         env.debug.verbose(`Client ${event.socket_id} subscribes to event "${event.data.event}" on path "/${event.data.path}"`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
         const subscriptionPath = event.data.path;
-        const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === event.data.event)
+        const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === event.data.event);
         if (isSubscribed()) {
             return acknowledgeRequest(event.socket, event.data.req_id);
         }
@@ -165,9 +165,9 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             if (err) {
                 return;
             }
-            let val = Transport.serialize({
+            const val = Transport.serialize({
                 current: currentValue,
-                previous: previousValue
+                previous: previousValue,
             });
             env.debug.verbose(`Sending data event "${event.data.event}" for path "/${path}" to client ${event.socket_id}`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
             // TODO: let large data events notify the client, then let them download the data manually so it doesn't have to be transmitted through the websocket
@@ -176,14 +176,14 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
                 path,
                 event: event.data.event,
                 val,
-                context
+                context,
             });
         };
 
         let pathSubs = client.subscriptions[subscriptionPath];
         if (!pathSubs) { pathSubs = client.subscriptions[subscriptionPath] = []; }
 
-        let subscr = { path: subscriptionPath, event: event.data.event, callback };
+        const subscr = { path: subscriptionPath, event: event.data.event, callback };
         pathSubs.push(subscr);
 
         env.db.api.subscribe(subscriptionPath, event.data.event, callback);
@@ -197,9 +197,9 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         if (!client) { return; }
 
         env.debug.verbose(`Client ${event.socket_id} is unsubscribing from event "${event.data.event || '(any)'}" on path "/${event.data.path}"`.colorize([ColorStyle.bgWhite, ColorStyle.black]));
-        
+
         // const client = clients.get(socket.id);
-        let pathSubs = client.subscriptions[event.data.path];
+        const pathSubs = client.subscriptions[event.data.path];
         if (!pathSubs) {
             // We have no knowledge of any active subscriptions on this path
             return acknowledgeRequest(event.socket, event.data.req_id);
@@ -230,7 +230,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         env.debug.verbose(`Client ${event.socket_id} is unsubscribing from realtime query "${event.data.query_id}"`);
         // const client = clients.get(socket.id);
         delete client.realtimeQueries[event.data.query_id];
-        
+
         acknowledgeRequest(event.socket, event.data.req_id);
     });
 
@@ -257,7 +257,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
                 tx.finish(); // Finish without value cancels the transaction
                 env.log.error(LOG_ACTION, 'timeout', LOG_DETAILS);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
-            }, TRANSACTION_TIMEOUT_MS)
+            }, TRANSACTION_TIMEOUT_MS),
         };
 
         const access = env.rules.userHasAccess(client.user, data.path, true);
@@ -306,7 +306,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
                 env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', { ...LOG_DETAILS, id: data.id, tx_path: tx?.path ?? null });
                 throw new SocketRequestError('transaction_not_found', 'Transaction not found');
             }
-            
+
             clearTimeout(tx.timeout);
             delete client.transactions[data.id];
 
@@ -333,4 +333,4 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
     });
 
     return serverManager;
-}
+};

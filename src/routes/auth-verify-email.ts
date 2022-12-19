@@ -3,13 +3,13 @@ import { DbUserAccountDetails } from '../schema/user';
 import { parseSignedPublicToken } from '../shared/tokens';
 import { sendBadRequestError, sendUnexpectedError } from '../shared/error';
 
-export class VerifyEmailError extends Error { 
+export class VerifyEmailError extends Error {
     constructor(public code: 'invalid_code'|'unknown_user', message: string) {
         super(message);
     }
 }
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = { code: string };
 export type ResponseBody = 'OK' | { code: string; message: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
@@ -27,12 +27,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         const LOG_DETAILS = { ip: clientIp, uid: null };
 
-        try {
-            var verification = parseSignedPublicToken(code, env.tokenSalt);
-        }
-        catch (err) {
-            throw new VerifyEmailError('invalid_code', err.message);
-        }
+        const verification = (() => {
+            try {
+                return parseSignedPublicToken(code, env.tokenSalt);
+            }
+            catch (err) {
+                throw new VerifyEmailError('invalid_code', err.message);
+            }
+        })();
 
         LOG_DETAILS.uid = verification.uid;
         const snap = await env.authRef.child(verification.uid).get();
@@ -53,7 +55,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.post(`/auth/${env.db.name}/verify_email`, async (req: Request, res) => {
 
         const details = req.body;
-        
+
         try {
             await verifyEmailAddress(req.ip, details.code);
             res.send('OK');

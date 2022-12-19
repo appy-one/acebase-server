@@ -27,14 +27,14 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const read = async (length: number) => {
             let chunk = req.read();
             if (chunk === null && !eof) {
-                await new Promise(resolve => req.once('readable', resolve)); 
+                await new Promise(resolve => req.once('readable', resolve));
                 chunk = req.read();
             }
             // env.debug.verbose(`Received chunk: `, chunk);
             return chunk;
         };
 
-        const ref = env.db.ref(path);                
+        const ref = env.db.ref(path);
         try {
             await ref.import(read, { format, suppress_events });
             res.send({ success: true });

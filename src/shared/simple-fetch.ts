@@ -8,18 +8,18 @@ export interface SimpleFetchResponse {
 }
 /**
  * Very lightweight custom fetch implementation to avoid additional dependencies
- * @param url 
- * @param options 
+ * @param url
+ * @param options
  */
 export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELETE', headers?: { [name: string]: string }, body?: string }): Promise<SimpleFetchResponse> {
     return new Promise((resolve, reject) => {
         const method = options?.method || 'GET';
         const headers = options?.headers;
         const req = request(url, { method, headers }, res => {
-            
-            // res.setEncoding('binary'); // will result in strings!!!! 
+
+            // res.setEncoding('binary'); // will result in strings!!!!
             const ready = new Promise<Buffer>((resolve, reject) => {
-                let chunks = [];
+                const chunks = [];
                 res.on('data', data => {
                     chunks.push(data);
                 });
@@ -29,18 +29,18 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
                 });
                 res.on('error', (err) => {
                     reject(err);
-                })             
+                });
             });
 
             const response: SimpleFetchResponse = {
-                get status() { return res.statusCode },
+                get status() { return res.statusCode; },
                 get headers() { return {
-                    get(name: string) { 
-                        let val = res.headers[name.toLowerCase()];
-                        if (val instanceof Array) { return val.join(', '); } 
+                    get(name: string) {
+                        const val = res.headers[name.toLowerCase()];
+                        if (val instanceof Array) { return val.join(', '); }
                         return val;
-                    }
-                } },
+                    },
+                }; },
                 async text() {
                     const buffer = await ready;
                     return buffer.toString('utf8');
@@ -53,7 +53,7 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
                     const data = await ready;
                     const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
                     return arrayBuffer;
-                }
+                },
             };
 
             resolve(response);
@@ -61,5 +61,5 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
         req.on('error', reject);
         options?.body && req.write(options.body, 'utf8');
         req.end();
-    })
+    });
 }

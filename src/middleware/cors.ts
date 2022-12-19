@@ -1,15 +1,15 @@
-import { RouteInitEnvironment } from "../shared/env";
+import { RouteInitEnvironment } from '../shared/env';
 
 /**
  * Gets CORS options that are compatible with the 'cors' package (used by Socket.IO 3+)
- * @param allowedOrigins 
- * @returns 
+ * @param allowedOrigins
+ * @returns
  */
 export const getCorsOptions = (allowedOrigins: string) => {
     return {
         origin: allowedOrigins === '*' ? true : allowedOrigins === '' ? false : allowedOrigins.split(/,\s*/),
         methods: 'GET,PUT,POST,DELETE,OPTIONS',
-        allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context'
+        allowedHeaders: 'Content-Type, Authorization, Content-Length, Accept, Origin, X-Requested-With, AceBase-Context',
     };
 };
 
@@ -17,7 +17,7 @@ export const getCorsOptions = (allowedOrigins: string) => {
  * Gets CORS headers that can be sent in preflight (OPTIONS) requests
  * @param allowedOrigins configured allowed origin(s). Examples: `'https://my.server.com'` for a specific allowed origin, `'*'` for any origin (returns current origin), `''` to disable CORS (only allows localhost), or `'http://server1.com,https://server1.com,https://server2.com'` for multiple allowed origins
  * @param currentOrigin current origin from request headers
- * @returns 
+ * @returns
  */
 export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string) => {
     const corsOptions = getCorsOptions(allowedOrigins);
@@ -28,14 +28,14 @@ export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string) =>
         'Access-Control-Allow-Origin': origins,
         'Access-Control-Allow-Methods': corsOptions.methods,
         'Access-Control-Allow-Headers': corsOptions.allowedHeaders,
-        'Access-Control-Expose-Headers': 'Date, AceBase-Context'  // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
+        'Access-Control-Expose-Headers': 'Date, AceBase-Context',  // Prevent browsers from stripping these headers from the response for programmatic access in cross-origin requests
     };
 };
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
     env.app.use((req, res, next) => {
         const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
-        for (let name in headers) {
+        for (const name in headers) {
             res.setHeader(name, headers[name]);
         }
         if (req.method === 'OPTIONS') {

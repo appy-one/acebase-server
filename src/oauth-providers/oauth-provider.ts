@@ -13,9 +13,9 @@ export interface IOAuth2AuthCodeParams {
     redirect_url: string
 }
 export interface IOAuth2TokenResult {
-    access_token: string, 
-    id_token?: IOpenIDToken, 
-    expires_in?: number, 
+    access_token: string,
+    id_token?: IOpenIDToken,
+    expires_in?: number,
     refresh_token?: string
 }
 
@@ -27,15 +27,15 @@ export type OAuth2ProviderUserInfo = { id: string, name: string, display_name: s
 //     getUserInfo(access_token: string): Promise<OAuth2ProviderUserInfo>;
 // }
 class NotImplementedError extends Error { constructor() { super('Not implemented'); } }
-export class OAuth2Provider { //implements IOAuth2Provider 
+export class OAuth2Provider { //implements IOAuth2Provider
     constructor(protected settings: IOAuth2ProviderSettings) {}
-    init(info: OAuth2ProviderInitInfo): Promise<string> { throw new NotImplementedError(); };
-    getAccessToken(param: IOAuth2AuthCodeParams|IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult> { throw new NotImplementedError(); };;
-    getUserInfo(access_token: string): Promise<OAuth2ProviderUserInfo> { throw new NotImplementedError(); };;
+    init(info: OAuth2ProviderInitInfo): Promise<string> { throw new NotImplementedError(); }
+    getAccessToken(param: IOAuth2AuthCodeParams|IOAuth2RefreshTokenParams): Promise<IOAuth2TokenResult> { throw new NotImplementedError(); }
+    getUserInfo(access_token: string): Promise<OAuth2ProviderUserInfo> { throw new NotImplementedError(); }
 }
 // For OAuth2.0 providers with id_token in getAccessToken, see https://auth0.com/docs/tokens/concepts/jwts
 export interface IOpenIDToken {
-    // Omitted properties aud, exp, ist, iss, sub, at_hash, azp, hd, nonce, 
+    // Omitted properties aud, exp, ist, iss, sub, at_hash, azp, hd, nonce,
     email: string
     email_verified: boolean
     family_name?: string // last name(s)

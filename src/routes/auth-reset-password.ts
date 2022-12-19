@@ -5,13 +5,13 @@ import { sendBadRequestError, sendUnexpectedError } from '../shared/error';
 import { createPasswordHash } from '../shared/password';
 import { AceBaseUserResetPasswordSuccessEmailRequest } from '../shared/email';
 
-export class ResetPasswordError extends Error { 
+export class ResetPasswordError extends Error {
     constructor(public code: 'invalid_code'|'unknown_user'|'password_requirement_mismatch', message: string) {
         super(message);
     }
 }
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = { code: string; password: string };
 export type ResponseBody = 'OK' | { code: string; message: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
@@ -24,33 +24,35 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export const addRoute = (env: RouteInitEnvironment) => {
 
     const resetPassword = async (clientIp: string, code: string, newPassword: string) => {
-        try {
-            var verification = parseSignedPublicToken(code, env.tokenSalt);
-        }
-        catch(err) {
-            throw new ResetPasswordError('invalid_code', err.message);
-        }
+        const verification = (() => {
+            try {
+                return parseSignedPublicToken(code, env.tokenSalt);
+            }
+            catch(err) {
+                throw new ResetPasswordError('invalid_code', err.message);
+            }
+        })();
         const snap = await env.authRef.child(verification.uid).get();
-        if (!snap.exists()) { 
+        if (!snap.exists()) {
             throw new ResetPasswordError('unknown_user', 'Uknown user');
         }
         const user: DbUserAccountDetails = snap.val();
         user.uid = snap.key as string;
 
-        if (user.password_reset_code !== verification.code) { 
+        if (user.password_reset_code !== verification.code) {
             throw new ResetPasswordError('invalid_code', 'Invalid code');
         }
         if (newPassword.length < 8 || newPassword.includes(' ')) {
             throw new ResetPasswordError('password_requirement_mismatch', 'Password must be at least 8 characters, and cannot contain spaces');
         }
-        
+
         // Ok to change password
-        const pwd = createPasswordHash(newPassword);                        
-        await snap.ref.update({ 
-            password: pwd.hash, 
-            password_salt: pwd.salt, 
-            password_reset_code: null 
-        })
+        const pwd = createPasswordHash(newPassword);
+        await snap.ref.update({
+            password: pwd.hash,
+            password_salt: pwd.salt,
+            password_reset_code: null,
+        });
         // Send confirmation email
         const request: AceBaseUserResetPasswordSuccessEmailRequest = {
             type: 'user_reset_password_success',
@@ -61,8 +63,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 email: user.email,
                 username: user.username,
                 displayName: user.display_name,
-                settings: user.settings
-            }
+                settings: user.settings,
+            },
         };
         env.config.email?.send(request);
         return user;

@@ -22,7 +22,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const type_safe = req.query.type_safe !== '0';
 
         const write = async (chunk) => {
-            let ok = res.write(chunk);
+            const ok = res.write(chunk);
             if (!ok) {
                 await new Promise(resolve => res.once('drain', resolve));
             }
@@ -30,7 +30,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         const ref = env.db.ref(path);
         res.setHeader('Content-Disposition', `attachment; filename=${ref.key || 'export'}.json`); // Will be treated as a download in browser
-        
+
         try {
             await ref.export(write, { format, type_safe });
         }

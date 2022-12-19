@@ -1,11 +1,11 @@
 import * as crypto from 'crypto';
 
 export const createPublicAccessToken = (uid: string, ip: string, dbToken: string, password: string) => {
-    let obj = {
+    const obj = {
         t: dbToken,
         c: Date.now(),
         u: uid,
-        i: ip
+        i: ip,
     };
     // let str = JSON.stringify(obj);
     // str = Buffer.from(str).toString('base64');
@@ -21,8 +21,8 @@ export const decodePublicAccessToken = (accessToken: string, password: string) :
             access_token: obj.t,
             uid: obj.u,
             created: obj.c,
-            ip: obj.i
-        }
+            ip: obj.i,
+        };
         if (!details.access_token || !details.uid || !details.created || !details.ip) {
             throw new Error('Invalid token');
         }
@@ -32,17 +32,17 @@ export const decodePublicAccessToken = (accessToken: string, password: string) :
         // Old insecure version, previously allowed until August 1, 2020.
         throw new Error('Old token version not allowed');
     }
-}
+};
 
 
 const getSignature = (content, salt) => {
     // Use fast md5 with salt to sign with. Large salt recommended!!
     return crypto.createHash('md5').update(salt + content).digest('hex');
-}
+};
 
 /**
- * Sign objects with an md5 hash. An attacker might base4 decode it and see the content and generated checksum hash, 
- * but will need to guess the password used to generate the hash to manipulate it. This is  not impossible but will take 
+ * Sign objects with an md5 hash. An attacker might base4 decode it and see the content and generated checksum hash,
+ * but will need to guess the password used to generate the hash to manipulate it. This is  not impossible but will take
  * a very long time when using a large password
  * @param obj data object to sign
  * @param password password to use as salt for the generated md5 hash

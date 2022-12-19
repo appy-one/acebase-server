@@ -28,7 +28,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         catch(err) {
             sendError(res, err);
         }
-    });    
+    });
 
 };
 

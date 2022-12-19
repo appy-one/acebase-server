@@ -1,4 +1,4 @@
-import { RouteInitEnvironment, RouteRequest } from "../shared/env";
+import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
 
@@ -10,7 +10,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
             env.debug.warn(`API: replacing escaped slashes in request path for Swagger UI: ${req.url} -> ${newUrl}`);
             req.url = newUrl;
         }
-        
+
         next();
     });
 

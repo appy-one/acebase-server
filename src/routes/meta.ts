@@ -5,7 +5,7 @@ import addStatsRoute from './meta-stats';
 import addLogsRoute from './meta-logs';
 
 export const addRoutes = (env: RouteInitEnvironment) => {
-    
+
     // Add info endpoint
     addInfoRoute(env);
 

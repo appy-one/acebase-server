@@ -12,13 +12,13 @@ export const generatePassword = () => {
  * @param password password to hash
  */
 export const createPasswordHash = (password: string) => {
-    let length = 16;
-    let salt = crypto.randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
-    let hash = crypto.createHmac('sha512', salt).update(password).digest('hex');
+    const length = 16;
+    const salt = crypto.randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
+    const hash = crypto.createHmac('sha512', salt).update(password).digest('hex');
     return {
         salt,
-        hash
-    }
+        hash,
+    };
 };
 
 /**
@@ -34,7 +34,7 @@ export const getPasswordHash = (password: string, salt: string) => {
  * Backward compatibility with old saltless md5 passwords. Becomes obsolete once all passwords have been updated (probably already so)
  */
 export const getOldPasswordHash = (password: string) => {
-    // Backward compatibility with old saltless md5 passwords. 
+    // Backward compatibility with old saltless md5 passwords.
     // Becomes obsolete once all passwords have been updated
     return crypto.createHash('md5').update(password).digest('hex');
 };

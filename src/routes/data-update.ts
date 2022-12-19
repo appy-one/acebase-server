@@ -4,7 +4,7 @@ import { RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
-export class UpdateDataError extends Error { 
+export class UpdateDataError extends Error {
     constructor(public code: 'invalid_serialized_value', message: string) {
         super(message);
     }

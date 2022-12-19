@@ -1,4 +1,4 @@
-import { DataReference } from "acebase-core";
+import { DataReference } from 'acebase-core';
 
 export class DatabaseLog {
     constructor(private logRef: DataReference) {}
@@ -38,7 +38,7 @@ export class DatabaseLog {
 
     /**
      * Query the logs
-     * @returns 
+     * @returns
      */
     query() {
         if (!this.logRef) {

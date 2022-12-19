@@ -2,7 +2,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { DbUserAccountDetails } from '../schema/user';
 import { sendUnexpectedError } from '../shared/error';
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = { client_id?: string } & {
     everywhere: boolean
 };
@@ -29,7 +29,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     env.authCache.remove(req.user.uid);
 
                     // Remove user binding from all clients signed in with current user
-                    for (let client of env.clients.values()) {
+                    for (const client of env.clients.values()) {
                         if (client.user?.uid === req.user.uid) {
                             client.user = null;
                         }

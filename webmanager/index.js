@@ -3,7 +3,7 @@ var connection = {
     username: 'anonymous',
     db: null,
     user: null,
-    auth_token: ''
+    auth_token: '',
 };
 
 async function connect(dbname, username, password) {
@@ -31,19 +31,19 @@ function getChildPath (path, childKey) {
 
 function getPathKeys(path) {
     if (typeof path === 'undefined' || path.length === 0) { return []; }
-    let keys = path.replace(/\[/g, "/[").split("/");
+    let keys = path.replace(/\[/g, '/[').split('/');
     keys.forEach((key, index) => {
-        if (key.startsWith("[")) { 
-            keys[index] = parseInt(key.substr(1, key.length - 2)); 
+        if (key.startsWith('[')) {
+            keys[index] = parseInt(key.substr(1, key.length - 2));
         }
     });
     return keys;
 }
 
 /**
- * 
- * @param {string} path 
- * @param {(event: 'changed'|'removed'|'added', childRef) => any} callback 
+ *
+ * @param {string} path
+ * @param {(event: 'changed'|'removed'|'added', childRef) => any} callback
  */
 function subscribeToChildEvents(path, callback) {
     // Create 3 subscriptions, combine them into 1
@@ -59,7 +59,7 @@ function subscribeToChildEvents(path, callback) {
         // Unsubscribe
         changes.stop();
         adds.stop();
-        removes.stop();      
+        removes.stop();
     }
 
     return { stop };
@@ -84,7 +84,7 @@ function updateBrowsePath(path = '') {
             }
             else {
                 ref.reflect('info', { child_limit: 0, child_skip: 0, impersonate: impersonatedUid })
-                .then(event === 'changed' ? updateNode : addNode);
+                    .then(event === 'changed' ? updateNode : addNode);
             }
         });
     }
@@ -107,7 +107,7 @@ function updateBrowsePath(path = '') {
         breadcrumbNode.className = 'browse_breadcrumb_node';
         breadcrumbNode.textContent = key;
         let childPath = getChildPath(parentPath, key);
-        breadcrumbNode.addEventListener('click', updateBrowsePath.bind(this, childPath))
+        breadcrumbNode.addEventListener('click', updateBrowsePath.bind(this, childPath));
         breadcrumbContainer.appendChild(breadcrumbNode);
         parentPath = childPath;
     });
@@ -163,7 +163,7 @@ function updateBrowsePath(path = '') {
             childElem.appendChild(nodeValueElem);
         }
         else if (!isObjectOrArray) {
-            const canLoadValue = ['string','reference'].includes(nodeInfo.type)
+            const canLoadValue = ['string','reference'].includes(nodeInfo.type);
             const nodeTypeElem = document.createElement(canLoadValue ? 'a' : 'span');
             nodeTypeElem.className = 'db_node_type';
             if (canLoadValue) { nodeTypeElem.classList.add('clickable'); }
@@ -184,7 +184,7 @@ function updateBrowsePath(path = '') {
                     // replace node
                     nodeTypeElem.parentElement.replaceChild(nodeValueElem, nodeTypeElem);
                 });
-            })
+            });
             childElem.appendChild(nodeTypeElem);
         }
 
@@ -233,11 +233,11 @@ function updateBrowsePath(path = '') {
     }
 
     let ref = path ? connection.db.ref(path) : connection.db.root;
-    const limit = 100; 
+    const limit = 100;
     async function getChildren(skip = 0) {
         try {
             // Load path children with reflect API
-            const info = await ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid })
+            const info = await ref.reflect('info', { child_limit: limit, child_skip: skip, impersonate: impersonatedUid });
 
             currentPathIsArray = info.type === 'array';
 
@@ -321,7 +321,9 @@ function connectionChanged(success) {
     updateBrowsePath();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function impersonateUser() {
+    // Called from index.html
     const impersonateElem = document.getElementById('impersonate_uid');
     let uid = window.prompt('Enter the user id (uid) to impersonate:', impersonateElem.value);
     let impersonating = false;
@@ -336,7 +338,9 @@ function impersonateUser() {
     updateBrowsePath(currentPath);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function specifyChildKey() {
+    // Called from index.html
     let key = window.prompt('Enter the child key to browse to:', '');
     if (typeof key !== 'string') { return; }
     if (currentPathIsArray && /^[0-9]+$/.test(key)) {
@@ -355,7 +359,7 @@ connectButton.addEventListener('click', async () => {
     const failReasonLabel = document.getElementById('fail_reason');
     successLabel.classList.add('hide');
     failLabel.classList.add('hide');
-    
+
     const dbname = document.getElementById('dbname').value;
     const username = document.getElementById('username').value; //'admin'
     const password = document.getElementById('password').value;
@@ -368,7 +372,7 @@ connectButton.addEventListener('click', async () => {
     try {
         connectButton.classList.add('disabled');
         connectingLabel.classList.remove('hide');
-        await connect(dbname, username, password)
+        await connect(dbname, username, password);
         successLabel.classList.remove('hide');
         connectionChanged(true);
     }
@@ -400,7 +404,7 @@ document.getElementById('edit_node').addEventListener('click', () => {
 document.getElementById('update_button').addEventListener('click', async () => {
     const textarea = document.getElementById('update_json');
     let json = textarea.value;
-    
+
     try {
         // Check update value
         if (!json.startsWith('{') || !json.endsWith('}')) { throw new Error('Value must be json'); }
@@ -411,7 +415,7 @@ document.getElementById('update_button').addEventListener('click', async () => {
         // Allow passed data to be serialized by Transport.serialize2:
         // this allows dates etc to be used: { "created": { ".type": "date", ".val": "2022-05-31T16:52:51Z" } }
         updates = acebaseclient.Transport.deserialize2(updates);
-    
+
         console.log(updates);
         if (typeof updates !== 'object') { throw new Error('value must be an object'); }
 

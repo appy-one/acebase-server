@@ -25,8 +25,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     name: providerName,
                     access_token: tokens.access_token,
                     refresh_token: tokens.refresh_token,
-                    expires_in: tokens.expires_in
-                }
+                    expires_in: tokens.expires_in,
+                },
             });
         }
         catch(err) {

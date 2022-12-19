@@ -1,6 +1,6 @@
-import { RouteInitEnvironment } from "../shared/env";
-import { packageRootPath } from "../shared/rootpath";
-import { join as joinPaths } from 'path'
+import { RouteInitEnvironment } from '../shared/env';
+import { packageRootPath } from '../shared/rootpath';
+import { join as joinPaths } from 'path';
 
 export const addRoutes = (env: RouteInitEnvironment) => {
 
@@ -22,7 +22,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         else {
             res.sendFile(joinPaths(assetsPath, '/', filePath));
         }
-    });    
+    });
 
 };
 

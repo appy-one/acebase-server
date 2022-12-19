@@ -37,7 +37,7 @@ type HttpMethod = 'get'|'GET'|'put'|'PUT'|'post'|'POST'|'delete'|'DELETE';
 
 export class AceBaseServer extends SimpleEventEmitter {
 
-    private _ready: boolean = false;
+    private _ready = false;
     get isReady() { return this._ready; }
 
     /**
@@ -125,7 +125,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         const authDb = (() => {
             if (!this.config.auth.enabled) {
                 return null;
-            } 
+            }
             switch (this.config.auth.separateDb) {
                 case true: return new AceBase('auth', { logLevel: dbOptions.logLevel, storage: <PrivateStorageSettings>{ path: otherDbsPath, removeVoidProperties: true, info: `${dbname} auth database` } });
                 case 'v2': /*NOT TESTED YET*/return new AceBase(dbname, { logLevel: dbOptions.logLevel, storage: <PrivateStorageSettings>{ type: 'auth', path: this.config.path, removeVoidProperties: true, info: `${dbname} auth database` } });
@@ -148,12 +148,12 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Wait for databases to be ready to use
         await Promise.all([
             db.ready(),
-            authDb?.ready()
+            authDb?.ready(),
         ]);
 
         // Create http server
         const app = this.app;
-        this.config.server?.on("request", app);
+        this.config.server?.on('request', app);
         const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
         const clients = new Map<string, ConnectedClient>();
 
@@ -182,7 +182,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             clients,
             authCache: null,
             authProviders: this.authProviders,
-            rules
+            rules,
         };
 
         // Add connection middleware
@@ -210,8 +210,8 @@ export class AceBaseServer extends SimpleEventEmitter {
         // If environment is development, add API docs
         if (process.env.NODE_ENV && process.env.NODE_ENV.trim() === 'development') {
             this.debug.warn('DEVELOPMENT MODE: adding API docs endpoint at /docs');
-            (await import("./routes/docs")).addRoute(routeEnv);
-            (await import("./middleware/swagger")).addMiddleware(routeEnv);
+            (await import('./routes/docs')).addRoute(routeEnv);
+            (await import('./middleware/swagger')).addMiddleware(routeEnv);
         }
 
         // Add data endpoints
@@ -226,7 +226,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.debug.log(`Extending server: `, method, route);
             routeEnv.app[method.toLowerCase()](route, handler);
         };
-        
+
         // Create websocket server
         addWebsocketServer(routeEnv);
 
@@ -250,7 +250,7 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Setup pause and resume methods
         let paused = false;
         this.pause = async () => {
-            if (this.config.server) throw new AceBaseExternalServerError();
+            if (this.config.server) { throw new AceBaseExternalServerError(); }
             if (paused) { throw new Error('Server is already paused'); }
             server.close();
             this.debug.warn(`Paused "${db.name}" database server at ${this.url}`);
@@ -258,7 +258,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             paused = true;
         };
         this.resume = async () => {
-            if (this.config.server) throw new AceBaseExternalServerError();
+            if (this.config.server) { throw new AceBaseExternalServerError(); }
             if (!paused) { throw new Error('Server is not paused'); }
             return new Promise(resolve => {
                 server.listen(config.port, config.host, () => {
@@ -267,7 +267,7 @@ export class AceBaseServer extends SimpleEventEmitter {
                     paused = false;
                     resolve();
                 });
-            })
+            });
         };
 
         // Handle SIGINT and shutdown requests
@@ -312,7 +312,7 @@ export class AceBaseServer extends SimpleEventEmitter {
                     const socket = client.socket;
                     socket.once('disconnect', reason => {
                         this.debug.log(`Socket ${socket.id} disconnected: ${reason}`);
-                    })
+                    });
                     socket.disconnect(true);
                 });
             });
@@ -320,11 +320,11 @@ export class AceBaseServer extends SimpleEventEmitter {
             await db.close();
             this.debug.warn('shutdown complete');
 
-            // Emit events to let the outside world know we shut down. 
+            // Emit events to let the outside world know we shut down.
             // This is especially important if this instance was running in a Node.js cluster: the process will
             // not exit automatically after this shutdown because Node.js' IPC channel between worker and master is still open.
             // By sending these events, the cluster manager can determine if it should (and when to) execute process.exit()
-            
+
             // process.emit('acebase-server-shutdown');             // Emit on process
             process.emit('beforeExit', request.sigint ? 130 : 0);   // Emit on process
             try {
@@ -336,24 +336,24 @@ export class AceBaseServer extends SimpleEventEmitter {
             this.emit('shutdown'); // Emit on AceBaseServer instance
         };
         this.shutdown = async () => {
-            if (this.config.server) throw new AceBaseExternalServerError();
+            if (this.config.server) { throw new AceBaseExternalServerError(); }
             await shutdown({ sigint: false });
         };
         // Offload shutdown control to an external server
         if (this.config.server) {
-            server.on("close", function close() {
-                server.off("request", app);
-                server.off("close", close);
+            server.on('close', function close() {
+                server.off('request', app);
+                server.off('close', close);
                 shutdown({ sigint: false });
             });
             const ready = () => {
                 this.debug.log(`"${db.name}" database server running at ${this.url}`);
                 this._ready = true;
                 this.emitOnce(`ready`);
-                server.off("listening", ready);
-            }
-            if (server.listening) ready();
-            else server.on("listening", ready);
+                server.off('listening', ready);
+            };
+            if (server.listening) { ready(); }
+            else {server.on('listening', ready);}
         } else {
             process.on('SIGINT', () => shutdown({ sigint: true }));
         }
@@ -364,7 +364,7 @@ export class AceBaseServer extends SimpleEventEmitter {
      * @param clientIp ip address of the user
      * @param code reset code that was sent to the user's email address
      * @param newPassword new password chosen by the user
-     */    
+     */
     resetPassword (clientIp: string, code: string, newPassword: string): Promise<DbUserAccountDetails> {
         throw new AceBaseServerNotReadyError();
     }
@@ -381,7 +381,7 @@ export class AceBaseServer extends SimpleEventEmitter {
     /**
      * Shuts down the server. Stops listening for incoming connections, breaks current connections and closes the database.
      * Is automatically executed when a "SIGINT" process event is received.
-     * 
+     *
      * Once the shutdown procedure is completed, it emits a "shutdown" event on the server instance, "acebase-server-shutdown" event on the `process`, and sends an 'acebase-server-shutdown' IPC message if Node.js clustering is used.
      * These events can be handled by cluster managing code to `kill` or `exit` the process safely.
      */
@@ -389,15 +389,15 @@ export class AceBaseServer extends SimpleEventEmitter {
         throw new AceBaseServerNotReadyError();
     }
 
-    /** 
-     * Temporarily stops the server from handling incoming connections, but keeps existing connections open 
+    /**
+     * Temporarily stops the server from handling incoming connections, but keeps existing connections open
      */
     pause(): Promise<void> {
         throw new AceBaseServerNotReadyError();
     }
 
-    /** 
-     * Resumes handling incoming connections 
+    /**
+     * Resumes handling incoming connections
      */
     resume(): Promise<void> {
         throw new AceBaseServerNotReadyError();
@@ -405,7 +405,7 @@ export class AceBaseServer extends SimpleEventEmitter {
 
     /**
      * Extend the server API with your own custom functions. Your handler will be listening
-     * on path /ext/[db name]/[ext_path]. 
+     * on path /ext/[db name]/[ext_path].
      * @example
      * // Server side:
      * const _quotes = [...];
@@ -443,7 +443,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             return provider;
         }
         catch(err) {
-            throw new Error(`Failed to configure provider ${providerName}: ${err.message}`)
+            throw new Error(`Failed to configure provider ${providerName}: ${err.message}`);
         }
     }
 }

@@ -26,7 +26,7 @@ export interface RouteInitEnvironment {
     authCache: SimpleCache<string, DbUserAccountDetails>;
     authProviders: { [providerName: string]: OAuth2Provider };
     rules: PathBasedRules
-};
+}
 
 export interface RouteRequestEnvironment {
     /** If the request has an Authentication: bearer token, the user will be bound to the incoming request */
@@ -34,6 +34,6 @@ export interface RouteRequestEnvironment {
 
     /** If context is sent through AceBase-Context header, it will be bound to the incoming request */
     context: { [key: string]: any };
-};
+}
 
 export type RouteRequest<ReqQuery = any, ReqBody = any, ResBody = any> = Request<any, ResBody, ReqBody, ReqQuery> & RouteRequestEnvironment;

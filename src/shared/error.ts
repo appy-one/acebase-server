@@ -16,7 +16,7 @@ interface ErrorLike {
     code?: string;
     message: string;
     stack?: string;
-};
+}
 
 export const sendError = (res: Response, err: ErrorLike) => {
     res.contentType('application/json');
@@ -26,12 +26,12 @@ export const sendError = (res: Response, err: ErrorLike) => {
     else {
         sendUnexpectedError(res, err as Error); // res.status(500).send({ code: 'unknown', message: 'server error', details: err.message }); // Internal server error
     }
-}
+};
 
 export const sendBadRequestError = (res: Response, err: { code: string, message: string }) => {
     res.status(400).contentType('application/json').send({ code: err.code, message: err.message }); // Bad Request
-}
+};
 
 export const sendUnexpectedError = (res: Response, err: Error) => {
     res.status(500).contentType('application/json').send({ code: 'unexpected', message: 'server error', details: err.message }); // Internal server error
-}
+};

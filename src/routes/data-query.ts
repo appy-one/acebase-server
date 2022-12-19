@@ -62,7 +62,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const clientId = data.client_id;
             const client = env.clients.get(clientId);
             client.realtimeQueries[queryId] = { path, query, options };
-            
+
             const sendEvent = event => {
                 const client = env.clients.get(clientId);
                 if (!client) { return false; } // Not connected, stop subscription
@@ -72,7 +72,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 event.query_id = queryId;
                 const data = Transport.serialize(event);
                 client.socket.emit('query-event', data);
-            }
+            };
             options.eventHandler = sendEvent;
         }
         try {
@@ -82,7 +82,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             }
             const response = {
                 count: results.length,
-                list: results // []
+                list: results, // []
             };
             res.setHeader('AceBase-Context', JSON.stringify(context));
             res.send(Transport.serialize(response));

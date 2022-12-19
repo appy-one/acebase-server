@@ -16,7 +16,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
         // console.log(`event: server.connection`);
         if (terminating) {
             destroySocket(socket);
-        } 
+        }
         else {
             sockets.add(socket);
             socket.once('close', () => {

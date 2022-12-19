@@ -7,13 +7,13 @@ import { AceBaseUserSignupEmailRequest } from '../shared/email';
 import { createPublicAccessToken, createSignedPublicToken } from '../shared/tokens';
 import { sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
-export class SignupError extends Error { 
+export class SignupError extends Error {
     constructor(public code: 'admin_only'|'conflict'|'email_conflict'|'username_conflict'|'missing_details'|'invalid_email'|'invalid_username'|'invalid_display_name'|'invalid_password'|'invalid_picture'|'invalid_settings', message: string) {
         super(message);
     }
 }
 
-export type RequestQuery = {};
+export type RequestQuery = never;
 export type RequestBody = {
     username: string;
     email: string;
@@ -45,7 +45,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         // Create user if it doesn't exist yet.
         // TODO: Rate-limit nr of signups per IP to prevent abuse
-        
+
         const details = req.body;
 
         if (typeof details.display_name === 'string' && typeof details.displayName !== 'string') {
@@ -82,7 +82,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         else  if (details.picture && !isValidPicture(details.picture)) {
             err = invalidPictureError;
         }
-        
+
         if (err === emailExistsError || err === usernameExistsError) {
             env.log.error(LOG_ACTION, 'conflict', { ...LOG_DETAILS, username: details.username, email: details.email });
             res.statusCode = 409; // conflict
@@ -97,7 +97,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         try {
             // Ok, create user
-            let pwd = createPasswordHash(details.password);
+            const pwd = createPasswordHash(details.password);
             const user: DbUserAccountDetails = {
                 uid: null,
                 username: details.username ?? null,
@@ -113,7 +113,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 last_signin: new Date(),
                 last_signin_ip: req.ip,
                 picture: details.picture ?? null,
-                settings: details.settings ?? {}
+                settings: details.settings ?? {},
             };
 
             const userRef = await env.authRef.push(user);
@@ -134,13 +134,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     username: user.username,
                     email: user.email,
                     displayName: user.display_name,
-                    settings: user.settings
+                    settings: user.settings,
                 },
                 date: user.created,
                 ip: user.created_ip,
                 provider: 'acebase',
                 activationCode: createSignedPublicToken({ uid: user.uid }, env.tokenSalt),
-                emailVerified: false
+                emailVerified: false,
             };
 
             env.config.email?.send(request).catch(err => {
@@ -149,9 +149,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             // Return the positive news
             const isAdmin = req.user && req.user.uid === 'admin';
-            res.send({ 
+            res.send({
                 access_token: isAdmin ? '' : createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
-                user: getPublicAccountDetails(user)
+                user: getPublicAccountDetails(user),
             });
         }
         catch (err) {
