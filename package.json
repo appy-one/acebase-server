@@ -19,12 +19,13 @@
     "test": "set NODE_ENV=development && npm run start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && echo Done!",
+    "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && npm run build:vars && echo Done!",
     "build:clean": "rm -fr dist/*",
     "build:esm": "tsc -p tsconfig.json && npx tsc-esm-fix ---target='dist/esm'",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:packages": "bash ./create-package-files",
-    "npmfix": "echo 'Regenerating package-lock.json...' && npm i --package-lock-only"
+    "build:vars": "node ./build-vars.js",
+    "prepare": "npm run build:vars"
   },
   "keywords": [
     "database",
