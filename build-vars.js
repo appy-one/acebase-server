@@ -1,4 +1,4 @@
-// Executed by npm "build" and "prepare" scripts
+// Executed by npm "prepack" script
 const { readFileSync, writeFileSync } = require('fs');
 const packageInfo = require('./package.json');
 
