@@ -24,7 +24,8 @@
     "build:esm": "tsc -p tsconfig.json && npx tsc-esm-fix ---target='dist/esm'",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:packages": "bash ./create-package-files",
-    "npmfix": "echo 'Regenerating package-lock.json...' && npm i --package-lock-only"
+    "build:vars": "node ./build-vars.js",
+    "prepack": "npm run build:vars"
   },
   "keywords": [
     "database",

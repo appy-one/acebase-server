@@ -1,8 +1,6 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import * as os from 'os';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore path to package.json is different in builds
-import meta from '../../../package.json' assert { type: 'json' };
+const SERVER_VERSION = '%SERVER_VERSION%'; // Loaded from package.json by npm scripts
 
 export type RequestQuery = null;
 export type RequestBody = null;
@@ -18,7 +16,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/info/${env.db.name}`, (req: Request, res) => {
 
         const info = {
-            version: meta.version, // Loaded from package.json
+            version: SERVER_VERSION,
             time: Date.now(),
             process: process.pid,
         };
