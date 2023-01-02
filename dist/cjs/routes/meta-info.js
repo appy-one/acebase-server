@@ -2,14 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const os = require("os");
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore path to package.json is different in builds
-const package_json_1 = require("../../../package.json");
+const SERVER_VERSION = '1.16.1'; // Loaded from package.json by npm scripts
 const addRoute = (env) => {
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
-            version: package_json_1.default.version,
+            version: SERVER_VERSION,
             time: Date.now(),
             process: process.pid,
         };

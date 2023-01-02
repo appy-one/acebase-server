@@ -1,12 +1,10 @@
 import * as os from 'os';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore path to package.json is different in builds
-import meta from '../../../package.json' assert { type: 'json' };
+const SERVER_VERSION = '1.16.1'; // Loaded from package.json by npm scripts
 export const addRoute = (env) => {
     // Add info endpoint
     env.app.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
-            version: meta.version,
+            version: SERVER_VERSION,
             time: Date.now(),
             process: process.pid,
         };
