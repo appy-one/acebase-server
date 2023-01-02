@@ -24,8 +24,8 @@
     "build:esm": "tsc -p tsconfig.json && npx tsc-esm-fix ---target='dist/esm'",
     "build:cjs": "tsc -p tsconfig-cjs.json",
     "build:packages": "bash ./create-package-files",
-    "build:vars": "node ./build-vars.js",
-    "prepack": "npm run build:vars"
+    "preversion": "npm run build",
+    "version": "node ./build-vars.js"
   },
   "keywords": [
     "database",
