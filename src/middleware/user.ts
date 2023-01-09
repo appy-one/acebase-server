@@ -1,7 +1,7 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendNotAuthenticatedError } from '../shared/error';
 import { signIn } from '../shared/signin';
-import { decodePublicAccessToken } from '../shared/tokens';
+import { decodePublicAccessToken, PublicAccessToken } from '../shared/tokens';
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
 
@@ -22,7 +22,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
 
         if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
             const token = authorization.slice(7);
-            let tokenDetails: ReturnType<typeof decodePublicAccessToken>;
+            let tokenDetails: PublicAccessToken;
             try {
                 tokenDetails = decodePublicAccessToken(token, env.tokenSalt);
             }

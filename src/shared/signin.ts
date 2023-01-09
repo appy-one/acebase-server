@@ -2,7 +2,7 @@ import { ID } from 'acebase-core';
 import { DbUserAccountDetails } from '../schema/user';
 import { RouteInitEnvironment, RouteRequest } from './env';
 import { createPasswordHash, getOldPasswordHash, getPasswordHash } from './password';
-import { decodePublicAccessToken } from './tokens';
+import { decodePublicAccessToken, PublicAccessToken } from './tokens';
 
 export type SignInCredentials =
     { method: 'token'; access_token: string } |
@@ -31,7 +31,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
 
     try {
         const query = env.authRef.query();
-        let tokenDetails: ReturnType<typeof decodePublicAccessToken>;
+        let tokenDetails: PublicAccessToken;
         switch (credentials.method) {
             case 'token': {
                 if (typeof credentials.access_token !== 'string') {

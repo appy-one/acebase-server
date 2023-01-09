@@ -13,25 +13,27 @@ export const createPublicAccessToken = (uid: string, ip: string, dbToken: string
     return 'b' + createSignedPublicToken(obj, password);
 };
 
-export const decodePublicAccessToken = (accessToken: string, password: string) : { access_token: string; uid: string; created: number; ip: string } => {
+export type PublicAccessToken = { access_token: string; uid: string; created: number; ip: string };
+export const decodePublicAccessToken = (accessToken: string, password: string) : PublicAccessToken => {
+    let details: PublicAccessToken;
     if (accessToken[0] === 'b') {
         // New signed version
         const obj = parseSignedPublicToken(accessToken.slice(1), password);
-        const details = {
+        details = {
             access_token: obj.t,
             uid: obj.u,
             created: obj.c,
             ip: obj.i,
         };
-        if (!details.access_token || !details.uid || !details.created || !details.ip) {
-            throw new Error('Invalid token');
-        }
-        return details;
     }
     else if (accessToken[0] === 'a') {
         // Old insecure version, previously allowed until August 1, 2020.
         throw new Error('Old token version not allowed');
     }
+    if (!details || !details.access_token || !details.uid || !details.created || !details.ip) {
+        throw new Error('Invalid token');
+    }
+    return details;
 };
 
 
