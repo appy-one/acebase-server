@@ -12,24 +12,25 @@ export const createPublicAccessToken = (uid, ip, dbToken, password) => {
     return 'b' + createSignedPublicToken(obj, password);
 };
 export const decodePublicAccessToken = (accessToken, password) => {
+    let details;
     if (accessToken[0] === 'b') {
         // New signed version
         const obj = parseSignedPublicToken(accessToken.slice(1), password);
-        const details = {
+        details = {
             access_token: obj.t,
             uid: obj.u,
             created: obj.c,
             ip: obj.i,
         };
-        if (!details.access_token || !details.uid || !details.created || !details.ip) {
-            throw new Error('Invalid token');
-        }
-        return details;
     }
     else if (accessToken[0] === 'a') {
         // Old insecure version, previously allowed until August 1, 2020.
         throw new Error('Old token version not allowed');
     }
+    if (!details || !details.access_token || !details.uid || !details.created || !details.ip) {
+        throw new Error('Invalid token');
+    }
+    return details;
 };
 const getSignature = (content, salt) => {
     // Use fast md5 with salt to sign with. Large salt recommended!!

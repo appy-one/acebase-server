@@ -1,10 +1,11 @@
 export declare const createPublicAccessToken: (uid: string, ip: string, dbToken: string, password: string) => string;
-export declare const decodePublicAccessToken: (accessToken: string, password: string) => {
+export declare type PublicAccessToken = {
     access_token: string;
     uid: string;
     created: number;
     ip: string;
 };
+export declare const decodePublicAccessToken: (accessToken: string, password: string) => PublicAccessToken;
 /**
  * Sign objects with an md5 hash. An attacker might base4 decode it and see the content and generated checksum hash,
  * but will need to guess the password used to generate the hash to manipulate it. This is  not impossible but will take
