@@ -14,7 +14,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/export/${env.db.name}/*`, async (req: Request, res) => {
         // Export API
         const path = req.path.slice(env.db.name.length + 9);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = await env.rules.isOperationAllowed(req.user, path, 'export');
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }

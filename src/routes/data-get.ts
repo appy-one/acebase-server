@@ -12,7 +12,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/data/${env.db.name}/*`, async (req: Request, res) => {
         // Request data
         const path = req.path.slice(env.db.name.length + 7);
-        const access = env.rules.userHasAccess(req.user, path, false);
+
+        // Pre-check read access
+        let access = await env.rules.isOperationAllowed(req.user, path, 'read');
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -41,9 +43,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
             options.exclude = [...options.exclude || [], '__auth__', '__log__'];
         }
 
+        // Check 'get' access
+        access = await env.rules.isOperationAllowed(req.user, path, 'get', options);
+        if (!access.allow) {
+            return sendUnauthorizedError(res, access.code, access.message);
+        }
+
         try {
-            // const snap = await db.ref(path).get(options);
-            // const value = snap.val(), context = snap.context();
             const { value, context } = await env.db.api.get(path, options);
             if (!env.config.transactions?.log) {
                 delete context.acebase_cursor;

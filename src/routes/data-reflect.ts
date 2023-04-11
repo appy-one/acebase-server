@@ -1,4 +1,5 @@
 import { IReflectionChildrenInfo, IReflectionNodeInfo, PathInfo } from 'acebase-core';
+import { AccessCheckOperation, HasAccessResult } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendUnauthorizedError } from '../shared/error';
 
@@ -22,16 +23,22 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/reflect/${env.db.name}/*`, async (req: Request, res) => {
         // Reflection API
         const path = req.path.slice(env.db.name.length + 10);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = await env.rules.isOperationAllowed(req.user, path, 'reflect');
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
         const impersonatedAccess = {
             uid: req.user?.uid !== 'admin' ? null : req.query.impersonate,
+            /**
+             * NEW, check all possible operations
+             */
+            operations: {} as Record<AccessCheckOperation, HasAccessResult>,
+            /** Result of `get` operation */
             read: {
                 allow: false,
                 error: null,
             },
+            /** Result of `set` operation */
             write: {
                 allow: false,
                 error: null,
@@ -39,12 +46,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
         };
         const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
         if (impersonatedAccess.uid) {
-            const readAccess = env.rules.userHasAccess(impersonatedUser, path, false);
+            for (const operation of ['read','write','transact','get','update','set','delete','reflect','exists','query','import','export'] as AccessCheckOperation[]) {
+                const access = await env.rules.isOperationAllowed(impersonatedUser, path, operation);
+                impersonatedAccess.operations[operation] = access;
+            }
+            const readAccess = impersonatedAccess.operations.read; // await env.rules.isOperationAllowed(impersonatedUser, path, 'read');
             impersonatedAccess.read.allow = readAccess.allow;
             if (!readAccess.allow) {
                 impersonatedAccess.read.error = { code: readAccess.code, message: readAccess.message };
             }
-            const writeAccess = env.rules.userHasAccess(impersonatedUser, path, true);
+            const writeAccess = impersonatedAccess.operations.write; // await env.rules.isOperationAllowed(impersonatedUser, path, 'write');
             impersonatedAccess.write.allow = writeAccess.allow;
             if (!writeAccess.allow) {
                 impersonatedAccess.write.error = { code: writeAccess.code, message: writeAccess.message };
@@ -71,12 +82,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 else if (type === 'info') {
                     list = typeof result.children === 'object' && 'list' in result.children ? result.children.list : [];
                 }
-                list && list.forEach(childInfo => {
+                for (const childInfo of list ?? []) {
                     childInfo.access = {
-                        read: env.rules.userHasAccess(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), false).allow,
-                        write: env.rules.userHasAccess(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), true).allow,
+                        read: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'read')).allow,
+                        write: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'write')).allow,
                     };
-                });
+                }
             }
             res.send(result);
         }

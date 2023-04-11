@@ -1,5 +1,6 @@
 import { SchemaValidationError } from 'acebase';
 import { ID, Transport, Api } from 'acebase-core';
+import { AccessRuleValidationError } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
@@ -40,13 +41,14 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     const _transactions = new Map<string, Transaction>();
 
     // Start transaction endpoint:
-    env.app.post(`/transaction/${env.db.name}/start`, (req: StartRequest, res) => {
+    env.app.post(`/transaction/${env.db.name}/start`, async (req: StartRequest, res) => {
         const data = req.body;
 
         const LOG_ACTION = 'data.transaction.start';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path: data.path };
 
-        const access = env.rules.userHasAccess(req.user, data.path, true);
+        // Pre-check read/write access
+        const access = await env.rules.isOperationAllowed(req.user, data.path, 'transact', { context: req.context });
         if (!access.allow) {
             env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
             return sendUnauthorizedError(res, access.code, access.message);
@@ -70,8 +72,16 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             env.debug.verbose(`Transaction ${tx.id} starting...`);
 
             // const ref = db.ref(tx.path);
-            const donePromise = env.db.api.transaction(tx.path, val => {
+            const donePromise = env.db.api.transaction(tx.path, async (val) => {
                 env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
+
+                const access = await env.rules.isOperationAllowed(req.user, data.path, 'get', { value: val, context: req.context });
+                if (!access.allow) {
+                    env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
+                    sendUnauthorizedError(res, access.code, access.message);
+                    return; // Return undefined to cancel transaction
+                }
+
                 const currentValue = Transport.serialize(val);
                 const promise = new Promise<any>((resolve) => {
                     tx.finish = (val: any) => {
@@ -86,6 +96,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             }, { context: tx.context });
         }
         catch (err) {
+            await tx?.finish(); // Finish without value to cancel the transaction
             env.debug.error(`failed to start transaction on "${tx.path}":`, err);
             env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
             sendUnexpectedError(res, err);
@@ -108,14 +119,14 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         clearTimeout(tx.timeout);
         _transactions.delete(tx.id);
 
-        const access = env.rules.userHasAccess(req.user, tx.path, true);
-        if (!access.allow) {
-            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
-            return sendUnauthorizedError(res, access.code, access.message);
-        }
-
         // Finish transaction
         try {
+            // Check again if a 'write' to this path is allowed by this user
+            let access = await env.rules.isOperationAllowed(req.user, tx.path, 'write', { context: tx.context });
+            if (!access.allow) {
+                throw new AccessRuleValidationError(access);
+            }
+
             let cancel = false;
             if (typeof data.value === 'object' && (data.value === null || Object.keys(data.value).length === 0)) {
                 // Returning undefined from a transaction callback should cancel the transaction
@@ -133,6 +144,12 @@ export const addRoutes = (env: RouteInitEnvironment) => {
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }
 
+            // Check if the value to be written is allowed
+            access = await env.rules.isOperationAllowed(req.user, tx.path, 'set', { value: newValue, context: tx.context });
+            if (!access.allow) {
+                throw new AccessRuleValidationError(access);
+            }
+
             const result = await tx.finish(newValue);
 
             // NEW: capture cursor and return it in the response context header
@@ -144,7 +161,12 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         }
         catch (err) {
             tx.finish(); // Finish without value cancels the transaction
-            if (err instanceof SchemaValidationError) {
+            if (err instanceof AccessRuleValidationError) {
+                const access = err.result;
+                env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
+                return sendUnauthorizedError(res, access.code, access.message);
+            }
+            else if (err instanceof SchemaValidationError) {
                 env.log.error(LOG_ACTION, 'schema_validation_failed', { ...LOG_DETAILS, reason: err.reason });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }

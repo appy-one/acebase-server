@@ -1,35 +1,66 @@
 import { AceBase } from 'acebase';
 import { DebugLogger, PathInfo } from 'acebase-core';
 import * as fs from 'fs';
+import { executeSandboxed } from './sandbox';
 import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT, AuthAccessDefault } from './settings';
 
-type PathRuleFunction = ((env: any) => boolean) & { getText(): string };
+// type PathRuleFunction = ((env: any) => boolean) & { getText(): string };
+type PathRule = boolean | string; // | PathRuleFunction
 type PathRules = object & {
+    // schema definitions
     '.schema'?: string | object;
-    '.read'?: boolean | string | PathRuleFunction;
-    '.write'?: boolean | string | PathRuleFunction;
-    '.validate'?: string | PathRuleFunction;
+
+    // general read/write rules for all nested data
+    '.read'?: PathRule;
+    '.write'?: PathRule;
+
+    // special read rules for all nested data
+    '.query'?: PathRule;
+    '.export'?: PathRule;
+    '.reflect'?: PathRule;
+    '.exists'?: PathRule;
+
+    // special write rules for all nested data
+    '.transact'?: PathRule;
+    '.update'?: PathRule;
+    '.set'?: PathRule;
+    '.delete'?: PathRule;
+    '.import'?: PathRule;
+
+    // custom validation code on data being written to the target path
+    '.validate'?: string; //PathRuleFunction;
 }
 type RulesData = {
     rules: PathRules;
 }
 export type RuleValidationFailCode = 'rule' | 'no_rule' | 'private' | 'exception';
 // type HasAccessResult = { allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any };
-type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: Error });
+export type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: Error });
+export class AccessRuleValidationError extends Error {
+    constructor(public result: HasAccessResult) {
+        super(result.message);
+    }
+}
 
+export type AccessCheckOperation = 'read' | 'write' | 'transact' | 'get' | 'update' | 'set' | 'delete' | 'reflect' | 'exists' | 'query' | 'import' | 'export';
 export class PathBasedRules {
 
     private authEnabled: boolean;
     private accessRules: RulesData;
+    private db: AceBase;
+    private debug: DebugLogger;
     stop(): void { throw new Error('not started yet'); }
 
     constructor(rulesFilePath: string, defaultAccess: AuthAccessDefault, env: { debug: DebugLogger, db: AceBase, authEnabled: boolean } ) {
         // Reads rules from a file and monitors it
         // Check if there is a rules file, load it or generate default
 
+        this.db = env.db;
+        this.debug = env.debug;
         const readRules = () => {
             try {
+                // TODO: store in db itself under __rules__ or in separate rules.db storage file
                 const json = fs.readFileSync(rulesFilePath, 'utf-8');
                 const obj = JSON.parse(json);
                 if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
@@ -59,7 +90,7 @@ export class PathBasedRules {
                 }
             }
         })(defaultAccess);
-        const defaultRules:RulesData = {
+        const defaultRules: RulesData = {
             rules: {
                 '.read': defaultAccessRule,
                 '.write': defaultAccessRule,
@@ -77,15 +108,22 @@ export class PathBasedRules {
         // Convert string rules to functions that can be executed
         const processRules = (path: string, parent: any, variables: string[]) => {
             Object.keys(parent).forEach(key => {
-                let rule = parent[key];
+                const rule = parent[key];
                 if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
+                    let ruleCode = rule.includes('return ') ? rule : `return ${rule}`;
+                    // Add `await`s to `value` and `exists` call expressions
+                    ruleCode = ruleCode.replace(/(value|exists)\(/g, (m, fn) => `await ${fn}(`);
                     // Convert to function
-                    const text = rule;
-                    rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
-                    rule.getText = () => {
-                        return text;
-                    };
-                    return parent[key] = rule;
+                    // rule = eval(
+                    //     `(async (env) => {` +
+                    //     `  const { now, path, ${variables.join(', ')}, operation, data, auth, value, exists } = env;` +
+                    //     `  ${ruleCode};` +
+                    //     `})`);
+                    // rule.getText = () => {
+                    //     return ruleCode;
+                    // };
+                    ruleCode = `(async () => {\n${ruleCode}\n})();`;
+                    return parent[key] = ruleCode;
                 }
                 else if (key === '.schema') {
                     // Add schema
@@ -121,7 +159,7 @@ export class PathBasedRules {
         this.accessRules = accessRules;
     }
 
-    userHasAccess(user: Pick<DbUserAccountDetails, 'uid'>, path: string, write = false): HasAccessResult {
+    async isOperationAllowed(user: Pick<DbUserAccountDetails, 'uid'>, path: string, operation: AccessCheckOperation, data?: Record<string, any>): Promise<HasAccessResult> {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
@@ -130,7 +168,7 @@ export class PathBasedRules {
             // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
             return allow;
         }
-        else if (user && user.uid === 'admin') {
+        else if (user?.uid === 'admin') {
             // Always allow admin access
             // TODO: implement user.is_admin, so the default admin account can be disabled
             return allow;
@@ -141,39 +179,107 @@ export class PathBasedRules {
             return { allow: false, code: 'private', message: `Access to private resource "${path}" not allowed` };
         }
 
-        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true"
-        const pathKeys = PathInfo.getPathKeys(path);
+        const getFullPath = (path: string, relativePath: string) => {
+            if (relativePath.startsWith('/')) {
+                // Absolute path
+                return relativePath;
+            }
+            else if (!relativePath.startsWith('.')) {
+                throw new Error('Path must be either absolute (/) or relative (./)');
+            }
+            let targetPathInfo = PathInfo.get(path);
+            const trailKeys = PathInfo.getPathKeys(relativePath).slice(1); // Ignore first '.' key
+            trailKeys.forEach(key => {
+                if (key === '..') { targetPathInfo = targetPathInfo.parent; }
+                else { targetPathInfo = targetPathInfo.child(key); }
+            });
+            return targetPathInfo.path;
+        };
+        const env = {
+            now: Date.now(),
+            auth: user || null,
+            operation,
+            context: typeof data?.context === 'object' && data.context !== null ? { ...data.context } : {},
+        };
+        const pathInfo = PathInfo.get(path);
+        const pathKeys = pathInfo.keys.slice();
         let rule = this.accessRules.rules;
-        const rulePath = [];
-        while(true) {
-            if (!rule) {
-                // TODO: check if this one is redundant with the pathKeys.length === 0 near the end
-                return { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
-            }
-            const checkRule = write ? rule['.write'] : rule['.read'];
-            if (typeof checkRule === 'boolean') {
-                if (!checkRule) {
-                    return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') };
+        const rulePathKeys = [] as typeof pathKeys;
+        let currentPath = '';
+        let isAllowed = false;
+        while (rule) {
+            // Check read/write access or validate operation
+            const checkRules = [] as PathRule[];
+            const applyRule = (rule: PathRule) => {
+                if (rule && checkRules.includes(rule)) {
+                    checkRules.push(rule);
                 }
-                return allow;
+            };
+            if (['read','get','exists','query','reflect','export','transact'].includes(operation)) {
+                // Operations that require 'read' access
+                applyRule(rule['.read']);
             }
-            if (typeof checkRule === 'function') {
-                try {
-                    // Execute rule function
-                    if (!checkRule(env)) {
-                        return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/') };
+            if ('.write' in rule && ['write','update','set','delete','import','transact'].includes(operation)) {
+                // Operations that require 'write' access
+                applyRule(rule['.write']);
+            }
+            if (`.${operation}` in rule) {
+                // If there is a dedicated rule (eg ".update" or ".reflect") for this operation, use it.
+                applyRule(rule[`.${operation}`]);
+            }
+            const rulePath = PathInfo.get(rulePathKeys).path;
+            for (const rule of checkRules) {
+                if (typeof rule === 'boolean') {
+                    if (!rule) {
+                        return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath };
                     }
-                    return allow;
+                    isAllowed = true; // return allow;
                 }
-                catch (err) {
-                    // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                    return { allow: false, code: 'exception', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err };
+                if (typeof rule === 'string') {
+                    try {
+                        // Execute rule function
+                        const ruleEnv = {
+                            ...env,
+                            /**
+                             * Allows checking if a path exists
+                             * @example
+                             * await exists('./shared/' + auth.uid)
+                             */
+                            exists: async (target: string) => this.db.ref(getFullPath(currentPath, target)).exists(),
+                            /**
+                             * Allows getting current values stored in the db
+                             * @example
+                             * await value('./writable') === true
+                             * @example
+                             * const current = await value('.');
+                             * return current.writable === true && current.owner === auth.uid;
+                             * @example
+                             * // Same as above, but only load `writable` and `owner` properties
+                             * const current = await value('.', ['writable', 'owner']);
+                             * return current.writable === true && current.owner === auth.uid;
+                             */
+                            value: async (target: string, include?: string[]) => this.db.ref(getFullPath(currentPath, target)).get({ include }),
+                        };
+                        if (!await executeSandboxed(rule, ruleEnv)) {
+                            return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath };
+                        }
+                        isAllowed = true; // return allow;
+                    }
+                    catch (err) {
+                        // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
+                        return { allow: false, code: 'exception', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath, details: err };
+                    }
                 }
             }
+            if (isAllowed) {
+                break;
+            }
+            // Proceed with next key in trail
             if (pathKeys.length === 0) {
-                return { allow: false, code: 'no_rule', message: `No rule found for path ${path}` };
+                break;
             }
             let nextKey = pathKeys.shift();
+            currentPath = PathInfo.get(currentPath).childPath(nextKey);
             // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
             // need to change things here for usage of wildcard paths in subscriptions
             if (typeof rule[nextKey] === 'undefined') {
@@ -182,8 +288,77 @@ export class PathBasedRules {
                 if (wildcardKey) { env[wildcardKey] = nextKey; }
                 nextKey = wildcardKey;
             }
-            nextKey && rulePath.push(nextKey);
+            nextKey && rulePathKeys.push(nextKey);
             rule = rule[nextKey];
         }
+
+        // Now dig deeper to check nested .validate rules
+        if (isAllowed && ['set', 'update', 'transact'].includes(operation)) {
+            // validate rules start at current path being written to
+            const startRule = pathInfo.keys.reduce((rule, key) => {
+                if (key in rule) { return rule[key]; }
+                if ('*' in rule) { return rule['*']; }
+                const variableKey = Object.keys(rule).find(key => typeof key === 'string' && key.startsWith('$'));
+                if (variableKey) { return rule[variableKey]; }
+                return null;
+            }, this.accessRules.rules);
+
+            const getNestedRules = (target: string[], rule: PathRules) => {
+                const nested = Object.keys(rule).reduce((arr, key) => {
+                    if (key === '.validate' && typeof rule[key] === 'string') {
+                        arr.push({ target, validate: rule[key] });
+                    }
+                    if (!key.startsWith('.')) {
+                        const nested = getNestedRules([...target, key], rule[key]);
+                        arr.push(...nested);
+                    }
+                    return arr;
+                }, [] as { target: string[]; validate: string }[]);
+                return nested;
+            };
+
+            // Check all that apply for sent data (update requires a different strategy)
+            const checkRules = getNestedRules([], startRule);
+            for (const check of checkRules) {
+                // Keep going as long as rules validate
+                const targetData = check.target.reduce(
+                    (data, key) => {
+                        if (data !== null && typeof data === 'object' && key in data) {
+                            return data[key];
+                        }
+                        return null;
+                    },
+                    data.value
+                );
+                if (typeof targetData === 'undefined' && operation === 'update' && check.target.length >= 1 && check.target[0] in data) {
+                    // Ignore, data for direct child path is not being set by update operation
+                    continue;
+                }
+                const validateData = typeof targetData === 'undefined' ? null : targetData;
+                if (validateData === null) {
+                    // Do not validate deletes, this should be done by ".write" or ".delete" rule
+                    continue;
+                }
+                const validatePath = PathInfo.get(path).child(check.target).path;
+                const validateEnv = {
+                    ...env,
+                    operation: operation === 'update' ? (check.target.length === 0 ? 'update' : 'set') : operation,
+                    data: validateData,
+                    exists: async (target: string) => this.db.ref(getFullPath(validatePath, target)).exists(),
+                    value: async (target: string, include?: string[]) => this.db.ref(getFullPath(validatePath, target)).get({ include }),
+                };
+                try {
+                    if (!await executeSandboxed(check.validate, validateEnv)) {
+                        return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule: check.validate, rulePath: validatePath };
+                    }
+                }
+                catch (err) {
+                    // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
+                    return { allow: false, code: 'exception', message: `${operation} operation denied to path "${path}" by set rule`, rule: check.validate, rulePath: validatePath, details: err };
+                }
+            }
+        }
+
+        return isAllowed ? allow : { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
     }
 }

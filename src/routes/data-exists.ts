@@ -11,7 +11,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.app.get(`/exists/${env.db.name}/*`, async (req: Request, res) => {
         // Exists query
         const path = req.path.slice(env.db.name.length + 9);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = await env.rules.isOperationAllowed(req.user, path, 'exists');
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }

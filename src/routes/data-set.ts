@@ -1,6 +1,6 @@
 import { SchemaValidationError } from 'acebase';
 import { Transport } from 'acebase-core';
-import { RuleValidationFailCode } from '../rules';
+import { AccessRuleValidationError, RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
 
@@ -27,13 +27,13 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const LOG_ACTION = 'data.set';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path };
 
-        const access = env.rules.userHasAccess(req.user, path, true);
-        if (!access.allow) {
-            env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null, rule_error: access.details?.message ?? null });
-            return sendUnauthorizedError(res, access.code, access.message);
-        }
-
         try {
+            // Pre-check 'write' access
+            let access = await env.rules.isOperationAllowed(req.user, path, 'write', { context: req.context });
+            if (!access.allow) {
+                throw new AccessRuleValidationError(access);
+            }
+
             const data = req.body;
             if (typeof data?.val === 'undefined' || !['string','object','undefined'].includes(typeof data?.map)) {
                 throw new SetDataError('invalid_serialized_value', 'The sent value is not properly serialized');
@@ -43,6 +43,11 @@ export const addRoute = (env: RouteInitEnvironment) => {
             if (path === '' && req.user?.uid !== 'admin' && val !== null && typeof val === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(val).filter(key => key.startsWith('__')).forEach(key => delete val[key]);
+            }
+
+            access = await env.rules.isOperationAllowed(req.user, path, 'set', { value: val, context: req.context });
+            if (!access.allow) {
+                throw new AccessRuleValidationError(access);
             }
 
             // Schema validation moved to storage, no need to check here but an early check won't do no harm!
@@ -62,7 +67,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
             res.send({ success: true });
         }
         catch (err) {
-            if (err instanceof SchemaValidationError) {
+            if (err instanceof AccessRuleValidationError) {
+                const access = err.result;
+                env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null, rule_error: access.details?.message ?? null });
+                return sendUnauthorizedError(res, access.code, access.message);
+            }
+            else if (err instanceof SchemaValidationError) {
                 env.log.error(LOG_ACTION, 'schema_validation_failed', { ...LOG_DETAILS, reason: err.reason });
                 res.status(422).send({ code: 'schema_validation_failed', message: err.message });
             }
