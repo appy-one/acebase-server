@@ -9,5 +9,5 @@ export async function executeSandboxed(code: string, env: any) {
 }
 
 export function isCodeSafe(code: string) {
-    return /prototype|require|import/.test(code); // Do not allow prototype access, require or import statements
+    return /eval|prototype|require|import/.test(code); // Do not allow prototype access, require or import statements
 }
