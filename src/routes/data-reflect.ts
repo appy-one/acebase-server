@@ -23,7 +23,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.router.get(`/reflect/${env.db.name}/*`, async (req: Request, res) => {
         // Reflection API
         const path = req.path.slice(env.db.name.length + 10);
-        const access = await env.rules.isOperationAllowed(req.user, path, 'reflect');
+        const access = await env.rules.isOperationAllowed(req.user, path, 'reflect', { context: req.context, type: req.query.type });
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -45,17 +45,18 @@ export const addRoute = (env: RouteInitEnvironment) => {
             },
         };
         const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
+        const impersonatedData = { context: { acebase_reflect: true }, value: '[[reflect]]' }; // TODO: Make configurable
         if (impersonatedAccess.uid) {
-            for (const operation of ['read','write','transact','get','update','set','delete','reflect','exists','query','import','export'] as AccessCheckOperation[]) {
-                const access = await env.rules.isOperationAllowed(impersonatedUser, path, operation);
+            for (const operation of ['transact','get','update','set','delete','reflect','exists','query','import','export'] as AccessCheckOperation[]) {
+                const access = await env.rules.isOperationAllowed(impersonatedUser, path, operation, impersonatedData);
                 impersonatedAccess.operations[operation] = access;
             }
-            const readAccess = impersonatedAccess.operations.read; // await env.rules.isOperationAllowed(impersonatedUser, path, 'read');
+            const readAccess = await env.rules.isOperationAllowed(impersonatedUser, path, 'get'); // Use pre-flight 'get' check to mimic legacy 'read' check
             impersonatedAccess.read.allow = readAccess.allow;
             if (!readAccess.allow) {
                 impersonatedAccess.read.error = { code: readAccess.code, message: readAccess.message };
             }
-            const writeAccess = impersonatedAccess.operations.write; // await env.rules.isOperationAllowed(impersonatedUser, path, 'write');
+            const writeAccess = await env.rules.isOperationAllowed(impersonatedUser, path, 'update'); // Use pre-flight 'update' check to mimic legacy 'write' check
             impersonatedAccess.write.allow = writeAccess.allow;
             if (!writeAccess.allow) {
                 impersonatedAccess.write.error = { code: writeAccess.code, message: writeAccess.message };
@@ -84,8 +85,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 }
                 for (const childInfo of list ?? []) {
                     childInfo.access = {
-                        read: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'read')).allow,
-                        write: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'write')).allow,
+                        read: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'get')).allow,        // Use pre-flight 'get' check to mimic legacy 'read' check
+                        write: (await env.rules.isOperationAllowed(impersonatedUser, PathInfo.getChildPath(path, childInfo.key), 'update')).allow,    // Use pre-flight 'update' check to mimic legacy 'write' check
                     };
                 }
             }

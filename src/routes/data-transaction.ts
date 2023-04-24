@@ -48,7 +48,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path: data.path };
 
         // Pre-check read/write access
-        const access = await env.rules.isOperationAllowed(req.user, data.path, 'transact', { context: req.context });
+        const access = await env.rules.isOperationAllowed(req.user, data.path, 'transact');
         if (!access.allow) {
             env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
             return sendUnauthorizedError(res, access.code, access.message);
@@ -104,7 +104,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     });
 
     // Finish transaction endpoint:
-    env.app.post(`/transaction/${env.db.name}/finish`, async (req: FinishRequest, res) => {
+    env.router.post(`/transaction/${env.db.name}/finish`, async (req: FinishRequest, res) => {
         const data = req.body;
         const LOG_ACTION = 'data.transaction.finish';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null, path: data.path };
@@ -122,7 +122,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
         // Finish transaction
         try {
             // Check again if a 'write' to this path is allowed by this user
-            let access = await env.rules.isOperationAllowed(req.user, tx.path, 'write', { context: tx.context });
+            let access = await env.rules.isOperationAllowed(req.user, tx.path, 'set');
             if (!access.allow) {
                 throw new AccessRuleValidationError(access);
             }

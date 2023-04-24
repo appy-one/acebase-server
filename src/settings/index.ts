@@ -2,6 +2,7 @@ import { AceBaseStorageSettings } from 'acebase';
 import { readFileSync } from 'fs';
 import { AceBaseServerEmailSettings } from './email';
 import { Server } from 'http';
+import type { AceBaseServer } from '../server';
 
 export type AceBaseServerHttpsSettings = {
     enabled?: boolean;
@@ -229,6 +230,13 @@ export type AceBaseServerSettings = Partial<{
      * @default true
      */
     logColors: boolean;
+
+    /**
+     * Init callback that runs before the server adds 404 middleware and starts listening to incoming calls.
+     * Use this callback to extend the server with custom routes, add data validation rules, wait for external events, etc.
+     * @param server Instance of the `AceBaseServer`
+     */
+    init?: (server: AceBaseServer) => Promise<void>;
 }>
 
 export class AceBaseServerConfig {
@@ -249,6 +257,7 @@ export class AceBaseServerConfig {
     readonly storage?: AceBaseStorageSettings;
     readonly sponsor: boolean = false;
     readonly logColors: boolean = true;
+    readonly init?: (server: AceBaseServer) => Promise<void>;
 
     constructor(settings: AceBaseServerSettings) {
         if (typeof settings !== 'object') { settings = {}; }
@@ -270,5 +279,6 @@ export class AceBaseServerConfig {
         if (typeof settings.storage === 'object') { this.storage = settings.storage; }
         if (typeof settings.sponsor === 'boolean') { this.sponsor = settings.sponsor; }
         if (typeof settings.logColors === 'boolean') { this.logColors = settings.logColors; }
+        if (typeof settings.init === 'function') { this.init = settings.init; }
     }
 }

@@ -14,7 +14,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const path = req.path.slice(env.db.name.length + 7);
 
         // Pre-check read access
-        let access = await env.rules.isOperationAllowed(req.user, path, 'read');
+        let access = await env.rules.isOperationAllowed(req.user, path, 'get');
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -44,7 +44,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
 
         // Check 'get' access
-        access = await env.rules.isOperationAllowed(req.user, path, 'get', options);
+        access = await env.rules.isOperationAllowed(req.user, path, 'get', { context: req.context, options });
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }

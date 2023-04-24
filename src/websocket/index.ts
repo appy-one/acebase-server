@@ -144,7 +144,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         // Get client
         // const client = clients.get(socket.id);
 
-        if (!await env.rules.isOperationAllowed(client.user, subscriptionPath, 'read')) {
+        if (!await env.rules.isOperationAllowed(client.user, subscriptionPath, 'get')) {
             env.log.error('event.subscribe', 'access_denied', { uid: client.user?.uid ?? 'anonymous', path: subscriptionPath });
             return failRequest(event.socket, event.data.req_id, 'access_denied');
         }
@@ -280,7 +280,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         const donePromise = env.db.api.transaction(tx.path, async (val) => {
             env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
 
-            const access = await env.rules.isOperationAllowed(client.user, data.path, 'get', { value: val });
+            const access = await env.rules.isOperationAllowed(client.user, data.path, 'get', { value: val, context: tx.context });
             if (!access.allow) {
                 env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'access_denied' });
@@ -323,7 +323,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
 
             const newValue = 'val' in data.value ? Transport.deserialize(data.value) : undefined;
             if (typeof newValue !== 'undefined') {
-                const access = await env.rules.isOperationAllowed(client.user, data.path, 'transact', { value: newValue, context: tx.context });
+                const access = await env.rules.isOperationAllowed(client.user, data.path, 'set', { value: newValue, context: tx.context });
                 if (!access.allow) {
                     env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null }, access.details);
                     throw new SocketRequestError('access_denied', 'Access denied');

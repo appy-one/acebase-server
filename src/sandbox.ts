@@ -5,7 +5,7 @@ export async function executeSandboxed(code: string, env: any) {
     // so no globally available objects are accessible.
     const context = createContext(env);
     const result = await runInContext(code, context, { filename: 'sandbox', timeout: 10000, displayErrors: true, breakOnSigint: true });
-    return result ? true : false;
+    return result;
 }
 
 export function isCodeSafe(code: string) {

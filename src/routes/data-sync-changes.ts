@@ -51,7 +51,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                     allow = accessCache.get(path);
                 }
                 else {
-                    const access = await env.rules.isOperationAllowed(req.user, path, 'read');
+                    const access = await env.rules.isOperationAllowed(req.user, path, 'get');
                     allow = access.allow;
                     accessCache.set(path, allow);
                 }

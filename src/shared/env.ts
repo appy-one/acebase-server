@@ -27,7 +27,8 @@ export interface RouteInitEnvironment {
     clients: Map<string, ConnectedClient>;
     authCache: SimpleCache<string, DbUserAccountDetails>;
     authProviders: { [providerName: string]: OAuth2Provider };
-    rules: PathBasedRules
+    rules: PathBasedRules;
+    instance: AceBaseServer;
 }
 
 export interface RouteRequestEnvironment {

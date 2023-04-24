@@ -30,7 +30,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         try {
             // Pre-check 'write' access
-            let access = await env.rules.isOperationAllowed(req.user, path, 'write', { context: req.context });
+            let access = await env.rules.isOperationAllowed(req.user, path, 'update');
             if (!access.allow) {
                 throw new AccessRuleValidationError(access);
             }

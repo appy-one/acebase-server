@@ -5,8 +5,35 @@ import { executeSandboxed } from './sandbox';
 import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT, AuthAccessDefault } from './settings';
 
-// type PathRuleFunction = ((env: any) => boolean) & { getText(): string };
-type PathRule = boolean | string; // | PathRuleFunction
+type PathRuleFunctionEnvironment = {
+    now: number;
+    auth: Pick<DbUserAccountDetails, 'uid'>;
+    operation: string;
+    context: any;
+    vars: any;
+    /**
+     * Allows checking if a path exists
+     * @example
+     * await exists('./shared/' + auth.uid)
+     */
+    exists: (target: string) => Promise<boolean>;
+    /**
+     * Allows getting current values stored in the db
+     * @example
+     * await value('./writable') === true
+     * @example
+     * const current = await value('.');
+     * return current.writable === true && current.owner === auth.uid;
+     * @example
+     * // Same as above, but only load `writable` and `owner` properties
+     * const current = await value('.', ['writable', 'owner']);
+     * return current.writable === true && current.owner === auth.uid;
+     */
+    value: (target: string, include?: string[]) => Promise<any>;
+}
+export type PathRuleReturnValue = boolean | undefined | 'allow' | 'deny' | 'cascade';
+export type PathRuleFunction = (env: PathRuleFunctionEnvironment) => PathRuleReturnValue | Promise<PathRuleReturnValue>; //((env: any) => boolean) & { getText(): string };
+type PathRule = boolean | string | PathRuleFunction;
 type PathRules = object & {
     // schema definitions
     '.schema'?: string | object;
@@ -29,27 +56,28 @@ type PathRules = object & {
     '.import'?: PathRule;
 
     // custom validation code on data being written to the target path
-    '.validate'?: string; //PathRuleFunction;
+    '.validate'?: string | PathRuleFunction;
 }
 type RulesData = {
     rules: PathRules;
 }
 export type RuleValidationFailCode = 'rule' | 'no_rule' | 'private' | 'exception';
-// type HasAccessResult = { allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: any };
-export type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: string|boolean; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: string|boolean; rulePath?: string; details?: Error });
+export type HasAccessResult = { allow: boolean; code?: RuleValidationFailCode; message?: string; rule?: PathRule; rulePath?: string; details?: Error } & ({ allow: true } | { allow: false; code: RuleValidationFailCode; message: string; rule?: PathRule; rulePath?: string; details?: Error });
 export class AccessRuleValidationError extends Error {
     constructor(public result: HasAccessResult) {
         super(result.message);
     }
 }
 
-export type AccessCheckOperation = 'read' | 'write' | 'transact' | 'get' | 'update' | 'set' | 'delete' | 'reflect' | 'exists' | 'query' | 'import' | 'export';
+export type AccessCheckOperation = 'transact' | 'get' | 'update' | 'set' | 'delete' | 'reflect' | 'exists' | 'query' | 'import' | 'export';
+export type PathRuleType = 'read' | 'write' | 'validate' | AccessCheckOperation;
 export class PathBasedRules {
 
     private authEnabled: boolean;
     private accessRules: RulesData;
     private db: AceBase;
     private debug: DebugLogger;
+    private codeRules = [] as Array<{ path: string; type: PathRuleType; callback: PathRuleFunction }>;
     stop(): void { throw new Error('not started yet'); }
 
     constructor(rulesFilePath: string, defaultAccess: AuthAccessDefault, env: { debug: DebugLogger, db: AceBase, authEnabled: boolean } ) {
@@ -144,10 +172,16 @@ export class PathBasedRules {
 
         // Watch file for changes. watchFile will poll for changes every (default) 5007ms
         const watchFileListener = () => {
-            // Reload access rules
+            // Reload access rules from file
             const accessRules = readRules();
             processRules('', accessRules.rules, []);
             this.accessRules = accessRules;
+
+            // Re-add rules added by code
+            const codeRules = this.codeRules.splice(0);
+            for (const rule of codeRules) {
+                this.add(rule.path, rule.type, rule.callback);
+            }
         };
         fs.watchFile(rulesFilePath, watchFileListener);
         this.stop = () => {
@@ -163,6 +197,7 @@ export class PathBasedRules {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
+        const isPreFlight = typeof data === 'undefined';
         const allow: HasAccessResult = { allow: true };
         if (!this.authEnabled) {
             // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
@@ -199,6 +234,7 @@ export class PathBasedRules {
             now: Date.now(),
             auth: user || null,
             operation,
+            vars: {},
             context: typeof data?.context === 'object' && data.context !== null ? { ...data.context } : {},
         };
         const pathInfo = PathInfo.get(path);
@@ -211,19 +247,19 @@ export class PathBasedRules {
             // Check read/write access or validate operation
             const checkRules = [] as PathRule[];
             const applyRule = (rule: PathRule) => {
-                if (rule && checkRules.includes(rule)) {
+                if (rule && !checkRules.includes(rule)) {
                     checkRules.push(rule);
                 }
             };
-            if (['read','get','exists','query','reflect','export','transact'].includes(operation)) {
+            if (['get','exists','query','reflect','export','transact'].includes(operation)) {
                 // Operations that require 'read' access
                 applyRule(rule['.read']);
             }
-            if ('.write' in rule && ['write','update','set','delete','import','transact'].includes(operation)) {
+            if ('.write' in rule && ['update','set','delete','import','transact'].includes(operation)) {
                 // Operations that require 'write' access
                 applyRule(rule['.write']);
             }
-            if (`.${operation}` in rule) {
+            if (`.${operation}` in rule && !isPreFlight) {
                 // If there is a dedicated rule (eg ".update" or ".reflect") for this operation, use it.
                 applyRule(rule[`.${operation}`]);
             }
@@ -235,35 +271,24 @@ export class PathBasedRules {
                     }
                     isAllowed = true; // return allow;
                 }
-                if (typeof rule === 'string') {
+                if (typeof rule === 'string' || typeof rule === 'function') {
                     try {
                         // Execute rule function
-                        const ruleEnv = {
+                        const ruleEnv: PathRuleFunctionEnvironment = {
                             ...env,
-                            /**
-                             * Allows checking if a path exists
-                             * @example
-                             * await exists('./shared/' + auth.uid)
-                             */
                             exists: async (target: string) => this.db.ref(getFullPath(currentPath, target)).exists(),
-                            /**
-                             * Allows getting current values stored in the db
-                             * @example
-                             * await value('./writable') === true
-                             * @example
-                             * const current = await value('.');
-                             * return current.writable === true && current.owner === auth.uid;
-                             * @example
-                             * // Same as above, but only load `writable` and `owner` properties
-                             * const current = await value('.', ['writable', 'owner']);
-                             * return current.writable === true && current.owner === auth.uid;
-                             */
                             value: async (target: string, include?: string[]) => this.db.ref(getFullPath(currentPath, target)).get({ include }),
                         };
-                        if (!await executeSandboxed(rule, ruleEnv)) {
+                        const result = typeof rule === 'function'
+                            ? await rule(ruleEnv)
+                            : await executeSandboxed(rule, ruleEnv);
+                        if (!['cascade', 'deny', 'allow', true, false].includes(result)) {
+                            this.debug.warn(`rule for path ${rulePath} possibly returns an unintentional value (${JSON.stringify(result)}) which results in outcome "${result ? 'allow' : 'deny'}"`);
+                        }
+                        isAllowed = result === 'allow' || result === true;
+                        if (!isAllowed && result !== 'cascade') {
                             return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath };
                         }
-                        isAllowed = true; // return allow;
                     }
                     catch (err) {
                         // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
@@ -285,7 +310,10 @@ export class PathBasedRules {
             if (typeof rule[nextKey] === 'undefined') {
                 // Check if current rule has a wildcard child
                 const wildcardKey = Object.keys(rule).find(key => key ==='*' || key[0] === '$');
-                if (wildcardKey) { env[wildcardKey] = nextKey; }
+                if (wildcardKey) {
+                    env[wildcardKey] = nextKey;
+                    env.vars[wildcardKey] = nextKey;
+                }
                 nextKey = wildcardKey;
             }
             nextKey && rulePathKeys.push(nextKey);
@@ -293,9 +321,10 @@ export class PathBasedRules {
         }
 
         // Now dig deeper to check nested .validate rules
-        if (isAllowed && ['set', 'update', 'transact'].includes(operation)) {
+        if (isAllowed && ['set', 'update'].includes(operation) && !isPreFlight) {
             // validate rules start at current path being written to
             const startRule = pathInfo.keys.reduce((rule, key) => {
+                if (typeof rule !== 'object' || rule === null) { return null; }
                 if (key in rule) { return rule[key]; }
                 if ('*' in rule) { return rule['*']; }
                 const variableKey = Object.keys(rule).find(key => typeof key === 'string' && key.startsWith('$'));
@@ -304,16 +333,17 @@ export class PathBasedRules {
             }, this.accessRules.rules);
 
             const getNestedRules = (target: string[], rule: PathRules) => {
+                if (!rule) { return []; }
                 const nested = Object.keys(rule).reduce((arr, key) => {
-                    if (key === '.validate' && typeof rule[key] === 'string') {
-                        arr.push({ target, validate: rule[key] });
+                    if (key === '.validate' && ['string', 'function'].includes(typeof rule[key])) {
+                        arr.push({ target, validate: rule[key] as string });
                     }
                     if (!key.startsWith('.')) {
                         const nested = getNestedRules([...target, key], rule[key]);
                         arr.push(...nested);
                     }
                     return arr;
-                }, [] as { target: string[]; validate: string }[]);
+                }, [] as { target: string[]; validate: PathRule }[]);
                 return nested;
             };
 
@@ -348,7 +378,27 @@ export class PathBasedRules {
                     value: async (target: string, include?: string[]) => this.db.ref(getFullPath(validatePath, target)).get({ include }),
                 };
                 try {
-                    if (!await executeSandboxed(check.validate, validateEnv)) {
+                    const result = await (async () => {
+                        let result: PathRuleReturnValue;
+                        if (typeof check.validate === 'function') {
+                            result = await check.validate(validateEnv);
+                        }
+                        else if (typeof check.validate === 'string') {
+                            result = await executeSandboxed(check.validate, validateEnv);
+                        }
+                        else if (typeof check.validate === 'boolean') {
+                            result = check.validate ? 'allow' : 'deny';
+                        }
+                        if (result === 'cascade') {
+                            this.debug.warn(`Rule at path ${validatePath} returned "cascade", but ${validateEnv.operation} rules always cascade`);
+                        }
+                        else if (!['cascade', 'deny', 'allow', true, false].includes(result)) {
+                            this.debug.warn(`${validateEnv.operation} rule for path ${validatePath} possibly returned an unintentional value (${JSON.stringify(result)}) which results in outcome "${result ? 'allow' : 'deny'}"`);
+                        }
+                        if (['cascade', 'deny', 'allow'].includes(result as string)) { return result as 'cascade' | 'deny' | 'allow'; }
+                        return result ? 'allow' : 'deny';
+                    })();
+                    if (result === 'deny') {
                         return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule: check.validate, rulePath: validatePath };
                     }
                 }
@@ -360,5 +410,23 @@ export class PathBasedRules {
         }
 
         return isAllowed ? allow : { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
+    }
+
+    add(rulePaths: string | string[], ruleTypes: PathRuleType | PathRuleType[], callback: PathRuleFunction) {
+        const paths = Array.isArray(rulePaths) ? rulePaths : [rulePaths];
+        const types = Array.isArray(ruleTypes) ? ruleTypes : [ruleTypes];
+        for (const path of paths) {
+            const keys = PathInfo.getPathKeys(path);
+            let target = this.accessRules.rules;
+            for (const key of keys) {
+                if (!(key in target)) { target[key] = {}; }
+                target = target[key];
+                if (typeof target !== 'object' || target === null) { throw new Error(`Cannot add rule because value of key "${key}" is not an object`); }
+            }
+            for (const type of types) {
+                target[`.${type}`] = callback;
+                this.codeRules.push({ path, type, callback });
+            }
+        }
     }
 }

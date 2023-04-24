@@ -43,7 +43,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     env.router.post(`/query/${env.db.name}/*`, async (req: Request, res) => {
         // Execute query
         const path = req.path.slice(env.db.name.length + 8);
-        const access = await env.rules.isOperationAllowed(req.user, path, 'query');
+        const access = await env.rules.isOperationAllowed(req.user, path, 'query', { context: req.context });
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -68,7 +68,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 try {
                     const client = env.clients.get(clientId);
                     if (!client) { return cancelSubscription?.(); } // Not connected, stop subscription
-                    if (!(await env.rules.isOperationAllowed(client.user, event.path, 'get', { value: event.value })).allow) {
+                    if (!(await env.rules.isOperationAllowed(client.user, event.path, 'get', { context: req.context, value: event.value })).allow) {
                         return cancelSubscription?.(); // Access denied, stop subscription
                     }
                     event.query_id = queryId;
