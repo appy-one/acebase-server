@@ -190,6 +190,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             authCache: null,
             authProviders: this.authProviders,
             rules,
+            instance: this,
         };
 
         // Add connection middleware

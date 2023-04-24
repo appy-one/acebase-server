@@ -8,6 +8,7 @@ import type { OAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
+import type { AceBaseServer } from '../server';
 import { DatabaseLog } from '../logger';
 
 export interface RouteInitEnvironment {
