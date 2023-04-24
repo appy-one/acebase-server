@@ -245,7 +245,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
     };
 
     const swaggerDocs = createSwaggerDocs(options);
-    env.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+    env.router.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 };
 
 export default addRoute;

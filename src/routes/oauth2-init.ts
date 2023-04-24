@@ -7,7 +7,7 @@ export type ResponseBody = { redirectUrl: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.get(`/oauth2/${env.db.name}/init`, async (req: Request, res) => {
+    env.router.get(`/oauth2/${env.db.name}/init`, async (req: Request, res) => {
 
         try {
             const providerName =  req.query.provider;

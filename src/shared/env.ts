@@ -1,4 +1,4 @@
-import type { HttpApp, Request } from './http';
+import type { HttpApp, HttpRouter, Request } from './http';
 import type { AceBase, DataReference } from 'acebase';
 import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
@@ -14,6 +14,7 @@ export interface RouteInitEnvironment {
     rootPath: string;
     server: HttpServer | SecureHttpServer;
     app: HttpApp;
+    router: HttpRouter;
     config: AceBaseServerConfig;
     db: AceBase & { api: Api };
     authDb: AceBase;

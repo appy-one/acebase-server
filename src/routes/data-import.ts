@@ -11,7 +11,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/import/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.post(`/import/${env.db.name}/*`, async (req: Request, res) => {
         // Import API
         const path = req.path.slice(env.db.name.length + 9);
         const access = await env.rules.isOperationAllowed(req.user, path, 'import');

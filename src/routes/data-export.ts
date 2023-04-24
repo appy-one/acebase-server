@@ -11,7 +11,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/export/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.get(`/export/${env.db.name}/*`, async (req: Request, res) => {
         // Export API
         const path = req.path.slice(env.db.name.length + 9);
         const access = await env.rules.isOperationAllowed(req.user, path, 'export');

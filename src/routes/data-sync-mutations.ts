@@ -19,7 +19,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/sync/mutations/${env.db.name}`, async (req: Request, res) => {
+    env.router.get(`/sync/mutations/${env.db.name}`, async (req: Request, res) => {
         // Gets mutations for specific path(s) and event combinations since given cursor
         if (!env.config.transactions?.log) {
             return sendBadRequestError(res, { code: 'no_transaction_logging', message: 'Transaction logging not enabled' });

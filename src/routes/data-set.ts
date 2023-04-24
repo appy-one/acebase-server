@@ -21,7 +21,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.put(`/data/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.put(`/data/${env.db.name}/*`, async (req: Request, res) => {
 
         const path = req.path.slice(env.db.name.length + 7);
         const LOG_ACTION = 'data.set';

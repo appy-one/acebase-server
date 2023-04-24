@@ -1,6 +1,6 @@
 import { ColorStyle, DebugLogger, SimpleEventEmitter, Api } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp, createRouter, HttpRequest, HttpResponse } from './shared/http';
+import { createApp, createRouter, HttpApp, HttpRequest, HttpResponse, HttpRouter } from './shared/http';
 import { addWebsocketServer } from './websocket';
 import { RouteInitEnvironment } from './shared/env';
 import { ConnectedClient } from './shared/clients';
@@ -83,9 +83,14 @@ export class AceBaseServer extends SimpleEventEmitter {
     readonly db: AceBase;
 
     /**
+     * Exposes the used http frameworks router (currently Express) for external use.
+     */
+    readonly router: HttpRouter;
+
+    /**
      * Exposes the used http frameworks app (currently Express) for external use.
      */
-    readonly app: ReturnType<typeof createApp>;
+    readonly app: HttpApp;
 
     private readonly authProviders: { [provider: string]: OAuth2Provider } = {};
 
@@ -135,6 +140,8 @@ export class AceBaseServer extends SimpleEventEmitter {
 
         // Create Express app
         this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        this.router = createRouter();
+        this.app.use(`/${this.config.rootPath}`, this.router);
 
         // Initialize and start server
         this.init({ authDb });
@@ -152,9 +159,8 @@ export class AceBaseServer extends SimpleEventEmitter {
         ]);
 
         // Create http server
-        const app = this.app;
-        this.config.server?.on('request', app);
-        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
+        this.config.server?.on('request', this.app);
+        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, this.app) : createServer(this.app));
         const clients = new Map<string, ConnectedClient>();
 
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
@@ -172,7 +178,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             server,
             db: db as AceBase & { api: Api },
             authDb,
-            app: router,
+            app: this.app,
+            router: this.router,
             rootPath: this.config.rootPath,
             debug: this.debug,
             securityRef,

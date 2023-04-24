@@ -10,7 +10,7 @@ export type ResponseBody = 'Bye!' | { code: string; message: string };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.post(`/auth/${env.db.name}/signout`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/signout`, async (req: Request, res) => {
 
         const LOG_ACTION = 'auth.signout';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };

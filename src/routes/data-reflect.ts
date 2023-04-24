@@ -20,7 +20,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/reflect/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.get(`/reflect/${env.db.name}/*`, async (req: Request, res) => {
         // Reflection API
         const path = req.path.slice(env.db.name.length + 10);
         const access = await env.rules.isOperationAllowed(req.user, path, 'reflect');

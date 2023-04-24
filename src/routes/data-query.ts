@@ -40,7 +40,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/query/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.post(`/query/${env.db.name}/*`, async (req: Request, res) => {
         // Execute query
         const path = req.path.slice(env.db.name.length + 8);
         const access = await env.rules.isOperationAllowed(req.user, path, 'query');

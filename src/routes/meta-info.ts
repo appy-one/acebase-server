@@ -13,7 +13,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     // Add info endpoint
-    env.app.get(`/info/${env.db.name}`, (req: Request, res) => {
+    env.router.get(`/info/${env.db.name}`, (req: Request, res) => {
 
         const info = {
             version: SERVER_VERSION,

@@ -6,7 +6,7 @@ export type ResponseBody = { provider: { name: string; access_token: string; ref
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.get(`/oauth2/${env.db.name}/refresh`, async (req: Request, res) => {
+    env.router.get(`/oauth2/${env.db.name}/refresh`, async (req: Request, res) => {
 
         try {
             const providerName =  req.query.provider;

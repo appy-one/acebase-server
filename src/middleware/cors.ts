@@ -33,7 +33,7 @@ export const getCorsHeaders = (allowedOrigins: string, currentOrigin: string) =>
 };
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
-    env.app.use((req, res, next) => {
+    env.router.use((req, res, next) => {
         const headers = getCorsHeaders(env.config.allowOrigin, req.headers.origin);
         for (const name in headers) {
             res.setHeader(name, headers[name]);

@@ -7,7 +7,7 @@ export type ResponseBody = { signed_in: false } | { signed_in: true; user: AceBa
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.get(`/auth/${env.db.name}/state`, async (req: Request, res) => {
+    env.router.get(`/auth/${env.db.name}/state`, async (req: Request, res) => {
         if (req.user) {
             res.send({ signed_in: true, user: getPublicAccountDetails(req.user) });
         }

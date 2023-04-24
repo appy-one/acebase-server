@@ -11,7 +11,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/schema/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
+    env.router.get(`/schema/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // Get all defined schemas
         try {
             const schemas = await env.db.schema.all();

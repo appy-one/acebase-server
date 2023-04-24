@@ -8,7 +8,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/exists/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.get(`/exists/${env.db.name}/*`, async (req: Request, res) => {
         // Exists query
         const path = req.path.slice(env.db.name.length + 9);
         const access = await env.rules.isOperationAllowed(req.user, path, 'exists');

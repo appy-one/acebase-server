@@ -41,7 +41,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
     const _transactions = new Map<string, Transaction>();
 
     // Start transaction endpoint:
-    env.app.post(`/transaction/${env.db.name}/start`, async (req: StartRequest, res) => {
+    env.router.post(`/transaction/${env.db.name}/start`, async (req: StartRequest, res) => {
         const data = req.body;
 
         const LOG_ACTION = 'data.transaction.start';

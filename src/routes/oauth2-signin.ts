@@ -16,7 +16,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/oauth2/${env.db.name}/signin`, async (req: Request, res) => {
+    env.router.get(`/oauth2/${env.db.name}/signin`, async (req: Request, res) => {
         // This is where the user is redirected to by the provider after signin or error
 
         const LOG_ACTION = 'oauth2.signin';

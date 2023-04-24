@@ -18,7 +18,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/auth/${env.db.name}/forgot_password`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/forgot_password`, async (req: Request, res) => {
 
         const details = req.body;
         const LOG_ACTION = 'auth.forgot_password';
