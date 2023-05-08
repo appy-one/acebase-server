@@ -13,11 +13,6 @@
         "target": "es2020",
         "pretty": true,
         "resolveJsonModule": true,
-    },
-    "include": [
-        "./src"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+        "skipLibCheck": false
+    }
 }
