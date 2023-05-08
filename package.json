@@ -61,8 +61,8 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.27.0",
-    "acebase-core": "^1.25.0",
+    "acebase": "^1.28.5",
+    "acebase-core": "^1.26.2",
     "express": "^4.17.1",
     "socket.io": "^4.5.0",
     "swagger-jsdoc": "^6.1.0",
@@ -76,6 +76,6 @@
     "@typescript-eslint/parser": "^5.46.1",
     "eslint": "^8.30.0",
     "tsc-esm-fix": "^2.12.4",
-    "typescript": "^4.7.4"
+    "typescript": "^5.0.4"
   }
 }
