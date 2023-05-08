@@ -54,15 +54,15 @@
           'application/json':
             schema:
               $ref: '#/components/schemas/Error'
-              example:
-                code: invalid_serialized_value
-                message: The sent value is not properly serialized
+            example:
+              code: invalid_serialized_value
+              message: The sent value is not properly serialized
       403:
         description: Returns "403 Forbidden" if the signed in user is not allowed to write to the target path
         content:
           'application/json':
             schema:
-              $ref: '#/components/schemas/Error'
+              $ref: '#/components/schemas/RuleValidationError'
       422:
         description: Returns "422 Unprocessable Entity" if schema validation for the sent value failed.
         content:
