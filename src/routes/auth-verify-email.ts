@@ -52,7 +52,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         env.log.event(LOG_ACTION, LOG_DETAILS);
     };
 
-    env.app.post(`/auth/${env.db.name}/verify_email`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/verify_email`, async (req: Request, res) => {
 
         const details = req.body;
 

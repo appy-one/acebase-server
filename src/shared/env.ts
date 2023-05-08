@@ -1,4 +1,4 @@
-import type { HttpApp, Request } from './http';
+import type { HttpApp, HttpRouter, Request } from './http';
 import type { AceBase, DataReference } from 'acebase';
 import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
@@ -8,12 +8,14 @@ import type { OAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
+import type { AceBaseServer } from '../server';
 import { DatabaseLog } from '../logger';
 
 export interface RouteInitEnvironment {
     rootPath: string;
     server: HttpServer | SecureHttpServer;
     app: HttpApp;
+    router: HttpRouter;
     config: AceBaseServerConfig;
     db: AceBase & { api: Api };
     authDb: AceBase;
@@ -25,7 +27,8 @@ export interface RouteInitEnvironment {
     clients: Map<string, ConnectedClient>;
     authCache: SimpleCache<string, DbUserAccountDetails>;
     authProviders: { [providerName: string]: OAuth2Provider };
-    rules: PathBasedRules
+    rules: PathBasedRules;
+    instance: AceBaseServer;
 }
 
 export interface RouteRequestEnvironment {

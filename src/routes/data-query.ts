@@ -1,4 +1,4 @@
-import { Transport } from 'acebase-core';
+import { QueryOptions, Transport } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendError, sendUnauthorizedError } from '../shared/error';
 
@@ -40,10 +40,10 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/query/${env.db.name}/*`, async (req: Request, res) => {
+    env.router.post(`/query/${env.db.name}/*`, async (req: Request, res) => {
         // Execute query
         const path = req.path.slice(env.db.name.length + 8);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = await env.rules.isOperationAllowed(req.user, path, 'query', { context: req.context });
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }
@@ -53,7 +53,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
             return sendError(res, { code: 'invalid_request', message: 'Invalid query request' });
         }
         const query = data.query;
-        const options = data.options;
+        const options = data.options as QueryOptions;
+        let cancelSubscription: () => Promise<void>;
         if (options.monitor === true) {
             options.monitor = { add: true, change: true, remove: true };
         }
@@ -63,20 +64,29 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const client = env.clients.get(clientId);
             client.realtimeQueries[queryId] = { path, query, options };
 
-            const sendEvent = event => {
-                const client = env.clients.get(clientId);
-                if (!client) { return false; } // Not connected, stop subscription
-                if (!env.rules.userHasAccess(client.user, event.path, false).allow) {
-                    return false; // Access denied, stop subscription
+            const sendEvent = async (event) => {
+                try {
+                    const client = env.clients.get(clientId);
+                    if (!client) { return cancelSubscription?.(); } // Not connected, stop subscription
+                    if (!(await env.rules.isOperationAllowed(client.user, event.path, 'get', { context: req.context, value: event.value })).allow) {
+                        return cancelSubscription?.(); // Access denied, stop subscription
+                    }
+                    event.query_id = queryId;
+                    const data = Transport.serialize(event);
+                    client.socket.emit('query-event', data);
                 }
-                event.query_id = queryId;
-                const data = Transport.serialize(event);
-                client.socket.emit('query-event', data);
+                catch (err) {
+                    env.debug.error(`Unexpected error orccured trying to send event`);
+                    env.debug.error(err);
+                }
             };
-            options.eventHandler = sendEvent;
+            options.eventHandler = (event) => {
+                sendEvent(event);
+            };
         }
         try {
-            const { results, context } = await env.db.api.query(path, query, options);
+            const { results, context, stop } = await env.db.api.query(path, query, options);
+            cancelSubscription = stop;
             if (!env.config.transactions?.log) {
                 delete context.acebase_cursor;
             }

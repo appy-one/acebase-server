@@ -16,7 +16,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/logs/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
+    env.router.get(`/logs/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // Get database logs
 
         // Create indexes if not there yet

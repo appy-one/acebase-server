@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "lib": ["esnext"],
-        "listEmittedFiles": true,
+        "listEmittedFiles": false,
         "rootDir": "./src",
         "sourceMap": true,
         "declaration": true,
@@ -13,11 +13,6 @@
         "target": "es2020",
         "pretty": true,
         "resolveJsonModule": true,
-    },
-    "include": [
-        "./src"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+        "skipLibCheck": false
+    }
 }

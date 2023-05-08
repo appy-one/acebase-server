@@ -20,7 +20,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/index/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
+    env.router.get(`/index/${env.db.name}`, adminOnly(env), async (req: Request, res) => {
         // Get all indexes
         try {
             const indexes = await env.db.indexes.get();

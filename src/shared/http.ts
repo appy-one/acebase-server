@@ -4,6 +4,7 @@ import * as express from 'express';
 const createExpress = (express as any).default ?? express; // ESM and CJS compatible approach
 
 export type HttpApp = express.Express;
+export type HttpRouter = express.Router;
 export type HttpSocket = Socket;
 export type HttpRequest = express.Request;
 export type HttpResponse = express.Response;
@@ -30,5 +31,5 @@ export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: strin
  * @returns
  */
 export const createRouter = () => {
-    return createExpress.Router();
+    return createExpress.Router() as HttpRouter;
 };

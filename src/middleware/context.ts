@@ -2,7 +2,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
 
-    env.app.use((req: RouteRequest, res, next) => {
+    env.router.use((req: RouteRequest, res, next) => {
         // Setup AceBase context, to allow clients to pass contextual info with data updates,
         // that will be sent along to data event subscribers on affected data.
 

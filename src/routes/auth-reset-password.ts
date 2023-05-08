@@ -70,7 +70,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         return user;
     };
 
-    env.app.post(`/auth/${env.db.name}/reset_password`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/reset_password`, async (req: Request, res) => {
 
         const details = req.body;
         const LOG_ACTION = 'auth.reset_password';

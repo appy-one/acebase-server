@@ -34,7 +34,7 @@ export type ResponseBody = { access_token: string; user: AceBaseUser } | { code:
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.post(`/auth/${env.db.name}/signup`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/signup`, async (req: Request, res) => {
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
 

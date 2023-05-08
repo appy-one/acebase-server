@@ -2,7 +2,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 
 export const addMiddleware = (env: RouteInitEnvironment) => {
 
-    env.app.use((req: RouteRequest, res, next) => {
+    env.router.use((req: RouteRequest, res, next) => {
         // Swagger UI escapes path variables, so "some/path" in a path variable of an endpoint becomes "some%2Fpath". This middleware fixes that
         if (req.path.includes('%2F')) {
             const [url, query] = req.url.split('?');

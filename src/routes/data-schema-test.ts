@@ -18,7 +18,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/schema/${env.db.name}/test`, adminOnly(env), async (req: Request, res) => {
+    env.router.post(`/schema/${env.db.name}/test`, adminOnly(env), async (req: Request, res) => {
         // tests a schema
         try {
             const data = req.body;

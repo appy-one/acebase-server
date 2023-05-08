@@ -93,7 +93,7 @@ The following `authentication` settings are available:
 
 ### Setup authorization rules
 
-If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users read and/or write access to your data. These rules are identical to those used by [Firebase](https://firebase.google.com/docs/database/security/) (Note: ".read" and ".write" only, ".validate" might be implemented in the future, ".schema" implemented as alternative) and are saved in a file called _rules.json_ in your database directory. The default rules written to the file are determined by the `defaultAccessRule` authentication setting at the first server launch with `authentication` enabled.
+If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users _read_ and/or _write_ access to your data. These rules are identical to those used by [Firebase](https://firebase.google.com/docs/database/security/), but reading current data in the db works a little differently. In addition, ".schema" rules allow for an easy and clean way to validate data being written, while ".validate" rules allow you to check existing data and use more advanced business logic. The rules are saved in a file called _rules.json_ in your database directory, but can be overridden and extended programmatically (see [Coding your rules](#coding-your-rules)). The default rules written to the file are determined by the `defaultAccessRule` authentication setting at the first server launch with `authentication` enabled.
 
 The default _rules.json_ file content is based on the value of the `defaultAccessRule` setting, possible values are:
  * `"auth"`: Only allow authenticated users read/write access to the database
@@ -112,7 +112,7 @@ When `defaultAccessRule: "auth"` is used, it will generate the following _rules.
 
 When `"allow"` or `"deny"` is used, the `".read"` and `".write"` properties will be set to `true` or `false` respectively.
 
-If you want to further restrict what data users can access and/or write to (RECOMMENDED!), you could edit the file as such, granting users read/write access to their own user node:
+If you want to further restrict what data users can _read_ and/or _write_ to (RECOMMENDED!), you could edit the file as such, granting users _read_/_write_ access to their own user node:
 ```json
 {
     "rules": {
@@ -126,7 +126,9 @@ If you want to further restrict what data users can access and/or write to (RECO
 }
 ```
 
-NOTE: Just like Firebase, access is denied by default when no rule is found for the target path. If an access rule is found, it will be used for any child path. This means that read and/or write access for child/descending paths can not be overridden. If you want to allow users read access to a path, and write access only for specific child path(s), use the following rules:
+NOTE: Just like Firebase, access is denied by default if no rule is found for a target path. If an access rule is found at any location in the path, it will be used for any child path UNLESS your rule returns "cascade" (v1.17.0+). This means that, unlike Firebase, _read_ and/or _write_ access for child/descending paths CAN be overridden if you need to. "cascade" simply instructs the rule parser to postpone the decision making if the request is made on a child path, which is essentially as if there was no rule set for the current path. If the request is made on the rule path itself though, "cascade" will deny access because it is the last rule to execute and no access was granted.
+
+For example, if you want to allow users _read_ access to a path, and _write_ access only for specific child path(s), use the following rules:
 
 ```json
 {
@@ -143,13 +145,110 @@ NOTE: Just like Firebase, access is denied by default when no rule is found for 
 }
 ```
 Above rules enforces:
-* No read or write access to the root node or any child for anyone. (No rule has been set for those nodes, access will be denied)
-* Read access to all reviews for specific shops ('shop_reviews/shop1', 'shop_reviews/shop2') for anyone, including unauthenticated clients (`".read"` rule is set to `true`)
-* Write access to an authenticated user's own review for any shop. (`".write"` rule is set to `"auth.uid === $uid"`)
+* No _read_ or _write_ access to the root node or any child for anyone. (No rule has been set for those nodes, access will be denied)
+* _Read_ access to all reviews for specific shops ('shop_reviews/shop1', 'shop_reviews/shop2') for anyone, including unauthenticated clients (`".read"` rule is set to `true`)
+* _Write_ access to an authenticated user's own review for any shop. (`".write"` rule is set to `"auth.uid === $uid"`)
+
+If you want to allow a specific user _read_/_write_ access to a path, and only _read_ access to a specific child path for all other users:
+```json
+{
+    "rules": {
+        "users": {
+            "$uid": {
+                ".read": "auth?.uid === $uid ? 'allow' : 'cascade'",
+                ".write": "auth.uid === $uid",
+                "public": {
+                    ".read": true
+                }
+            }
+        }
+    }
+}
+```
+Above rules enforces:
+* No _read_ or _write_ access to the root node or any child for anyone. (No rule has been set for those nodes, access will be denied)
+* _Read_ access for an authenticated user's own data in "users/$uid", including all child data
+* No _read_ access for unauthenticated users and/or other users to "users/$uid", undecided _read_ access (`'cascade'`) for child paths. NOTE `auth?.uid` needs the `?.` to allow unauthenticated users to cascade - if rule execution fails it ALWAYS denies access.
+* _Read_ access for everyone to "users/$uid/public" (if `users/$uid/.read` cascaded, `users/$uid/public/.read` is `true`)
+* _Write_ access to an authenticated user's own data in "users/$uid" and all child data (`".write"` rule is set to `"auth.uid === $uid"`)
+
+NOTE that `"allow"` can be returned from a rule function instead of `true`, and `"deny"` instead of `false`, `undefined` or other _falsy_ values. 
+
+### Rule environment variables and functions
+_(NEW v1.17.0+)_
+
+Besides the `auth` variable used in above examples, there are other variables and functions you can use in your rule definitions. You can use these to determine if the data to be read or written conforms to your business logic. The following variables and functions are available in your `.read` and `.write` rules:
+* `auth`: The currently signed in user (or `null` for anonymous access)
+* `now`: a `number` with the current time in ms (you can also use `Date.now()`)
+* `path`: a `string` containing the current path being read/written
+* `operation`: one of the following values: 
+    * _read_ operations `'get'`, `'reflect'`, `'exists'`, `'query'`, `'export'`
+    * _write_ operations `'update'`, `'set'`, `'delete'`, `'transact'`, `'import'`
+* `data`: data being written to the target, only available in `.validate` rules for `'update'` and `'set'` _write_ operations. Read more about `'.validate'` rules [here](#validate-data-being-written)
+* `context`: contextual data that was passed along with _write_ operations in client code.
+* `value`: an asynchronous function that gets a value from the database at a relative (`./property`, `../other/property`) or absolute (`/collection/item`) path. You can use this to check any existing data in the database to determine if the operation is allowed. For example, use `await value('./locked') !== true` to check if the `locked` property of the current target path is not set to `true`. It's possible to selectively load data from the given path by passing an additional `include` argument: `const contributors = await value('invoices', ['*/paid']); const allow = Object.keys(invoices).every(id => invoices[id].paid === true); return allow;`: this only allows access if all of the linked `invoices` have been paid.
+* `exists`: an asynchronous function that checks if the value of a relative (`./property`) or absolute (`/collection/item`) path currently exists in the database. For example, you can use `await exists('./authors/' + auth.uid)` to check if current user is one of the authors of an item being written to.
+* `$variable`: the value of a variable in your rules path. If the rule is set on path `posts/$postId` and the path being updated is `posts/lcoq4mnp000008mkaqk9hx9d`, then `$postId` will be `lcoq4mnp000008mkaqk9hx9d`
+
+Note that instead of using the `operation` variable, you can also specify specific rules for each operation: the rules `".write": "true", ".set": "auth.uid !== null"` allow all users to write data to nested paths, but restrict `set` operation to signed in users only. The same can be done with a single `write` rule: `".write": "operation !== 'set' || auth.uid !== null"` or more verbose: `".write": "if (operation !== 'set') { return true; } else { return auth.uid !== null }"`
+
+Remember that above rules cascade to child paths, and are therefore enforced for all data being read from or written to child/descendant paths - once a rule allows or denies access, this cannot be overridden by rules defined on nested child paths. The only exception to this are `.validate` rules that are evaluated on the target paths being read from or written to. If a parent `.write` rule allows access, a `.validate` rule on the target path is still able to deny access.  
+
+### Validate data being written
+_(NEW v1.17.0+)_
+
+In addition to the read/write rules explained above, AceBase now supports defining `.validate` rules. In contrast to `.read` and `.write` rules, `.validate` rules do not cascade and are enforced on the target path only. This allows you to validate the data being written to specific paths. `.validate` rules are executed after verifying that a `.write` rule grants access. They fully support JavaScript, so you can use the same checks you'd use in client side code to validate your data with. As a general rule, use `.validate` rules only if you have to perform checks that `.schema` rules can't handle, such as using current data in the database, or advanced type checks such as string length.  
+
+The following additional variables are available to `'.validate'` rules:
+* `data`: data being written to the target for `'update'` and `'set'` _write_ operations. `'transact'` operations are executed in 2 steps: a `'get'` _read_ operation, followed by a `'set'` _write_ operation. Note that `'import'` operations use streaming updates and their data cannot be validated with `'.validate'` rules before they are stored to the database; use `'.schema'` rules to validate data being imported, or deny imports altogether using `if (operation === 'import') { return 'deny' }` in your `.write` rule, or by simply setting `{ ".import": false }`.
+
+NOTE: keep in mind that the `value` for `'update'` operations are partial objects to update the existing stored value with. If your `.validate` rule checks for property existence or their values, make sure you allow missing properties if the operation is `'update'` (or use a `.schema` rule instead)
+
+Example: validate writes to _/widget_
+```json
+{
+    "rules": {
+        "widget": {
+            ".write": true,
+            // a valid widget must have attributes "color" and "size", but ignore update operations (partial objects!)
+            ".validate": "operation === 'update' || ('color' in data && 'size' in data)",
+            "size": {
+                // the value of "size" must be a number between 0 and 99
+                ".validate": "typeof data === 'number' && data >= 0 && data <= 99"
+            },
+            "color": {
+                // the value of "color" must exist as a key in /valid_colors (eg /valid_colors/black)
+                ".validate": "typeof data === 'string' && await exists(`/valid_colors/${data}`)"
+            }
+        }
+    }
+}
+```
+
+The above example could be combined with `.schema` rules to make these checks easier. See [Schema validation](#schema-validation) below for more info.
+```json
+{
+    "rules": {
+        "widget": {
+            ".write": true,
+            // add required "color" and "size" types to schema definition
+            ".schema": "{ color: string; size: number }",
+            "size": {
+                // the value of "size" must be a number between 0 and 99
+                ".validate": "data >= 0 && data <= 99"
+            },
+            "color": {
+                // the value of "color" must exist as a key in /valid_colors (eg /valid_colors/black)
+                ".validate": "await exists(`/valid_colors/${data}`)"
+            }
+        }
+    }
+}
+```
 
 ### Schema validation
 
-AceBase server now supports TypeScript based schema definitions and validation. Once you've defined a schema for a path, all data being written must adhere to the set schema. Data to be stored/updated will be validated against the schema and denied or allowed accordingly.
+AceBase server supports TypeScript-like schema definitions and validation. Once you've defined a schema for a path, all data being written must adhere to the set schema. Data to be stored/updated will be validated against the schema and denied or allowed accordingly.
 
 There are 2 ways to can add schemas:
 - In your `rules.json` file, see below.
@@ -230,6 +329,49 @@ And, if you prefer, schema definitions can be defined as strings instead:
     }
 }
 ```
+
+## Coding your rules
+_(NEW v1.17.0+)_
+
+Instead of writing your rules into the `rules.json` file on your server, it is also possible to configure them in your code. Any rule you set with code will override or augment existing rules found in the `rules.json` file, so can use both. Coding your rules has a number of advantages:
+* You can use the same rule definitions and functions on multiple paths without copy/pasting
+* You can code them in your favorite editor
+* You can use running server values and cached data in your rules, such as `process.env` and vars like `maintanceMode`
+* Rules become debuggable!
+
+To add a rule in your code, use the following syntax:
+```js
+server.setRule(path, ruleTypes, async (env) => { /* your rule code */ });
+```
+where:
+* `path` is the exact database path to set the rule, such as `'users/$uid'`, or an array of paths.
+* `ruleTypes` is either 1 rule type like `read`, or multiple in an array like `['read', 'write']`
+
+The callback function is an `async` function that receives all available environment variables in the `env` argument: `env.auth` will contain the `auth` object, `env.vars` the `vars` object etc. If you use the ES6 destructuring syntax, you can use the same rule syntax from your `rules.json` file: `async ({ auth }) => auth !== null`
+
+It is best to setup your rules while AceBase Server is starting up, before it is accepting connections. To do this, you can pass an `init` callback function to the server settings that is executed right before the http server is started:
+
+```js
+const server = new AceBaseServer('mydb', {
+    host: 'localhost',
+    port: 4000,
+    // ...
+    async init(server) {
+        // Allow read and write access to users' own data
+        server.setRule('users/$uid', ['read', 'write'], ({ auth, vars }) => auth.uid === vars.$uid);
+
+        // Limit user status to either 'online' or 'offline'
+        server.setRule('users/$uid/status', 'validate', ({ data }) => ['online', 'offline'].includes(data));
+
+        // Only allow following existing users
+        server.setRule('users/$uid/following/$otherUid', 'validate', async ({ vars, exists }) => await exists(`/users/${vars.$otherUid}`));
+    }
+});
+```
+
+NOTE that you can use the `env.vars` object to get access to the values of named wildcards in your database paths. The values are also exposed as `env.$name`, but you can't use them this way in TypeScript because they can't be predefined in the `env` type.
+
+NOTE now this `init` method is available, is is advisable to also move any `server.extend`, `server.db.schema.set`, `server.configAuthProvider` and `server.router.get` etc calls you'd have here!
 
 ## Sending user e-mails [NEW]
 
@@ -435,6 +577,34 @@ db.ref('uploads/images').on('child_added', async snap => {
 
 ## Extending the server API
 
+To extend the server's endpoints, there are 2 options:
+* Use `server.router.get` and `server.router.post` etc to add custom Express endpoints to the server.
+* Use `server.extend` to create an endpoint that can be called by an AceBaseClient using `client.callExtension`
+
+### Using Express router
+
+Simply add your routes with `server.router.get`, `.put`, `.post` etc. You can use `req.user` to check if it is an authenticated request - your client code must add the `Authorization: Bearer [token]` header to requests in order for this to work.
+```js
+server.router.get('/membersonly', (req, res) => {
+    if (!req.user) {
+        return res.status(403).send('Members only');
+    }
+    res.send(`Welcome ${req.user.display_name}`);
+});
+```
+
+If you want to create your own router to bind custom routes to:
+```js
+const myRouter = server.app.createRouter();
+// Bind the new router to /myroutes
+server.router.use('/myroutes', myRouter);
+// Add routes to own router
+myRouter.get('custom1', handleMethod1); // /myroutes/custom1
+myRouter.get('custom2', handleMethod1); // /myroutes/custom2
+```
+
+### Using `server.extend`
+
 You can add your own custom API functions to the server with the `server.extend(method, path, handler)` method:
 
 ```javascript
@@ -443,15 +613,15 @@ await server.ready();
 
 const _quotes = [...];
 server.extend('get', 'quotes/random', (req, res) => {
-    let index = Math.round(Math.random() * _quotes.length);
+    const index = Math.round(Math.random() * _quotes.length);
     res.send(quotes[index]);
 });
 server.extend('get', 'quotes/specific', (req, res) => {
-    let index = req.query.index;
+    const index = req.query.index;
     res.send(quotes[index]);
 });
 server.extend('post', 'quotes/add', (req, res) => {
-    let quote = {
+    const quote = {
         text: req.body.text,
         author: req.body.author
     };

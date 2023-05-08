@@ -14,7 +14,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.post(`/index/${env.db.name}/delete`, adminOnly(env), async (req: Request, res) => {
+    env.router.post(`/index/${env.db.name}/delete`, adminOnly(env), async (req: Request, res) => {
         // Delete an index
         try {
             const data = req.body;

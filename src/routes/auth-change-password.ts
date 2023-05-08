@@ -17,7 +17,7 @@ export type ResponseBody = { access_token: string } | { code: string; message: s
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
-    env.app.post(`/auth/${env.db.name}/change_password`, async (req: Request, res) => {
+    env.router.post(`/auth/${env.db.name}/change_password`, async (req: Request, res) => {
         const access_token = req.user?.access_token;
         const details = req.body;
         const LOG_ACTION = 'auth.change_password';

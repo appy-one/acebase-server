@@ -12,7 +12,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/schema/${env.db.name}/*`, adminOnly(env), async (req: Request, res) => {
+    env.router.get(`/schema/${env.db.name}/*`, adminOnly(env), async (req: Request, res) => {
         // Get defined schema for a specifc path
         try {
             const path = req.path.slice(env.db.name.length + 9);

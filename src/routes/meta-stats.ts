@@ -14,7 +14,7 @@ export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
 
-    env.app.get(`/stats/${env.db.name}`, async (req: Request, res) => {
+    env.router.get(`/stats/${env.db.name}`, async (req: Request, res) => {
         // Get database stats
         try {
             const stats = await env.db.api.stats() as SimpleAceBaseStorageStats;

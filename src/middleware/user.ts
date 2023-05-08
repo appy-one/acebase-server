@@ -6,7 +6,7 @@ import { decodePublicAccessToken, PublicAccessToken } from '../shared/tokens';
 export const addMiddleware = (env: RouteInitEnvironment) => {
 
     // Add bearer authentication middleware
-    env.app.use(async (req: RouteRequest<{ auth_token?: string }>, res, next) => {
+    env.router.use(async (req: RouteRequest<{ auth_token?: string }>, res, next) => {
 
         let authorization = req.get('Authorization');
         if (typeof authorization !== 'string' && 'auth_token' in req.query) {
@@ -35,7 +35,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
             if (!req.user) {
                 // Query database to get user for this token
                 try {
-                    await signIn({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
+                    req.user = await signIn({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
                 }
                 catch (err) {
                     return sendNotAuthenticatedError(res, err.code, err.message);
