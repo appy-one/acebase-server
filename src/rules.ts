@@ -277,7 +277,10 @@ export class PathBasedRules {
                         const ruleEnv: PathRuleFunctionEnvironment = {
                             ...env,
                             exists: async (target: string) => this.db.ref(getFullPath(currentPath, target)).exists(),
-                            value: async (target: string, include?: string[]) => this.db.ref(getFullPath(currentPath, target)).get({ include }),
+                            value: async (target: string, include?: string[]) => {
+                                const snap = await this.db.ref(getFullPath(currentPath, target)).get({ include });
+                                return snap.val();
+                            },
                         };
                         const result = typeof rule === 'function'
                             ? await rule(ruleEnv)
@@ -375,7 +378,10 @@ export class PathBasedRules {
                     operation: operation === 'update' ? (check.target.length === 0 ? 'update' : 'set') : operation,
                     data: validateData,
                     exists: async (target: string) => this.db.ref(getFullPath(validatePath, target)).exists(),
-                    value: async (target: string, include?: string[]) => this.db.ref(getFullPath(validatePath, target)).get({ include }),
+                    value: async (target: string, include?: string[]) => {
+                        const snap = await this.db.ref(getFullPath(validatePath, target)).get({ include });
+                        return snap.val();
+                    },
                 };
                 try {
                     const result = await (async () => {
