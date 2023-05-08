@@ -220,12 +220,13 @@ export class PathBasedRules {
                 return relativePath;
             }
             else if (!relativePath.startsWith('.')) {
-                throw new Error('Path must be either absolute (/) or relative (./)');
+                throw new Error('Path must be either absolute (/) or relative (./ or ../)');
             }
             let targetPathInfo = PathInfo.get(path);
-            const trailKeys = PathInfo.getPathKeys(relativePath).slice(1); // Ignore first '.' key
+            const trailKeys = PathInfo.getPathKeys(relativePath);
             trailKeys.forEach(key => {
-                if (key === '..') { targetPathInfo = targetPathInfo.parent; }
+                if (key === '.') { /* no op */ }
+                else if (key === '..') { targetPathInfo = targetPathInfo.parent; }
                 else { targetPathInfo = targetPathInfo.child(key); }
             });
             return targetPathInfo.path;
