@@ -57,7 +57,7 @@ export const addRoute = (env) => {
         env.config.email?.send(request);
         return user;
     };
-    env.app.post(`/auth/${env.db.name}/reset_password`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/reset_password`, async (req, res) => {
         const details = req.body;
         const LOG_ACTION = 'auth.reset_password';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };

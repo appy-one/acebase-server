@@ -1,10 +1,10 @@
 import { SimpleEventEmitter } from 'acebase-core';
-export declare type WebSocketEventData<SocketType, DataType = undefined> = {
+export type WebSocketEventData<SocketType, DataType = undefined> = {
     socket: SocketType;
     socket_id: string;
     data?: DataType;
 };
-export declare type WebSocketEventCallback<SocketType, DataType = any> = (event: WebSocketEventData<SocketType, DataType>) => void;
+export type WebSocketEventCallback<SocketType, DataType = any> = (event: WebSocketEventData<SocketType, DataType>) => void;
 export declare abstract class WebSocketManager<SocketType> extends SimpleEventEmitter {
     readonly framework: string;
     constructor(framework: string);

@@ -1,5 +1,5 @@
 export const addMiddleware = (env) => {
-    env.app.use((req, res, next) => {
+    env.router.use((req, res, next) => {
         // Setup AceBase context, to allow clients to pass contextual info with data updates,
         // that will be sent along to data event subscribers on affected data.
         const context = req.get('AceBase-Context') || '{}';

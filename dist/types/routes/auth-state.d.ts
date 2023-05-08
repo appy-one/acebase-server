@@ -1,14 +1,14 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { AceBaseUser } from '../schema/user';
-export declare type RequestQuery = never;
-export declare type RequestBody = never;
-export declare type ResponseBody = {
+export type RequestQuery = never;
+export type RequestBody = never;
+export type ResponseBody = {
     signed_in: false;
 } | {
     signed_in: true;
     user: AceBaseUser;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=auth-state.d.ts.map

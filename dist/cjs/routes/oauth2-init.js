@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const tokens_1 = require("../shared/tokens");
 const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/init`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/oauth2/${env.db.name}/init`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const providerName = req.query.provider;
             const callbackUrl = req.query.callbackUrl;

@@ -19,7 +19,7 @@ class DeleteError extends Error {
 }
 exports.DeleteError = DeleteError;
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/delete`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/delete`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c, _d;
         const details = req.body;
         const LOG_ACTION = 'auth.delete';

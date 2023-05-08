@@ -6,7 +6,7 @@ export const addRoute = (env) => {
     if (!env.config.auth.enabled) {
         throw new Error('Authentication not enabled in the server settings');
     }
-    env.app.post(`/auth/${env.db.name}/signin`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/signin`, async (req, res) => {
         const details = req.body;
         const clientId = details.client_id || null; // NEW in AceBaseClient v0.9.4
         try {

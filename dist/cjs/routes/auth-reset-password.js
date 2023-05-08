@@ -71,7 +71,7 @@ const addRoute = (env) => {
         (_a = env.config.email) === null || _a === void 0 ? void 0 : _a.send(request);
         return user;
     });
-    env.app.post(`/auth/${env.db.name}/reset_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/reset_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _b, _c, _d, _e;
         const details = req.body;
         const LOG_ACTION = 'auth.reset_password';

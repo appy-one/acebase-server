@@ -1,5 +1,5 @@
 export declare const createPublicAccessToken: (uid: string, ip: string, dbToken: string, password: string) => string;
-export declare type PublicAccessToken = {
+export type PublicAccessToken = {
     access_token: string;
     uid: string;
     created: number;

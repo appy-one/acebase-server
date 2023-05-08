@@ -1,8 +1,8 @@
 import * as os from 'os';
-const SERVER_VERSION = '1.16.2'; // Loaded from package.json by npm scripts
+const SERVER_VERSION = '1.17.0'; // Loaded from package.json by npm scripts
 export const addRoute = (env) => {
     // Add info endpoint
-    env.app.get(`/info/${env.db.name}`, (req, res) => {
+    env.router.get(`/info/${env.db.name}`, (req, res) => {
         const info = {
             version: SERVER_VERSION,
             time: Date.now(),

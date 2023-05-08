@@ -1,7 +1,7 @@
 import adminOnly from '../middleware/admin-only.js';
 import { sendError } from '../shared/error.js';
 export const addRoute = (env) => {
-    env.app.post(`/schema/${env.db.name}`, adminOnly(env), async (req, res) => {
+    env.router.post(`/schema/${env.db.name}`, adminOnly(env), async (req, res) => {
         // defines a schema
         try {
             const data = req.body;

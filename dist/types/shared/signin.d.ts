@@ -1,6 +1,6 @@
 import { DbUserAccountDetails } from '../schema/user';
 import { RouteInitEnvironment, RouteRequest } from './env';
-export declare type SignInCredentials = {
+export type SignInCredentials = {
     method: 'token';
     access_token: string;
 } | {

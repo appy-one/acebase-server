@@ -1,7 +1,7 @@
 import adminOnly from '../middleware/admin-only.js';
 import { sendError } from '../shared/error.js';
 export const addRoute = (env) => {
-    env.app.get(`/schema/${env.db.name}/*`, adminOnly(env), async (req, res) => {
+    env.router.get(`/schema/${env.db.name}/*`, adminOnly(env), async (req, res) => {
         // Get defined schema for a specifc path
         try {
             const path = req.path.slice(env.db.name.length + 9);

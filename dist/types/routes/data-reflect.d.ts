@@ -1,11 +1,11 @@
 import { IReflectionChildrenInfo, IReflectionNodeInfo } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type RequestQuery = {
+export type RequestQuery = {
     type: 'info' | 'children';
     impersonate?: string;
 };
-export declare type RequestBody = null;
-export declare type ResponseBody = IReflectionNodeInfo & IReflectionChildrenInfo & {
+export type RequestBody = null;
+export type ResponseBody = IReflectionNodeInfo & IReflectionChildrenInfo & {
     impersonation: {
         uid: string;
         read: {
@@ -24,7 +24,7 @@ export declare type ResponseBody = IReflectionNodeInfo & IReflectionChildrenInfo
         };
     };
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-reflect.d.ts.map

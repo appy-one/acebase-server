@@ -1,6 +1,6 @@
 import adminOnly from '../middleware/admin-only.js';
 export const addRoute = (env) => {
-    env.app.get(`/logs/${env.db.name}`, adminOnly(env), async (req, res) => {
+    env.router.get(`/logs/${env.db.name}`, adminOnly(env), async (req, res) => {
         // Get database logs
         // Create indexes if not there yet
         const db = env.log.ref.db;

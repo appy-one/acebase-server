@@ -128,31 +128,35 @@ const addWebsocketServer = (env) => {
             req_id: requestId,
         });
     };
-    serverManager.on('subscribe', event => {
+    serverManager.on('subscribe', (event) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
         // Client wants to subscribe to events on a node
         const client = getClientBySocketId(event.socket_id, 'subscribe');
         if (!client) {
             return;
         }
-        env.debug.verbose(`Client ${event.socket_id} subscribes to event "${event.data.event}" on path "/${event.data.path}"`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
+        const eventName = event.data.event;
         const subscriptionPath = event.data.path;
-        const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === event.data.event);
+        env.debug.verbose(`Client ${event.socket_id} subscribes to event "${eventName}" on path "/${subscriptionPath}"`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
+        const isSubscribed = () => subscriptionPath in client.subscriptions && client.subscriptions[subscriptionPath].some(s => s.event === eventName);
         if (isSubscribed()) {
             return acknowledgeRequest(event.socket, event.data.req_id);
         }
         // Get client
         // const client = clients.get(socket.id);
-        if (!env.rules.userHasAccess(client.user, subscriptionPath, false)) {
+        if (!(yield env.rules.isOperationAllowed(client.user, subscriptionPath, 'get'))) {
             env.log.error('event.subscribe', 'access_denied', { uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : 'anonymous', path: subscriptionPath });
             return failRequest(event.socket, event.data.req_id, 'access_denied');
         }
-        const callback = (err, path, currentValue, previousValue, context) => {
+        const callback = (err, path, currentValue, previousValue, context) => __awaiter(void 0, void 0, void 0, function* () {
             if (!isSubscribed()) {
                 // Not subscribed anymore. Cancel sending
                 return;
             }
-            if (!env.rules.userHasAccess(client.user, path, false)) {
+            if (err) {
+                return;
+            }
+            if (!(yield env.rules.isOperationAllowed(client.user, path, 'get', { value: currentValue, context }))) { // 'event', { eventName, subscriptionPath, currentValue, previousValue, context })
                 if (!subscriptionPath.includes('*') && !subscriptionPath.includes('$')) {
                     // Could potentially be very many callbacks, so
                     // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
@@ -161,49 +165,48 @@ const addWebsocketServer = (env) => {
                 }
                 return;
             }
-            if (err) {
-                return;
-            }
             const val = acebase_core_1.Transport.serialize({
                 current: currentValue,
                 previous: previousValue,
             });
-            env.debug.verbose(`Sending data event "${event.data.event}" for path "/${path}" to client ${event.socket_id}`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
+            env.debug.verbose(`Sending data event "${eventName}" for path "/${path}" to client ${event.socket_id}`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
             // TODO: let large data events notify the client, then let them download the data manually so it doesn't have to be transmitted through the websocket
             serverManager.send(event.socket, 'data-event', {
                 subscr_path: subscriptionPath,
                 path,
-                event: event.data.event,
+                event: eventName,
                 val,
                 context,
             });
-        };
+        });
         let pathSubs = client.subscriptions[subscriptionPath];
         if (!pathSubs) {
             pathSubs = client.subscriptions[subscriptionPath] = [];
         }
-        const subscr = { path: subscriptionPath, event: event.data.event, callback };
+        const subscr = { path: subscriptionPath, event: eventName, callback };
         pathSubs.push(subscr);
-        env.db.api.subscribe(subscriptionPath, event.data.event, callback);
+        env.db.api.subscribe(subscriptionPath, eventName, callback);
         acknowledgeRequest(event.socket, event.data.req_id);
-    });
+    }));
     serverManager.on('unsubscribe', event => {
         // Client unsubscribes from events on a node
         const client = getClientBySocketId(event.socket_id, 'unsubscribe');
         if (!client) {
             return;
         }
-        env.debug.verbose(`Client ${event.socket_id} is unsubscribing from event "${event.data.event || '(any)'}" on path "/${event.data.path}"`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
+        const eventName = event.data.event;
+        const subscriptionPath = event.data.path;
+        env.debug.verbose(`Client ${event.socket_id} is unsubscribing from event "${eventName || '(any)'}" on path "/${subscriptionPath}"`.colorize([acebase_core_1.ColorStyle.bgWhite, acebase_core_1.ColorStyle.black]));
         // const client = clients.get(socket.id);
-        const pathSubs = client.subscriptions[event.data.path];
+        const pathSubs = client.subscriptions[subscriptionPath];
         if (!pathSubs) {
             // We have no knowledge of any active subscriptions on this path
             return acknowledgeRequest(event.socket, event.data.req_id);
         }
         let remove = pathSubs;
-        if (event.data.event) {
+        if (eventName) {
             // Unsubscribe from a specific event
-            remove = pathSubs.filter(subscr => subscr.event === event.data.event);
+            remove = pathSubs.filter(subscr => subscr.event === eventName);
         }
         remove.forEach(subscr => {
             // Unsubscribe them at db level and remove from our list
@@ -213,7 +216,7 @@ const addWebsocketServer = (env) => {
         });
         if (pathSubs.length === 0) {
             // No subscriptions left on this path, remove the path entry
-            delete client.subscriptions[event.data.path];
+            delete client.subscriptions[subscriptionPath];
         }
         return acknowledgeRequest(event.socket, event.data.req_id);
     });
@@ -229,17 +232,23 @@ const addWebsocketServer = (env) => {
         acknowledgeRequest(event.socket, event.data.req_id);
     });
     const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
-    serverManager.on('transaction-start', event => {
-        var _a, _b, _c;
+    serverManager.on('transaction-start', (event) => __awaiter(void 0, void 0, void 0, function* () {
+        var _c, _d, _e;
         // Start transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-start');
         if (!client || !event.data) {
             return;
         }
         const LOG_ACTION = 'socket.transaction.start';
-        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: event.data.path };
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_d = (_c = client.user) === null || _c === void 0 ? void 0 : _c.uid) !== null && _d !== void 0 ? _d : null, path: event.data.path };
         env.debug.verbose(`Client ${event.socket_id} is sending transaction start request on path "${event.data.path}"`);
         const data = event.data;
+        // Pre-check if reading AND writing is allowed (special transact operation)
+        const access = yield env.rules.isOperationAllowed(client.user, data.path, 'transact');
+        if (!access.allow) {
+            env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_e = access.rulePath) !== null && _e !== void 0 ? _e : null }), access.details);
+            return serverManager.send(event.socket, 'tx_error', { id: data.id, reason: 'access_denied' });
+        }
         const tx = {
             id: data.id,
             started: Date.now(),
@@ -253,18 +262,19 @@ const addWebsocketServer = (env) => {
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
             }, TRANSACTION_TIMEOUT_MS),
         };
-        const access = env.rules.userHasAccess(client.user, data.path, true);
-        if (!access.allow) {
-            // throw new AccessDeniedError(`access_denied`);
-            env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_c = access.rulePath) !== null && _c !== void 0 ? _c : null }), access.details);
-            return serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'access_denied' });
-        }
         // Bind to client
         client.transactions[data.id] = tx;
         // Start transaction
         env.debug.verbose(`Transaction ${tx.id} starting...`);
-        const donePromise = env.db.api.transaction(tx.path, val => {
+        const donePromise = env.db.api.transaction(tx.path, (val) => __awaiter(void 0, void 0, void 0, function* () {
+            var _f;
             env.debug.verbose(`Transaction ${tx.id} started with value: `, val);
+            const access = yield env.rules.isOperationAllowed(client.user, data.path, 'get', { value: val, context: tx.context });
+            if (!access.allow) {
+                env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_f = access.rulePath) !== null && _f !== void 0 ? _f : null }), access.details);
+                serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'access_denied' });
+                return; // Return undefined to cancel transaction
+            }
             const currentValue = acebase_core_1.Transport.serialize(val);
             const promise = new Promise((resolve) => {
                 tx.finish = (val) => {
@@ -275,32 +285,34 @@ const addWebsocketServer = (env) => {
             });
             serverManager.send(event.socket, 'tx_started', { id: tx.id, value: currentValue });
             return promise;
-        }, { context: tx.context });
-    });
+        }), { context: tx.context });
+    }));
     serverManager.on('transaction-finish', (event) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e;
+        var _g, _h, _j, _k, _l;
         // Finish transaction
         const client = getClientBySocketId(event.socket_id, 'transaction-finish');
         if (!client || !event.data) {
             return;
         }
         const LOG_ACTION = 'socket.transaction.finish';
-        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_b = (_a = client.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null, path: event.data.path };
+        const LOG_DETAILS = { ip: event.socket.conn.remoteAddress, uid: (_h = (_g = client.user) === null || _g === void 0 ? void 0 : _g.uid) !== null && _h !== void 0 ? _h : null, path: event.data.path };
         const data = event.data;
         const tx = client.transactions[data.id];
         try {
             if (!tx || data.path !== tx.path) {
-                env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', Object.assign(Object.assign({}, LOG_DETAILS), { id: data.id, tx_path: (_c = tx === null || tx === void 0 ? void 0 : tx.path) !== null && _c !== void 0 ? _c : null }));
+                env.log.error(LOG_ACTION, tx ? 'wrong_path' : 'not_found', Object.assign(Object.assign({}, LOG_DETAILS), { id: data.id, tx_path: (_j = tx === null || tx === void 0 ? void 0 : tx.path) !== null && _j !== void 0 ? _j : null }));
                 throw new SocketRequestError('transaction_not_found', 'Transaction not found');
             }
             clearTimeout(tx.timeout);
             delete client.transactions[data.id];
-            const access = env.rules.userHasAccess(client.user, data.path, true);
-            if (!access.allow) {
-                env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_d = access.rulePath) !== null && _d !== void 0 ? _d : null }), access.details);
-                throw new SocketRequestError('access_denied', 'Access denied');
-            }
             const newValue = 'val' in data.value ? acebase_core_1.Transport.deserialize(data.value) : undefined;
+            if (typeof newValue !== 'undefined') {
+                const access = yield env.rules.isOperationAllowed(client.user, data.path, 'set', { value: newValue, context: tx.context });
+                if (!access.allow) {
+                    env.log.error(LOG_ACTION, 'unauthorized', Object.assign(Object.assign({}, LOG_DETAILS), { rule_code: access.code, rule_path: (_k = access.rulePath) !== null && _k !== void 0 ? _k : null }), access.details);
+                    throw new SocketRequestError('access_denied', 'Access denied');
+                }
+            }
             const { cursor } = yield tx.finish(newValue);
             env.debug.verbose(`Transaction ${tx.id} finished`);
             serverManager.send(event.socket, 'tx_completed', { id: tx.id, context: { cursor } });
@@ -310,7 +322,7 @@ const addWebsocketServer = (env) => {
                 // Other errors have been logged already
                 env.log.error(LOG_ACTION, 'unexpected', LOG_DETAILS, err);
             }
-            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: (_e = err.code) !== null && _e !== void 0 ? _e : err.message, data });
+            serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: (_l = err.code) !== null && _l !== void 0 ? _l : err.message, data });
             tx.finish(); // Finish with undefined, canceling the transaction
         }
     }));

@@ -18,12 +18,12 @@ export interface IOAuth2TokenResult {
     expires_in?: number;
     refresh_token?: string;
 }
-export declare type OAuth2ProviderInitInfo = {
+export type OAuth2ProviderInitInfo = {
     redirect_url: string;
     state?: string;
     options?: any;
 };
-export declare type OAuth2ProviderUserInfo = {
+export type OAuth2ProviderUserInfo = {
     id: string;
     name: string;
     display_name: string;

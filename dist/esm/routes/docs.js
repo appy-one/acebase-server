@@ -14,7 +14,7 @@ export const addRoute = (env) => {
             info: {
                 title: 'AceBase Server',
                 description: 'AceBase Server API endpoint documentation and test environment. This documentation is available on the server because it is running in development mode. To disable this, set your NODE_ENV environment variable to production. Many endpoints require you to authenticate using Bearer authentication. Use the _/auth/{dbname}/signin_ endpoint to obtain an access token, then click the _Authorize_ button and paste your token into the input field. For more information about AceBase, see GitHub',
-                version: '1.10.0',
+                version: '1.17.0',
                 contact: {
                     name: 'AceBase API Support',
                     email: 'me@appy.one',
@@ -105,6 +105,13 @@ export const addRoute = (env) => {
                         properties: {
                             code: { type: 'string', description: 'The string `"schema_validation_failed"`', example: 'schema_validation_failed' },
                             message: { type: 'string', description: 'The server error message', example: 'Property at path "path/property" is of the wrong type' },
+                        },
+                    },
+                    RuleValidationError: {
+                        type: 'object',
+                        properties: {
+                            code: { type: 'string', description: 'The string `"rule"`', example: 'rule' },
+                            message: { type: 'string', description: 'The server error message', example: 'write operation denied to path "path/property" by set rule' },
                         },
                     },
                     SerializedValue: {
@@ -240,7 +247,7 @@ export const addRoute = (env) => {
         apis: [yamlPath],
     };
     const swaggerDocs = createSwaggerDocs(options);
-    env.app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+    env.router.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 };
 export default addRoute;
 //# sourceMappingURL=docs.js.map

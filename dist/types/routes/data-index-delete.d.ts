@@ -1,9 +1,9 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type RequestQuery = null;
-export declare type RequestBody = {
+export type RequestQuery = null;
+export type RequestBody = {
     fileName: string;
 };
-export declare type ResponseBody = {
+export type ResponseBody = {
     success: true;
 } | {
     code: 'admin_only';
@@ -12,7 +12,7 @@ export declare type ResponseBody = {
     code: 'unexpected';
     message: string;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-index-delete.d.ts.map

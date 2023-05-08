@@ -167,6 +167,9 @@ class AceBaseServerConfig {
         if (typeof settings.logColors === 'boolean') {
             this.logColors = settings.logColors;
         }
+        if (typeof settings.init === 'function') {
+            this.init = settings.init;
+        }
     }
 }
 exports.AceBaseServerConfig = AceBaseServerConfig;

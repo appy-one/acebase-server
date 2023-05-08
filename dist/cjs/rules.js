@@ -1,15 +1,37 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PathBasedRules = void 0;
+exports.PathBasedRules = exports.AccessRuleValidationError = void 0;
 const acebase_core_1 = require("acebase-core");
 const fs = require("fs");
+const sandbox_1 = require("./sandbox");
 const settings_1 = require("./settings");
+class AccessRuleValidationError extends Error {
+    constructor(result) {
+        super(result.message);
+        this.result = result;
+    }
+}
+exports.AccessRuleValidationError = AccessRuleValidationError;
 class PathBasedRules {
+    stop() { throw new Error('not started yet'); }
     constructor(rulesFilePath, defaultAccess, env) {
         // Reads rules from a file and monitors it
         // Check if there is a rules file, load it or generate default
+        this.codeRules = [];
+        this.db = env.db;
+        this.debug = env.debug;
         const readRules = () => {
             try {
+                // TODO: store in db itself under __rules__ or in separate rules.db storage file
                 const json = fs.readFileSync(rulesFilePath, 'utf-8');
                 const obj = JSON.parse(json);
                 if (typeof obj !== 'object' || typeof obj.rules !== 'object') {
@@ -56,15 +78,22 @@ class PathBasedRules {
         // Convert string rules to functions that can be executed
         const processRules = (path, parent, variables) => {
             Object.keys(parent).forEach(key => {
-                let rule = parent[key];
+                const rule = parent[key];
                 if (['.read', '.write', '.validate'].includes(key) && typeof rule === 'string') {
+                    let ruleCode = rule.includes('return ') ? rule : `return ${rule}`;
+                    // Add `await`s to `value` and `exists` call expressions
+                    ruleCode = ruleCode.replace(/(value|exists)\(/g, (m, fn) => `await ${fn}(`);
                     // Convert to function
-                    const text = rule;
-                    rule = eval(`(env => { const { now, root, newData, data, auth, ${variables.join(', ')} } = env; return ${text}; })`);
-                    rule.getText = () => {
-                        return text;
-                    };
-                    return parent[key] = rule;
+                    // rule = eval(
+                    //     `(async (env) => {` +
+                    //     `  const { now, path, ${variables.join(', ')}, operation, data, auth, value, exists } = env;` +
+                    //     `  ${ruleCode};` +
+                    //     `})`);
+                    // rule.getText = () => {
+                    //     return ruleCode;
+                    // };
+                    ruleCode = `(async () => {\n${ruleCode}\n})();`;
+                    return parent[key] = ruleCode;
                 }
                 else if (key === '.schema') {
                     // Add schema
@@ -84,10 +113,15 @@ class PathBasedRules {
         processRules('', accessRules.rules, []);
         // Watch file for changes. watchFile will poll for changes every (default) 5007ms
         const watchFileListener = () => {
-            // Reload access rules
+            // Reload access rules from file
             const accessRules = readRules();
             processRules('', accessRules.rules, []);
             this.accessRules = accessRules;
+            // Re-add rules added by code
+            const codeRules = this.codeRules.splice(0);
+            for (const rule of codeRules) {
+                this.add(rule.path, rule.type, rule.callback);
+            }
         };
         fs.watchFile(rulesFilePath, watchFileListener);
         this.stop = () => {
@@ -97,70 +131,249 @@ class PathBasedRules {
         this.authEnabled = env.authEnabled;
         this.accessRules = accessRules;
     }
-    stop() { throw new Error('not started yet'); }
-    userHasAccess(user, path, write = false) {
-        // Process rules, find out if signed in user is allowed to read/write
-        // Defaults to false unless a rule is found that tells us otherwise
-        const allow = { allow: true };
-        if (!this.authEnabled) {
-            // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
-            return allow;
-        }
-        else if (user && user.uid === 'admin') {
-            // Always allow admin access
-            // TODO: implement user.is_admin, so the default admin account can be disabled
-            return allow;
-        }
-        else if (path.startsWith('__')) {
-            // NEW: with the auth database now integrated into the main database,
-            // deny access to private resources starting with '__' for non-admins
-            return { allow: false, code: 'private', message: `Access to private resource "${path}" not allowed` };
-        }
-        const env = { now: Date.now(), auth: user || null }; // IDEA: Add functions like "exists" and "value". These will be async (so that requires refactoring) and can be used like "await exists('./shared/' + auth.uid)" and "await value('./writable') === true"
-        const pathKeys = acebase_core_1.PathInfo.getPathKeys(path);
-        let rule = this.accessRules.rules;
-        const rulePath = [];
-        while (true) {
-            if (!rule) {
-                // TODO: check if this one is redundant with the pathKeys.length === 0 near the end
-                return { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
-            }
-            const checkRule = write ? rule['.write'] : rule['.read'];
-            if (typeof checkRule === 'boolean') {
-                if (!checkRule) {
-                    return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule, rulePath: rulePath.join('/') };
-                }
+    isOperationAllowed(user, path, operation, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Process rules, find out if signed in user is allowed to read/write
+            // Defaults to false unless a rule is found that tells us otherwise
+            const isPreFlight = typeof data === 'undefined';
+            const allow = { allow: true };
+            if (!this.authEnabled) {
+                // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
                 return allow;
             }
-            if (typeof checkRule === 'function') {
-                try {
-                    // Execute rule function
-                    if (!checkRule(env)) {
-                        return { allow: false, code: 'rule', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/') };
+            else if ((user === null || user === void 0 ? void 0 : user.uid) === 'admin') {
+                // Always allow admin access
+                // TODO: implement user.is_admin, so the default admin account can be disabled
+                return allow;
+            }
+            else if (path.startsWith('__')) {
+                // NEW: with the auth database now integrated into the main database,
+                // deny access to private resources starting with '__' for non-admins
+                return { allow: false, code: 'private', message: `Access to private resource "${path}" not allowed` };
+            }
+            const getFullPath = (path, relativePath) => {
+                if (relativePath.startsWith('/')) {
+                    // Absolute path
+                    return relativePath;
+                }
+                else if (!relativePath.startsWith('.')) {
+                    throw new Error('Path must be either absolute (/) or relative (./ or ../)');
+                }
+                let targetPathInfo = acebase_core_1.PathInfo.get(path);
+                const trailKeys = acebase_core_1.PathInfo.getPathKeys(relativePath);
+                trailKeys.forEach(key => {
+                    if (key === '.') { /* no op */ }
+                    else if (key === '..') {
+                        targetPathInfo = targetPathInfo.parent;
                     }
-                    return allow;
+                    else {
+                        targetPathInfo = targetPathInfo.child(key);
+                    }
+                });
+                return targetPathInfo.path;
+            };
+            const env = {
+                now: Date.now(),
+                auth: user || null,
+                operation,
+                vars: {},
+                context: typeof (data === null || data === void 0 ? void 0 : data.context) === 'object' && data.context !== null ? Object.assign({}, data.context) : {},
+            };
+            const pathInfo = acebase_core_1.PathInfo.get(path);
+            const pathKeys = pathInfo.keys.slice();
+            let rule = this.accessRules.rules;
+            const rulePathKeys = [];
+            let currentPath = '';
+            let isAllowed = false;
+            while (rule) {
+                // Check read/write access or validate operation
+                const checkRules = [];
+                const applyRule = (rule) => {
+                    if (rule && !checkRules.includes(rule)) {
+                        checkRules.push(rule);
+                    }
+                };
+                if (['get', 'exists', 'query', 'reflect', 'export', 'transact'].includes(operation)) {
+                    // Operations that require 'read' access
+                    applyRule(rule['.read']);
                 }
-                catch (err) {
-                    // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                    return { allow: false, code: 'exception', message: `Access denied to path "${path}" by set rule`, rule: checkRule.getText(), rulePath: rulePath.join('/'), details: err };
+                if ('.write' in rule && ['update', 'set', 'delete', 'import', 'transact'].includes(operation)) {
+                    // Operations that require 'write' access
+                    applyRule(rule['.write']);
+                }
+                if (`.${operation}` in rule && !isPreFlight) {
+                    // If there is a dedicated rule (eg ".update" or ".reflect") for this operation, use it.
+                    applyRule(rule[`.${operation}`]);
+                }
+                const rulePath = acebase_core_1.PathInfo.get(rulePathKeys).path;
+                for (const rule of checkRules) {
+                    if (typeof rule === 'boolean') {
+                        if (!rule) {
+                            return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath };
+                        }
+                        isAllowed = true; // return allow;
+                    }
+                    if (typeof rule === 'string' || typeof rule === 'function') {
+                        try {
+                            // Execute rule function
+                            const ruleEnv = Object.assign(Object.assign({}, env), { exists: (target) => __awaiter(this, void 0, void 0, function* () { return this.db.ref(getFullPath(currentPath, target)).exists(); }), value: (target, include) => __awaiter(this, void 0, void 0, function* () {
+                                    const snap = yield this.db.ref(getFullPath(currentPath, target)).get({ include });
+                                    return snap.val();
+                                }) });
+                            const result = typeof rule === 'function'
+                                ? yield rule(ruleEnv)
+                                : yield (0, sandbox_1.executeSandboxed)(rule, ruleEnv);
+                            if (!['cascade', 'deny', 'allow', true, false].includes(result)) {
+                                this.debug.warn(`rule for path ${rulePath} possibly returns an unintentional value (${JSON.stringify(result)}) which results in outcome "${result ? 'allow' : 'deny'}"`);
+                            }
+                            isAllowed = result === 'allow' || result === true;
+                            if (!isAllowed && result !== 'cascade') {
+                                return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath };
+                            }
+                        }
+                        catch (err) {
+                            // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
+                            return { allow: false, code: 'exception', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath, details: err };
+                        }
+                    }
+                }
+                if (isAllowed) {
+                    break;
+                }
+                // Proceed with next key in trail
+                if (pathKeys.length === 0) {
+                    break;
+                }
+                let nextKey = pathKeys.shift();
+                currentPath = acebase_core_1.PathInfo.get(currentPath).childPath(nextKey);
+                // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
+                // need to change things here for usage of wildcard paths in subscriptions
+                if (typeof rule[nextKey] === 'undefined') {
+                    // Check if current rule has a wildcard child
+                    const wildcardKey = Object.keys(rule).find(key => key === '*' || key[0] === '$');
+                    if (wildcardKey) {
+                        env[wildcardKey] = nextKey;
+                        env.vars[wildcardKey] = nextKey;
+                    }
+                    nextKey = wildcardKey;
+                }
+                nextKey && rulePathKeys.push(nextKey);
+                rule = rule[nextKey];
+            }
+            // Now dig deeper to check nested .validate rules
+            if (isAllowed && ['set', 'update'].includes(operation) && !isPreFlight) {
+                // validate rules start at current path being written to
+                const startRule = pathInfo.keys.reduce((rule, key) => {
+                    if (typeof rule !== 'object' || rule === null) {
+                        return null;
+                    }
+                    if (key in rule) {
+                        return rule[key];
+                    }
+                    if ('*' in rule) {
+                        return rule['*'];
+                    }
+                    const variableKey = Object.keys(rule).find(key => typeof key === 'string' && key.startsWith('$'));
+                    if (variableKey) {
+                        return rule[variableKey];
+                    }
+                    return null;
+                }, this.accessRules.rules);
+                const getNestedRules = (target, rule) => {
+                    if (!rule) {
+                        return [];
+                    }
+                    const nested = Object.keys(rule).reduce((arr, key) => {
+                        if (key === '.validate' && ['string', 'function'].includes(typeof rule[key])) {
+                            arr.push({ target, validate: rule[key] });
+                        }
+                        if (!key.startsWith('.')) {
+                            const nested = getNestedRules([...target, key], rule[key]);
+                            arr.push(...nested);
+                        }
+                        return arr;
+                    }, []);
+                    return nested;
+                };
+                // Check all that apply for sent data (update requires a different strategy)
+                const checkRules = getNestedRules([], startRule);
+                for (const check of checkRules) {
+                    // Keep going as long as rules validate
+                    const targetData = check.target.reduce((data, key) => {
+                        if (data !== null && typeof data === 'object' && key in data) {
+                            return data[key];
+                        }
+                        return null;
+                    }, data.value);
+                    if (typeof targetData === 'undefined' && operation === 'update' && check.target.length >= 1 && check.target[0] in data) {
+                        // Ignore, data for direct child path is not being set by update operation
+                        continue;
+                    }
+                    const validateData = typeof targetData === 'undefined' ? null : targetData;
+                    if (validateData === null) {
+                        // Do not validate deletes, this should be done by ".write" or ".delete" rule
+                        continue;
+                    }
+                    const validatePath = acebase_core_1.PathInfo.get(path).child(check.target).path;
+                    const validateEnv = Object.assign(Object.assign({}, env), { operation: operation === 'update' ? (check.target.length === 0 ? 'update' : 'set') : operation, data: validateData, exists: (target) => __awaiter(this, void 0, void 0, function* () { return this.db.ref(getFullPath(validatePath, target)).exists(); }), value: (target, include) => __awaiter(this, void 0, void 0, function* () {
+                            const snap = yield this.db.ref(getFullPath(validatePath, target)).get({ include });
+                            return snap.val();
+                        }) });
+                    try {
+                        const result = yield (() => __awaiter(this, void 0, void 0, function* () {
+                            let result;
+                            if (typeof check.validate === 'function') {
+                                result = yield check.validate(validateEnv);
+                            }
+                            else if (typeof check.validate === 'string') {
+                                result = yield (0, sandbox_1.executeSandboxed)(check.validate, validateEnv);
+                            }
+                            else if (typeof check.validate === 'boolean') {
+                                result = check.validate ? 'allow' : 'deny';
+                            }
+                            if (result === 'cascade') {
+                                this.debug.warn(`Rule at path ${validatePath} returned "cascade", but ${validateEnv.operation} rules always cascade`);
+                            }
+                            else if (!['cascade', 'deny', 'allow', true, false].includes(result)) {
+                                this.debug.warn(`${validateEnv.operation} rule for path ${validatePath} possibly returned an unintentional value (${JSON.stringify(result)}) which results in outcome "${result ? 'allow' : 'deny'}"`);
+                            }
+                            if (['cascade', 'deny', 'allow'].includes(result)) {
+                                return result;
+                            }
+                            return result ? 'allow' : 'deny';
+                        }))();
+                        if (result === 'deny') {
+                            return { allow: false, code: 'rule', message: `${operation} operation denied to path "${path}" by set rule`, rule: check.validate, rulePath: validatePath };
+                        }
+                    }
+                    catch (err) {
+                        // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
+                        return { allow: false, code: 'exception', message: `${operation} operation denied to path "${path}" by set rule`, rule: check.validate, rulePath: validatePath, details: err };
+                    }
                 }
             }
-            if (pathKeys.length === 0) {
-                return { allow: false, code: 'no_rule', message: `No rule found for path ${path}` };
-            }
-            let nextKey = pathKeys.shift();
-            // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
-            // need to change things here for usage of wildcard paths in subscriptions
-            if (typeof rule[nextKey] === 'undefined') {
-                // Check if current rule has a wildcard child
-                const wildcardKey = Object.keys(rule).find(key => key === '*' || key[0] === '$');
-                if (wildcardKey) {
-                    env[wildcardKey] = nextKey;
+            return isAllowed ? allow : { allow: false, code: 'no_rule', message: `No rules set for requested path "${path}", defaulting to false` };
+        });
+    }
+    add(rulePaths, ruleTypes, callback) {
+        const paths = Array.isArray(rulePaths) ? rulePaths : [rulePaths];
+        const types = Array.isArray(ruleTypes) ? ruleTypes : [ruleTypes];
+        for (const path of paths) {
+            const keys = acebase_core_1.PathInfo.getPathKeys(path);
+            let target = this.accessRules.rules;
+            for (const key of keys) {
+                if (!(key in target)) {
+                    target[key] = {};
                 }
-                nextKey = wildcardKey;
+                target = target[key];
+                if (typeof target !== 'object' || target === null) {
+                    throw new Error(`Cannot add rule because value of key "${key}" is not an object`);
+                }
             }
-            nextKey && rulePath.push(nextKey);
-            rule = rule[nextKey];
+            for (const type of types) {
+                target[`.${type}`] = callback;
+                this.codeRules.push({ path, type, callback });
+            }
         }
     }
 }

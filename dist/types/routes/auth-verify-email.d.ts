@@ -3,15 +3,15 @@ export declare class VerifyEmailError extends Error {
     code: 'invalid_code' | 'unknown_user';
     constructor(code: 'invalid_code' | 'unknown_user', message: string);
 }
-export declare type RequestQuery = never;
-export declare type RequestBody = {
+export type RequestQuery = never;
+export type RequestBody = {
     code: string;
 };
-export declare type ResponseBody = 'OK' | {
+export type ResponseBody = 'OK' | {
     code: string;
     message: string;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 /**
  * Adds the verify_email route and returns the verification function that can be used to manually verify an email address
  * @param env environment

@@ -12,10 +12,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.post(`/import/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/import/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Import API
         const path = req.path.slice(env.db.name.length + 9);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = yield env.rules.isOperationAllowed(req.user, path, 'import', { context: req.context });
         if (!access.allow) {
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }

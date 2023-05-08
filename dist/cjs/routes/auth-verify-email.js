@@ -49,7 +49,7 @@ const addRoute = (env) => {
         yield snap.ref.update({ email_verified: true });
         env.log.event(LOG_ACTION, LOG_DETAILS);
     });
-    env.app.post(`/auth/${env.db.name}/verify_email`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/verify_email`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const details = req.body;
         try {
             yield verifyEmailAddress(req.ip, details.code);

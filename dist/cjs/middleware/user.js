@@ -15,7 +15,7 @@ const signin_1 = require("../shared/signin");
 const tokens_1 = require("../shared/tokens");
 const addMiddleware = (env) => {
     // Add bearer authentication middleware
-    env.app.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         let authorization = req.get('Authorization');
         if (typeof authorization !== 'string' && 'auth_token' in req.query) {
             // Enables browser calls to be authenticated by adding the access token as auth_token query parameter
@@ -41,7 +41,7 @@ const addMiddleware = (env) => {
             if (!req.user) {
                 // Query database to get user for this token
                 try {
-                    yield (0, signin_1.signIn)({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
+                    req.user = yield (0, signin_1.signIn)({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
                 }
                 catch (err) {
                     return (0, error_1.sendNotAuthenticatedError)(res, err.code, err.message);

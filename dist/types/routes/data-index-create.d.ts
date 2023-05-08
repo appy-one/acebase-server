@@ -1,5 +1,5 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type FullTextIndexOptions = {
+export type FullTextIndexOptions = {
     type: 'fulltext';
     config?: {
         /** Callback function that transforms (and/or filters) words being indexed _and_ queried */
@@ -18,13 +18,13 @@ export declare type FullTextIndexOptions = {
         useStoplist?: boolean;
     };
 };
-export declare type GeoIndexOptions = {
+export type GeoIndexOptions = {
     type: 'geo';
 };
-export declare type ArrayIndexOptions = {
+export type ArrayIndexOptions = {
     type: 'array';
 };
-export declare type CreateIndexRequest = {
+export type CreateIndexRequest = {
     path: string;
     key: string;
     options?: {
@@ -35,9 +35,9 @@ export declare type CreateIndexRequest = {
         config?: object;
     } & ({} | FullTextIndexOptions | GeoIndexOptions | ArrayIndexOptions);
 };
-export declare type RequestQuery = null;
-export declare type RequestBody = CreateIndexRequest;
-export declare type ResponseBody = {
+export type RequestQuery = null;
+export type RequestBody = CreateIndexRequest;
+export type ResponseBody = {
     success: true;
 } | {
     code: 'admin_only';
@@ -46,7 +46,7 @@ export declare type ResponseBody = {
     code: 'unexpected';
     message: string;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-index-create.d.ts.map

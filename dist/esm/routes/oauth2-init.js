@@ -1,6 +1,6 @@
 import { createSignedPublicToken } from '../shared/tokens.js';
 export const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/init`, async (req, res) => {
+    env.router.get(`/oauth2/${env.db.name}/init`, async (req, res) => {
         try {
             const providerName = req.query.provider;
             const callbackUrl = req.query.callbackUrl;

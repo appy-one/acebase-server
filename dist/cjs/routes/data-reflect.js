@@ -13,33 +13,44 @@ exports.addRoute = void 0;
 const acebase_core_1 = require("acebase-core");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.get(`/reflect/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/reflect/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
         // Reflection API
         const path = req.path.slice(env.db.name.length + 10);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = yield env.rules.isOperationAllowed(req.user, path, 'reflect', { context: req.context, type: req.query.type });
         if (!access.allow) {
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }
         const impersonatedAccess = {
             uid: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== 'admin' ? null : req.query.impersonate,
+            /**
+             * NEW, check all possible operations
+             */
+            operations: {},
+            /** Result of `get` operation */
             read: {
                 allow: false,
                 error: null,
             },
+            /** Result of `set` operation */
             write: {
                 allow: false,
                 error: null,
             },
         };
         const impersonatedUser = impersonatedAccess.uid === 'anonymous' ? null : { uid: impersonatedAccess.uid };
+        const impersonatedData = { context: { acebase_reflect: true }, value: '[[reflect]]' }; // TODO: Make configurable
         if (impersonatedAccess.uid) {
-            const readAccess = env.rules.userHasAccess(impersonatedUser, path, false);
+            for (const operation of ['transact', 'get', 'update', 'set', 'delete', 'reflect', 'exists', 'query', 'import', 'export']) {
+                const access = yield env.rules.isOperationAllowed(impersonatedUser, path, operation, impersonatedData);
+                impersonatedAccess.operations[operation] = access;
+            }
+            const readAccess = yield env.rules.isOperationAllowed(impersonatedUser, path, 'get'); // Use pre-flight 'get' check to mimic legacy 'read' check
             impersonatedAccess.read.allow = readAccess.allow;
             if (!readAccess.allow) {
                 impersonatedAccess.read.error = { code: readAccess.code, message: readAccess.message };
             }
-            const writeAccess = env.rules.userHasAccess(impersonatedUser, path, true);
+            const writeAccess = yield env.rules.isOperationAllowed(impersonatedUser, path, 'update'); // Use pre-flight 'update' check to mimic legacy 'write' check
             impersonatedAccess.write.allow = writeAccess.allow;
             if (!writeAccess.allow) {
                 impersonatedAccess.write.error = { code: writeAccess.code, message: writeAccess.message };
@@ -67,12 +78,12 @@ const addRoute = (env) => {
                 else if (type === 'info') {
                     list = typeof result.children === 'object' && 'list' in result.children ? result.children.list : [];
                 }
-                list && list.forEach(childInfo => {
+                for (const childInfo of list !== null && list !== void 0 ? list : []) {
                     childInfo.access = {
-                        read: env.rules.userHasAccess(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), false).allow,
-                        write: env.rules.userHasAccess(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), true).allow,
+                        read: (yield env.rules.isOperationAllowed(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), 'get')).allow,
+                        write: (yield env.rules.isOperationAllowed(impersonatedUser, acebase_core_1.PathInfo.getChildPath(path, childInfo.key), 'update')).allow, // Use pre-flight 'update' check to mimic legacy 'write' check
                     };
-                });
+                }
             }
             res.send(result);
         }

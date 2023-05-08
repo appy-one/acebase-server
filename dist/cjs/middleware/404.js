@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addMiddleware = void 0;
 /**
- * Adds 404 middleware. Add this as very last handler!
+ * Adds 404 middleware. This binds to `env.app` so routes added to `env.router` always come first, even if they are added after the 404 handler
  * @param env
  */
 const addMiddleware = (env) => {

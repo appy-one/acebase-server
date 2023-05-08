@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const user_1 = require("../schema/user");
 const addRoute = (env) => {
-    env.app.get(`/auth/${env.db.name}/state`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/auth/${env.db.name}/state`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (req.user) {
             res.send({ signed_in: true, user: (0, user_1.getPublicAccountDetails)(req.user) });
         }

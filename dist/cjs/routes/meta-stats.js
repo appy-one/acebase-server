@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const addRoute = (env) => {
-    env.app.get(`/stats/${env.db.name}`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/stats/${env.db.name}`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Get database stats
         try {
             const stats = yield env.db.api.stats();

@@ -26,6 +26,7 @@ const auth_2 = require("./auth");
 const data_1 = require("./routes/data");
 const webmanager_1 = require("./routes/webmanager");
 const meta_1 = require("./routes/meta");
+const _404_1 = require("./middleware/404");
 const cache_1 = require("./middleware/cache");
 const logger_1 = require("./logger");
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -38,6 +39,26 @@ class AceBaseExternalServerError extends Error {
 }
 exports.AceBaseExternalServerError = AceBaseExternalServerError;
 class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
+    get isReady() { return this._ready; }
+    /**
+     * Wait for the server to be ready to accept incoming connections
+     * @param callback (optional) callback function that is called when ready. You can also use the returned promise
+     * @returns returns a promise that resolves when ready
+     */
+    ready(callback) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._ready) {
+                yield this.once('ready');
+            }
+            callback === null || callback === void 0 ? void 0 : callback();
+        });
+    }
+    /**
+     * Gets the url the server is running at
+     */
+    get url() {
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
+    }
     constructor(dbname, options) {
         super();
         this._ready = false;
@@ -81,31 +102,13 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
         })();
         // Create Express app
         this.app = (0, http_1.createApp)({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        this.router = (0, http_1.createRouter)();
+        this.app.use(`/${this.config.rootPath}`, this.router);
         // Initialize and start server
         this.init({ authDb });
     }
-    get isReady() { return this._ready; }
-    /**
-     * Wait for the server to be ready to accept incoming connections
-     * @param callback (optional) callback function that is called when ready. You can also use the returned promise
-     * @returns returns a promise that resolves when ready
-     */
-    ready(callback) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this._ready) {
-                yield this.once('ready');
-            }
-            callback === null || callback === void 0 ? void 0 : callback();
-        });
-    }
-    /**
-     * Gets the url the server is running at
-     */
-    get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
-    }
     init(env) {
-        var _a;
+        var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             const config = this.config;
             const db = this.db;
@@ -116,9 +119,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 authDb === null || authDb === void 0 ? void 0 : authDb.ready(),
             ]);
             // Create http server
-            const app = this.app;
-            (_a = this.config.server) === null || _a === void 0 ? void 0 : _a.on('request', app);
-            const server = this.config.server || (config.https.enabled ? (0, https_1.createServer)(config.https, app) : (0, http_2.createServer)(app));
+            (_a = this.config.server) === null || _a === void 0 ? void 0 : _a.on('request', this.app);
+            const server = this.config.server || (config.https.enabled ? (0, https_1.createServer)(config.https, this.app) : (0, http_2.createServer)(this.app));
             const clients = new Map();
             const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
             const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
@@ -127,13 +129,16 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             // Setup rules
             const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
             const rules = new rules_1.PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
-            const router = (0, http_1.createRouter)();
+            this.setRule = (rulePath, ruleType, callback) => {
+                return rules.add(rulePath, ruleType, callback);
+            };
             const routeEnv = {
                 config: this.config,
                 server,
                 db: db,
                 authDb,
-                app: router,
+                app: this.app,
+                router: this.router,
                 rootPath: this.config.rootPath,
                 debug: this.debug,
                 securityRef,
@@ -144,6 +149,7 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 authCache: null,
                 authProviders: this.authProviders,
                 rules,
+                instance: this,
             };
             // Add connection middleware
             const killConnections = (0, connection_1.default)(routeEnv);
@@ -175,23 +181,15 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
             this.extend = (method, ext_path, handler) => {
                 const route = `/ext/${db.name}/${ext_path}`;
                 this.debug.log(`Extending server: `, method, route);
-                routeEnv.app[method.toLowerCase()](route, handler);
+                this.router[method.toLowerCase()](route, handler);
             };
             // Create websocket server
             (0, websocket_1.addWebsocketServer)(routeEnv);
-            // Register all the routes for the app
-            app.use(`/${this.config.rootPath}`, router);
-            // Last but not least, add 404 handler
-            // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
-            // add404Middleware(routeEnv);
-            // Start listening, if no external server
+            // Run init callback to allow user code to call `server.extend`, `server.router.[method]`, `server.setRule` etc before the server starts listening
+            yield ((_c = (_b = this.config).init) === null || _c === void 0 ? void 0 : _c.call(_b, this));
+            // If we own the server, add 404 handler
             if (!this.config.server) {
-                server.listen(config.port, config.host, () => {
-                    // Ready!!
-                    this.debug.log(`"${db.name}" database server running at ${this.url}`);
-                    this._ready = true;
-                    this.emitOnce(`ready`);
-                });
+                (0, _404_1.default)(routeEnv);
             }
             // Setup pause and resume methods
             let paused = false;
@@ -297,10 +295,10 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 }
                 yield shutdown({ sigint: false });
             });
-            // Offload shutdown control to an external server
             if (this.config.server) {
+                // Offload shutdown control to an external server
                 server.on('close', function close() {
-                    server.off('request', app);
+                    server.off('request', this.app);
                     server.off('close', close);
                     shutdown({ sigint: false });
                 });
@@ -318,6 +316,13 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
                 }
             }
             else {
+                // Start listening
+                server.listen(config.port, config.host, () => {
+                    // Ready!!
+                    this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                    this._ready = true;
+                    this.emitOnce(`ready`);
+                });
                 process.on('SIGINT', () => shutdown({ sigint: true }));
             }
         });
@@ -402,6 +407,9 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
         catch (err) {
             throw new Error(`Failed to configure provider ${providerName}: ${err.message}`);
         }
+    }
+    setRule(paths, types, callback) {
+        throw new AceBaseServerNotReadyError();
     }
 }
 exports.AceBaseServer = AceBaseServer;

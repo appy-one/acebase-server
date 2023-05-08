@@ -1,7 +1,7 @@
 import type { Socket } from 'socket.io';
 import { RouteInitEnvironment } from '../shared/env';
 import { WebSocketManager } from './manager';
-export declare type SocketType = Socket;
+export type SocketType = Socket;
 export declare class SocketIOManager extends WebSocketManager<Socket> {
     constructor();
     disconnect(socket: Socket): void;

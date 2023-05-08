@@ -1,6 +1,6 @@
 import { sendUnexpectedError } from '../shared/error.js';
 export const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/signout`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/signout`, async (req, res) => {
         const LOG_ACTION = 'auth.signout';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
         try {

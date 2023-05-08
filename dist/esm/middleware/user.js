@@ -3,7 +3,7 @@ import { signIn } from '../shared/signin.js';
 import { decodePublicAccessToken } from '../shared/tokens.js';
 export const addMiddleware = (env) => {
     // Add bearer authentication middleware
-    env.app.use(async (req, res, next) => {
+    env.router.use(async (req, res, next) => {
         let authorization = req.get('Authorization');
         if (typeof authorization !== 'string' && 'auth_token' in req.query) {
             // Enables browser calls to be authenticated by adding the access token as auth_token query parameter
@@ -29,7 +29,7 @@ export const addMiddleware = (env) => {
             if (!req.user) {
                 // Query database to get user for this token
                 try {
-                    await signIn({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
+                    req.user = await signIn({ method: 'internal', access_token: tokenDetails.access_token }, env, req);
                 }
                 catch (err) {
                     return sendNotAuthenticatedError(res, err.code, err.message);

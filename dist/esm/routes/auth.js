@@ -3,6 +3,7 @@ import { addRoute as addStateRoute } from './auth-state.js';
 import { addRoute as addSignInRoute } from './auth-signin.js';
 import { addRoute as addSignOutRoute } from './auth-signout.js';
 import { addRoute as addVerifyEmailRoute } from './auth-verify-email.js';
+import { addRoute as addForgotPasswordRoute } from './auth-forgot-password.js';
 import { addRoute as addResetPasswordRoute } from './auth-reset-password.js';
 import { addRoute as addChangePasswordRoute } from './auth-change-password.js';
 import { addRoute as addSignUpRoute } from './auth-signup.js';
@@ -25,7 +26,9 @@ export const addAuthenticionRoutes = (env) => {
     addSignOutRoute(env);
     // verify email endpoint
     const verifyEmailAddress = addVerifyEmailRoute(env);
-    // reset password endpoint
+    // forgot password endpoint (issue password reset)
+    addForgotPasswordRoute(env);
+    // reset password endpoint (finish password reset)
     const resetPassword = addResetPasswordRoute(env);
     // change password endpoint
     addChangePasswordRoute(env);

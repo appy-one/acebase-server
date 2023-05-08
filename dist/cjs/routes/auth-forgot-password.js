@@ -21,7 +21,7 @@ class ForgotPasswordError extends Error {
 }
 exports.ForgotPasswordError = ForgotPasswordError;
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/forgot_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/forgot_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c;
         const details = req.body;
         const LOG_ACTION = 'auth.forgot_password';

@@ -6,6 +6,7 @@ const auth_state_1 = require("./auth-state");
 const auth_signin_1 = require("./auth-signin");
 const auth_signout_1 = require("./auth-signout");
 const auth_verify_email_1 = require("./auth-verify-email");
+const auth_forgot_password_1 = require("./auth-forgot-password");
 const auth_reset_password_1 = require("./auth-reset-password");
 const auth_change_password_1 = require("./auth-change-password");
 const auth_signup_1 = require("./auth-signup");
@@ -28,7 +29,9 @@ const addAuthenticionRoutes = (env) => {
     (0, auth_signout_1.addRoute)(env);
     // verify email endpoint
     const verifyEmailAddress = (0, auth_verify_email_1.addRoute)(env);
-    // reset password endpoint
+    // forgot password endpoint (issue password reset)
+    (0, auth_forgot_password_1.addRoute)(env);
+    // reset password endpoint (finish password reset)
     const resetPassword = (0, auth_reset_password_1.addRoute)(env);
     // change password endpoint
     (0, auth_change_password_1.addRoute)(env);

@@ -21,7 +21,7 @@ class UpdateError extends Error {
 }
 exports.UpdateError = UpdateError;
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/update`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/update`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c, _d;
         const details = req.body;
         const LOG_ACTION = 'auth.update';

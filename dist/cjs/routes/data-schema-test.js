@@ -14,7 +14,7 @@ const acebase_core_1 = require("acebase-core");
 const admin_only_1 = require("../middleware/admin-only");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.post(`/schema/${env.db.name}/test`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/schema/${env.db.name}/test`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
         // tests a schema
         try {

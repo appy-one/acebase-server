@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/signout`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/signout`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c;
         const LOG_ACTION = 'auth.signout';
         const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null };

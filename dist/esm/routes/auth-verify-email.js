@@ -36,7 +36,7 @@ export const addRoute = (env) => {
         await snap.ref.update({ email_verified: true });
         env.log.event(LOG_ACTION, LOG_DETAILS);
     };
-    env.app.post(`/auth/${env.db.name}/verify_email`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/verify_email`, async (req, res) => {
         const details = req.body;
         try {
             await verifyEmailAddress(req.ip, details.code);

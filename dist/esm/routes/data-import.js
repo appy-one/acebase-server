@@ -1,9 +1,9 @@
 import { sendUnauthorizedError } from '../shared/error.js';
 export const addRoute = (env) => {
-    env.app.post(`/import/${env.db.name}/*`, async (req, res) => {
+    env.router.post(`/import/${env.db.name}/*`, async (req, res) => {
         // Import API
         const path = req.path.slice(env.db.name.length + 9);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        const access = await env.rules.isOperationAllowed(req.user, path, 'import', { context: req.context });
         if (!access.allow) {
             return sendUnauthorizedError(res, access.code, access.message);
         }

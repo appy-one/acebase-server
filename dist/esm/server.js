@@ -14,6 +14,7 @@ import setupAuthentication from './auth.js';
 import addDataRoutes from './routes/data.js';
 import addWebManagerRoutes from './routes/webmanager.js';
 import addMetadataRoutes from './routes/meta.js';
+import add404Middleware from './middleware/404.js';
 import addCacheMiddleware from './middleware/cache.js';
 import { DatabaseLog } from './logger.js';
 // type PrivateLocalSettings = AceBaseLocalSettings & { storage: PrivateStorageSettings };
@@ -24,6 +25,24 @@ export class AceBaseExternalServerError extends Error {
     constructor() { super('This method is not available with an external server'); }
 }
 export class AceBaseServer extends SimpleEventEmitter {
+    get isReady() { return this._ready; }
+    /**
+     * Wait for the server to be ready to accept incoming connections
+     * @param callback (optional) callback function that is called when ready. You can also use the returned promise
+     * @returns returns a promise that resolves when ready
+     */
+    async ready(callback) {
+        if (!this._ready) {
+            await this.once('ready');
+        }
+        callback?.();
+    }
+    /**
+     * Gets the url the server is running at
+     */
+    get url() {
+        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
+    }
     constructor(dbname, options) {
         super();
         this._ready = false;
@@ -67,26 +86,10 @@ export class AceBaseServer extends SimpleEventEmitter {
         })();
         // Create Express app
         this.app = createApp({ trustProxy: true, maxPayloadSize: this.config.maxPayloadSize });
+        this.router = createRouter();
+        this.app.use(`/${this.config.rootPath}`, this.router);
         // Initialize and start server
         this.init({ authDb });
-    }
-    get isReady() { return this._ready; }
-    /**
-     * Wait for the server to be ready to accept incoming connections
-     * @param callback (optional) callback function that is called when ready. You can also use the returned promise
-     * @returns returns a promise that resolves when ready
-     */
-    async ready(callback) {
-        if (!this._ready) {
-            await this.once('ready');
-        }
-        callback?.();
-    }
-    /**
-     * Gets the url the server is running at
-     */
-    get url() {
-        return `http${this.config.https.enabled ? 's' : ''}://${this.config.host}:${this.config.port}/${this.config.rootPath}`;
     }
     async init(env) {
         const config = this.config;
@@ -98,9 +101,8 @@ export class AceBaseServer extends SimpleEventEmitter {
             authDb?.ready(),
         ]);
         // Create http server
-        const app = this.app;
-        this.config.server?.on('request', app);
-        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, app) : createServer(app));
+        this.config.server?.on('request', this.app);
+        const server = this.config.server || (config.https.enabled ? createSecureServer(config.https, this.app) : createServer(this.app));
         const clients = new Map();
         const securityRef = authDb ? authDb === db ? db.ref('__auth__/security') : authDb.ref('security') : null;
         const authRef = authDb ? authDb === db ? db.ref('__auth__/accounts') : authDb.ref('accounts') : null;
@@ -109,13 +111,16 @@ export class AceBaseServer extends SimpleEventEmitter {
         // Setup rules
         const rulesFilePath = `${this.config.path}/${this.db.name}.acebase/rules.json`;
         const rules = new PathBasedRules(rulesFilePath, config.auth.defaultAccessRule, { db, debug: this.debug, authEnabled: this.config.auth.enabled });
-        const router = createRouter();
+        this.setRule = (rulePath, ruleType, callback) => {
+            return rules.add(rulePath, ruleType, callback);
+        };
         const routeEnv = {
             config: this.config,
             server,
             db: db,
             authDb,
-            app: router,
+            app: this.app,
+            router: this.router,
             rootPath: this.config.rootPath,
             debug: this.debug,
             securityRef,
@@ -126,6 +131,7 @@ export class AceBaseServer extends SimpleEventEmitter {
             authCache: null,
             authProviders: this.authProviders,
             rules,
+            instance: this,
         };
         // Add connection middleware
         const killConnections = addConnectionMiddleware(routeEnv);
@@ -157,23 +163,15 @@ export class AceBaseServer extends SimpleEventEmitter {
         this.extend = (method, ext_path, handler) => {
             const route = `/ext/${db.name}/${ext_path}`;
             this.debug.log(`Extending server: `, method, route);
-            routeEnv.app[method.toLowerCase()](route, handler);
+            this.router[method.toLowerCase()](route, handler);
         };
         // Create websocket server
         addWebsocketServer(routeEnv);
-        // Register all the routes for the app
-        app.use(`/${this.config.rootPath}`, router);
-        // Last but not least, add 404 handler
-        // DISABLED because it causes server extension routes through server.extend (see above) not be be executed
-        // add404Middleware(routeEnv);
-        // Start listening, if no external server
+        // Run init callback to allow user code to call `server.extend`, `server.router.[method]`, `server.setRule` etc before the server starts listening
+        await this.config.init?.(this);
+        // If we own the server, add 404 handler
         if (!this.config.server) {
-            server.listen(config.port, config.host, () => {
-                // Ready!!
-                this.debug.log(`"${db.name}" database server running at ${this.url}`);
-                this._ready = true;
-                this.emitOnce(`ready`);
-            });
+            add404Middleware(routeEnv);
         }
         // Setup pause and resume methods
         let paused = false;
@@ -279,10 +277,10 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
             await shutdown({ sigint: false });
         };
-        // Offload shutdown control to an external server
         if (this.config.server) {
+            // Offload shutdown control to an external server
             server.on('close', function close() {
-                server.off('request', app);
+                server.off('request', this.app);
                 server.off('close', close);
                 shutdown({ sigint: false });
             });
@@ -300,6 +298,13 @@ export class AceBaseServer extends SimpleEventEmitter {
             }
         }
         else {
+            // Start listening
+            server.listen(config.port, config.host, () => {
+                // Ready!!
+                this.debug.log(`"${db.name}" database server running at ${this.url}`);
+                this._ready = true;
+                this.emitOnce(`ready`);
+            });
             process.on('SIGINT', () => shutdown({ sigint: true }));
         }
     }
@@ -383,6 +388,9 @@ export class AceBaseServer extends SimpleEventEmitter {
         catch (err) {
             throw new Error(`Failed to configure provider ${providerName}: ${err.message}`);
         }
+    }
+    setRule(paths, types, callback) {
+        throw new AceBaseServerNotReadyError();
     }
 }
 //# sourceMappingURL=server.js.map

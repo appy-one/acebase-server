@@ -22,7 +22,7 @@ class ChangePasswordError extends Error {
 }
 exports.ChangePasswordError = ChangePasswordError;
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/change_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/change_password`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
         const access_token = (_a = req.user) === null || _a === void 0 ? void 0 : _a.access_token;
         const details = req.body;

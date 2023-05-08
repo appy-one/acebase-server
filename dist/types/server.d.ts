@@ -1,8 +1,9 @@
 import { DebugLogger, SimpleEventEmitter } from 'acebase-core';
 import { AceBaseServerSettings, AceBaseServerConfig } from './settings';
-import { createApp, HttpRequest, HttpResponse } from './shared/http';
+import { HttpApp, HttpRequest, HttpResponse, HttpRouter } from './shared/http';
 import { AceBase } from 'acebase';
 import { OAuth2Provider } from './oauth-providers/oauth-provider';
+import { PathRuleFunction, PathRuleType } from './rules';
 import { DbUserAccountDetails } from './schema/user';
 export declare class AceBaseServerNotReadyError extends Error {
     constructor();
@@ -10,7 +11,7 @@ export declare class AceBaseServerNotReadyError extends Error {
 export declare class AceBaseExternalServerError extends Error {
     constructor();
 }
-declare type HttpMethod = 'get' | 'GET' | 'put' | 'PUT' | 'post' | 'POST' | 'delete' | 'DELETE';
+type HttpMethod = 'get' | 'GET' | 'put' | 'PUT' | 'post' | 'POST' | 'delete' | 'DELETE';
 export declare class AceBaseServer extends SimpleEventEmitter {
     private _ready;
     get isReady(): boolean;
@@ -45,9 +46,13 @@ export declare class AceBaseServer extends SimpleEventEmitter {
      */
     readonly db: AceBase;
     /**
+     * Exposes the used http frameworks router (currently Express) for external use.
+     */
+    readonly router: HttpRouter;
+    /**
      * Exposes the used http frameworks app (currently Express) for external use.
      */
-    readonly app: ReturnType<typeof createApp>;
+    readonly app: HttpApp;
     private readonly authProviders;
     constructor(dbname: string, options?: AceBaseServerSettings);
     private init;
@@ -107,6 +112,7 @@ export declare class AceBaseServer extends SimpleEventEmitter {
      * @returns Returns the created auth provider instance, which can be used to call non-user specific methods the provider might support. (example: the Spotify auth provider supports getClientAuthToken, which allows API calls to be made to the core (non-user) spotify service)
      */
     configAuthProvider(providerName: string, settings: any): OAuth2Provider;
+    setRule(paths: string | string[], types: PathRuleType | PathRuleType[], callback: PathRuleFunction): void;
 }
 export {};
 //# sourceMappingURL=server.d.ts.map

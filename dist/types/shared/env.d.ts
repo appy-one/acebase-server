@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
 /// <reference types="express" />
-import type { HttpApp, Request } from './http';
+import type { HttpApp, HttpRouter, Request } from './http';
 import type { AceBase, DataReference } from 'acebase';
 import type { AceBaseServerConfig } from '../settings';
 import type { DbUserAccountDetails } from '../schema/user';
@@ -11,11 +11,13 @@ import type { OAuth2Provider } from '../oauth-providers/oauth-provider';
 import type { Server as HttpServer } from 'http';
 import type { Server as SecureHttpServer } from 'https';
 import type { PathBasedRules } from '../rules';
+import type { AceBaseServer } from '../server';
 import { DatabaseLog } from '../logger';
 export interface RouteInitEnvironment {
     rootPath: string;
     server: HttpServer | SecureHttpServer;
     app: HttpApp;
+    router: HttpRouter;
     config: AceBaseServerConfig;
     db: AceBase & {
         api: Api;
@@ -32,6 +34,7 @@ export interface RouteInitEnvironment {
         [providerName: string]: OAuth2Provider;
     };
     rules: PathBasedRules;
+    instance: AceBaseServer;
 }
 export interface RouteRequestEnvironment {
     /** If the request has an Authentication: bearer token, the user will be bound to the incoming request */
@@ -41,5 +44,5 @@ export interface RouteRequestEnvironment {
         [key: string]: any;
     };
 }
-export declare type RouteRequest<ReqQuery = any, ReqBody = any, ResBody = any> = Request<any, ResBody, ReqBody, ReqQuery> & RouteRequestEnvironment;
+export type RouteRequest<ReqQuery = any, ReqBody = any, ResBody = any> = Request<any, ResBody, ReqBody, ReqQuery> & RouteRequestEnvironment;
 //# sourceMappingURL=env.d.ts.map

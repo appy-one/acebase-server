@@ -7,7 +7,7 @@ export declare const isValidDisplayName: (displayName: string) => boolean;
 export declare const isValidPassword: (password: string) => boolean;
 export declare const isValidPicture: (picture: any) => boolean;
 export declare const isValidSettings: (settings: any) => boolean;
-export declare type ValidationError<Code> = {
+export type ValidationError<Code> = {
     code: Code;
     message: string;
 };

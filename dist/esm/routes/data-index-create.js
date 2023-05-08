@@ -12,7 +12,7 @@ export const addRoute = (env) => {
             sendError(res, err);
         }
     };
-    env.app.post(`/index/${env.db.name}`, adminOnly(env), async (req, res) => {
+    env.router.post(`/index/${env.db.name}`, adminOnly(env), async (req, res) => {
         // Legacy endpoint that was designed to handle multiple actions
         // The only action ever implemented was 'create', so we'll handle that here
         if (req.body?.action !== 'create') {
@@ -20,7 +20,7 @@ export const addRoute = (env) => {
         }
         handleRequest(req, res);
     });
-    env.app.post(`/index/${env.db.name}/create`, adminOnly(env), async (req, res) => {
+    env.router.post(`/index/${env.db.name}/create`, adminOnly(env), async (req, res) => {
         // New dedicated create endpoint
         handleRequest(req, res);
     });

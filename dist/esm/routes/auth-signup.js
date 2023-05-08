@@ -11,7 +11,7 @@ export class SignupError extends Error {
     }
 }
 export const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/signup`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/signup`, async (req, res) => {
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: req.user?.uid ?? null };
         if (!env.config.auth.allowUserSignup && req.user?.uid !== 'admin') {

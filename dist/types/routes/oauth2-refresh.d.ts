@@ -1,10 +1,10 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type RequestQuery = {
+export type RequestQuery = {
     provider: string;
     refresh_token: string;
 };
-export declare type RequestBody = null;
-export declare type ResponseBody = {
+export type RequestBody = null;
+export type ResponseBody = {
     provider: {
         name: string;
         access_token: string;
@@ -12,7 +12,7 @@ export declare type ResponseBody = {
         expires_in: number;
     };
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=oauth2-refresh.d.ts.map

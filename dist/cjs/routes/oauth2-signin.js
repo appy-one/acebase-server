@@ -17,7 +17,7 @@ const simple_fetch_1 = require("../shared/simple-fetch");
 const socketSignInSuccess = `<html><script>window.close()</script><body>Signed in succesfully. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const socketSignInFailed = `<html><script>window.close()</script><body>Failed to sign in. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/signin`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/oauth2/${env.db.name}/signin`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // This is where the user is redirected to by the provider after signin or error
         var _a, _b, _c;
         const LOG_ACTION = 'oauth2.signin';

@@ -5,7 +5,7 @@ import { fetch } from '../shared/simple-fetch.js';
 const socketSignInSuccess = `<html><script>window.close()</script><body>Signed in succesfully. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 const socketSignInFailed = `<html><script>window.close()</script><body>Failed to sign in. You can <a href="javascript:window.close()">close</a> this page</body></html>`;
 export const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/signin`, async (req, res) => {
+    env.router.get(`/oauth2/${env.db.name}/signin`, async (req, res) => {
         // This is where the user is redirected to by the provider after signin or error
         const LOG_ACTION = 'oauth2.signin';
         const LOG_DETAILS = { ip: req.ip, provider: null };

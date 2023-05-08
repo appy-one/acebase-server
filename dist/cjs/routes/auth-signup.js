@@ -24,7 +24,7 @@ class SignupError extends Error {
 }
 exports.SignupError = SignupError;
 const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/signup`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.post(`/auth/${env.db.name}/signup`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         const LOG_ACTION = 'auth.signup';
         const LOG_DETAILS = { ip: req.ip, uid: (_b = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) !== null && _b !== void 0 ? _b : null };

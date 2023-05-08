@@ -1,6 +1,6 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-export declare type RequestQuery = null;
-export declare type RequestBody = {
+export type RequestQuery = null;
+export type RequestBody = {
     map: any;
     val: {
         query: {
@@ -37,14 +37,14 @@ export declare type RequestBody = {
         };
     };
 };
-export declare type ResponseBody = {
+export type ResponseBody = {
     val: {
         count: number;
         list: any[];
     };
     map?: any;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-query.d.ts.map

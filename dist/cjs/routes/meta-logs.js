@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const admin_only_1 = require("../middleware/admin-only");
 const addRoute = (env) => {
-    env.app.get(`/logs/${env.db.name}`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/logs/${env.db.name}`, (0, admin_only_1.default)(env), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Get database logs
         var _a, _b, _c;
         // Create indexes if not there yet

@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addRoute = void 0;
 const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/refresh`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/oauth2/${env.db.name}/refresh`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         try {
             const providerName = req.query.provider;
             const refreshToken = req.query.refresh_token;

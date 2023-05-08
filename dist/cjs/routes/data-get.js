@@ -13,11 +13,12 @@ exports.addRoute = void 0;
 const acebase_core_1 = require("acebase-core");
 const error_1 = require("../shared/error");
 const addRoute = (env) => {
-    env.app.get(`/data/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    env.router.get(`/data/${env.db.name}/*`, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
         // Request data
         const path = req.path.slice(env.db.name.length + 7);
-        const access = env.rules.userHasAccess(req.user, path, false);
+        // Pre-check read access
+        let access = yield env.rules.isOperationAllowed(req.user, path, 'get');
         if (!access.allow) {
             return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
         }
@@ -42,9 +43,12 @@ const addRoute = (env) => {
             // Add private paths to exclude
             options.exclude = [...options.exclude || [], '__auth__', '__log__'];
         }
+        // Check 'get' access
+        access = yield env.rules.isOperationAllowed(req.user, path, 'get', { context: req.context, options });
+        if (!access.allow) {
+            return (0, error_1.sendUnauthorizedError)(res, access.code, access.message);
+        }
         try {
-            // const snap = await db.ref(path).get(options);
-            // const value = snap.val(), context = snap.context();
             const { value, context } = yield env.db.api.get(path, options);
             if (!((_a = env.config.transactions) === null || _a === void 0 ? void 0 : _a.log)) {
                 delete context.acebase_cursor;

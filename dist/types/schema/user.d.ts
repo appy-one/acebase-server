@@ -6,7 +6,7 @@ export interface UserProfilePicture {
 export interface UserSettings {
     [key: string]: string | number | boolean;
 }
-export declare type AceBaseUser = ({
+export type AceBaseUser = ({
     username: string;
 } | {
     email: string;
@@ -30,7 +30,7 @@ export declare type AceBaseUser = ({
     changePasswordBefore: string;
     settings: UserSettings;
 };
-export declare type DbUserAccountDetails = ({
+export type DbUserAccountDetails = ({
     username: string;
 } | {
     email: string;

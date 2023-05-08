@@ -1,5 +1,5 @@
 export const addRoute = (env) => {
-    env.app.get(`/oauth2/${env.db.name}/refresh`, async (req, res) => {
+    env.router.get(`/oauth2/${env.db.name}/refresh`, async (req, res) => {
         try {
             const providerName = req.query.provider;
             const refreshToken = req.query.refresh_token;

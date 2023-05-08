@@ -4,16 +4,16 @@ export declare class ResetPasswordError extends Error {
     code: 'invalid_code' | 'unknown_user' | 'password_requirement_mismatch';
     constructor(code: 'invalid_code' | 'unknown_user' | 'password_requirement_mismatch', message: string);
 }
-export declare type RequestQuery = never;
-export declare type RequestBody = {
+export type RequestQuery = never;
+export type RequestBody = {
     code: string;
     password: string;
 };
-export declare type ResponseBody = 'OK' | {
+export type ResponseBody = 'OK' | {
     code: string;
     message: string;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 /**
  * Adds the reset_password route and returns the reset function that can be used to manually reset a password
  * @param env environment

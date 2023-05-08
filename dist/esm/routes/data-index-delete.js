@@ -1,7 +1,7 @@
 import adminOnly from '../middleware/admin-only.js';
 import { sendError } from '../shared/error.js';
 export const addRoute = (env) => {
-    env.app.post(`/index/${env.db.name}/delete`, adminOnly(env), async (req, res) => {
+    env.router.post(`/index/${env.db.name}/delete`, adminOnly(env), async (req, res) => {
         // Delete an index
         try {
             const data = req.body;

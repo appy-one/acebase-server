@@ -5,9 +5,9 @@ export declare class SetDataError extends Error {
     code: 'invalid_serialized_value';
     constructor(code: 'invalid_serialized_value', message: string);
 }
-export declare type RequestQuery = null;
-export declare type RequestBody = Transport.SerializedValue;
-export declare type ResponseBody = {
+export type RequestQuery = null;
+export type RequestBody = Transport.SerializedValue;
+export type ResponseBody = {
     success: true;
 } | {
     code: 'invalid_serialized_value';
@@ -22,7 +22,7 @@ export declare type ResponseBody = {
     code: string;
     message: string;
 };
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=data-set.d.ts.map

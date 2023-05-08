@@ -1,11 +1,11 @@
 import { QueryOperator } from 'acebase-core/dist/types/data-reference';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
-declare type AceBaseLogLine = {
+type AceBaseLogLine = {
     action: string;
     ip: string;
     date: string;
 };
-export declare type RequestQuery = {
+export type RequestQuery = {
     take?: string;
     skip?: string;
     sort?: 'date';
@@ -13,9 +13,9 @@ export declare type RequestQuery = {
     filter_op?: QueryOperator;
     filter_val?: string;
 };
-export declare type RequestBody = null;
-export declare type ResponseBody = AceBaseLogLine[];
-export declare type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
+export type RequestBody = null;
+export type ResponseBody = AceBaseLogLine[];
+export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 export declare const addRoute: (env: RouteInitEnvironment) => void;
 export default addRoute;
 //# sourceMappingURL=meta-logs.d.ts.map

@@ -9,7 +9,7 @@ export class ChangePasswordError extends Error {
     }
 }
 export const addRoute = (env) => {
-    env.app.post(`/auth/${env.db.name}/change_password`, async (req, res) => {
+    env.router.post(`/auth/${env.db.name}/change_password`, async (req, res) => {
         const access_token = req.user?.access_token;
         const details = req.body;
         const LOG_ACTION = 'auth.change_password';

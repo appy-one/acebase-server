@@ -5,31 +5,31 @@ export declare class DataTransactionError extends Error {
     code: 'invalid_serialized_value';
     constructor(code: 'invalid_serialized_value', message: string);
 }
-export declare type ApiTransactionDetails = {
+export type ApiTransactionDetails = {
     id: string;
     value: Transport.SerializedValue;
 };
-export declare type StartRequestQuery = null;
-export declare type StartRequestBody = {
+export type StartRequestQuery = null;
+export type StartRequestBody = {
     path: string;
 };
-export declare type StartResponseBody = ApiTransactionDetails | {
+export type StartResponseBody = ApiTransactionDetails | {
     code: string;
     message: string;
 } | {
     code: 'unexpected';
     message: string;
 };
-export declare type StartRequest = RouteRequest<StartRequestQuery, StartRequestBody, StartResponseBody>;
-export declare type FinishRequestQuery = null;
-export declare type FinishRequestBody = ApiTransactionDetails & {
+export type StartRequest = RouteRequest<StartRequestQuery, StartRequestBody, StartResponseBody>;
+export type FinishRequestQuery = null;
+export type FinishRequestBody = ApiTransactionDetails & {
     path: string;
 };
-export declare type FinishResponseBody = 'done' | {
+export type FinishResponseBody = 'done' | {
     code: string;
     message: string;
 } | 'transaction not found' | string;
-export declare type FinishRequest = RouteRequest<FinishRequestQuery, FinishRequestBody, FinishResponseBody>;
+export type FinishRequest = RouteRequest<FinishRequestQuery, FinishRequestBody, FinishResponseBody>;
 export declare const addRoutes: (env: RouteInitEnvironment) => void;
 export default addRoutes;
 //# sourceMappingURL=data-transaction.d.ts.map
