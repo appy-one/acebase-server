@@ -114,13 +114,13 @@ export class AceBaseServer extends SimpleEventEmitter {
         const dbOptions: Partial<AceBaseLocalSettings> = {
             logLevel: this.config.logLevel,
             info: 'realtime database server',
-            // NEW: Allow storage setting like AceBaseLocalSettings - could allow using other db backend (typed, but undocumented)
-            storage: this.config.storage || {
+            storage: {
                 path: this.config.path,
                 removeVoidProperties: true,
+                ipc: this.config.ipc,
+                ...this.config.storage, // Allow overriding storage settings - allows using other db backends (typed, but undocumented)
             },
             transactions: this.config.transactions,
-            ipc: this.config.ipc,
             sponsor: this.config.sponsor,
             logColors: this.config.logColors,
         };
