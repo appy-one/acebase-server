@@ -12,6 +12,9 @@
       "types": "./dist/types/index.d.ts"
     }
   },
+  "bin": {
+    "acebase-server": "./bin/acebase-server.js"
+  },
   "private": false,
   "repository": "github:appy-one/acebase-server",
   "scripts": {
