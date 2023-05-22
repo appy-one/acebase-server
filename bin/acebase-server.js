@@ -4,5 +4,5 @@ if (process.argv[2] === 'start') {
     require('../dist/cjs/start');
 }
 else {
-    console.log(`[acebase-server CLI] uknown instruction. Did you mean "npx acebase-server start"?`);
+    console.log(`[acebase-server CLI] unknown instruction. Did you mean "npx acebase-server start"?`);
 }
