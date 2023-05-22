@@ -78,13 +78,8 @@ class AceBaseServer extends acebase_core_1.SimpleEventEmitter {
         const dbOptions = {
             logLevel: this.config.logLevel,
             info: 'realtime database server',
-            // NEW: Allow storage setting like AceBaseLocalSettings - could allow using other db backend (typed, but undocumented)
-            storage: this.config.storage || {
-                path: this.config.path,
-                removeVoidProperties: true,
-            },
+            storage: Object.assign({ path: this.config.path, removeVoidProperties: true, ipc: this.config.ipc }, this.config.storage),
             transactions: this.config.transactions,
-            ipc: this.config.ipc,
             sponsor: this.config.sponsor,
             logColors: this.config.logColors,
         };

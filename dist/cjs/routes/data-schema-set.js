@@ -17,8 +17,8 @@ const addRoute = (env) => {
         // defines a schema
         try {
             const data = req.body;
-            const { path, schema } = data;
-            yield env.db.schema.set(path, schema);
+            const { path, schema, warnOnly = false } = data;
+            yield env.db.schema.set(path, schema, warnOnly);
             res.contentType('application/json').send({ success: true });
         }
         catch (err) {

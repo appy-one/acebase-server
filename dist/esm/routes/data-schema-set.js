@@ -5,8 +5,8 @@ export const addRoute = (env) => {
         // defines a schema
         try {
             const data = req.body;
-            const { path, schema } = data;
-            await env.db.schema.set(path, schema);
+            const { path, schema, warnOnly = false } = data;
+            await env.db.schema.set(path, schema, warnOnly);
             res.contentType('application/json').send({ success: true });
         }
         catch (err) {

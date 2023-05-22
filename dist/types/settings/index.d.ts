@@ -152,7 +152,7 @@ export type AceBaseServerSettings = Partial<{
     /**
      * IPC settings for pm2 or cloud-based clusters. BETA stage, see https://github.com/appy-one/acebase-ipc-server
      */
-    ipc: IPCClientSettings;
+    ipc: IPCClientSettings | 'socket';
     /**
      * Allows overriding of default storage settings used by the database. ALPHA stage
      */
@@ -186,7 +186,7 @@ export declare class AceBaseServerConfig {
     readonly auth: AceBaseServerAuthenticationSettings;
     readonly email: AceBaseServerEmailSettings;
     readonly transactions: AceBaseServerTransactionSettings;
-    readonly ipc: IPCClientSettings;
+    readonly ipc: AceBaseServerSettings['ipc'];
     readonly storage?: AceBaseStorageSettings;
     readonly sponsor: boolean;
     readonly logColors: boolean;

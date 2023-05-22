@@ -4,6 +4,7 @@ export type RequestBody = {
     action?: 'set';
     path: string;
     schema: string | Record<string, any>;
+    warnOnly?: boolean;
 };
 export type ResponseBody = {
     success: true;
