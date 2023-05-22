@@ -32,6 +32,10 @@
                 type: string
                 description: When given, tests this schema definition against the passed value instead of ones defined in the database
                 example: "{ name: string, stats?: { size: number, created: Date, modified: Date, deleted?: Date } }"
+              warnOnly:
+                type: boolean
+                description: whether to issue warnings for failing schema checks instead of denying writes. This allows you to add schemas to an existing database and testdrive them without enforcing them yet. Default is `false`
+                example: false
             required:
             - path
             - schema
