@@ -61,8 +61,8 @@
   "author": "Ewout Stortenbeker <me@appy.one> (http://appy.one)",
   "license": "MIT",
   "dependencies": {
-    "acebase": "^1.28.5",
-    "acebase-core": "^1.26.2",
+    "acebase": "^1.29.0",
+    "acebase-core": "^1.27.1",
     "express": "^4.17.1",
     "socket.io": "^4.5.0",
     "swagger-jsdoc": "^6.1.0",
