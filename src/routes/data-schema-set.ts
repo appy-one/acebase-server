@@ -7,6 +7,7 @@ export type RequestBody = {
     action?: 'set'; // deprecated
     path: string;
     schema: string | Record<string, any>;
+    warnOnly?: boolean;
 };
 export type ResponseBody = { success: true }    // 200
     | { code: 'admin_only'; message: string }   // 403
@@ -20,8 +21,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
         // defines a schema
         try {
             const data = req.body;
-            const { path, schema } = data;
-            await env.db.schema.set(path, schema);
+            const { path, schema, warnOnly = false } = data;
+            await env.db.schema.set(path, schema, warnOnly);
 
             res.contentType('application/json').send({ success: true });
         }
