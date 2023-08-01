@@ -295,8 +295,9 @@ export class PathBasedRules {
                         }
                     }
                     catch (err) {
-                        // If rule execution throws an exception, don't allow. Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
-                        return { allow: false, code: 'exception', message: `${operation} operation denied to path "${path}" by set rule`, rule, rulePath, details: err };
+                        // If rule execution throws an exception, consider it the same as 'cascade'.
+                        // Can happen when rule is "auth.uid === '...'", and auth is null because the user is not signed in
+                        continue;
                     }
                 }
             }
