@@ -93,7 +93,7 @@ The following `authentication` settings are available:
 
 ### Setup authorization rules
 
-If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users _read_ and/or _write_ access to your data. These rules are identical to those used by [Firebase](https://firebase.google.com/docs/database/security/), but reading current data in the db works a little differently. In addition, ".schema" rules allow for an easy and clean way to validate data being written, while ".validate" rules allow you to check existing data and use more advanced business logic. The rules are saved in a file called _rules.json_ in your database directory, but can be overridden and extended programmatically (see [Coding your rules](#coding-your-rules)). The default rules written to the file are determined by the `defaultAccessRule` authentication setting at the first server launch with `authentication` enabled.
+If you enabled authentication, you can also define access rules for your data. Using rules, you can allow or deny specific (or anonymous) users _read_ and/or _write_ access to your data. These rules are similar to those used by [Firebase](https://firebase.google.com/docs/database/security/), but they are not identical. AceBase has easy ".schema" rules allow for an easy and clean way to validate data being written, while ".validate" rules allow you to check existing data and use more advanced business logic. The rules can be saved to the _rules.json_ file in your database directory, and can be overridden and extended programmatically from within your own code: ".validate" rules are coded in JavaScript (see [Coding your rules](#coding-your-rules)). The default rules written to the file are determined by the `defaultAccessRule` authentication setting at the first server launch with `authentication` enabled.
 
 The default _rules.json_ file content is based on the value of the `defaultAccessRule` setting, possible values are:
  * `"auth"`: Only allow authenticated users read/write access to the database
@@ -336,7 +336,7 @@ _(NEW v1.17.0+)_
 Instead of writing your rules into the `rules.json` file on your server, it is also possible to configure them in your code. Any rule you set with code will override or augment existing rules found in the `rules.json` file, so can use both. Coding your rules has a number of advantages:
 * You can use the same rule definitions and functions on multiple paths without copy/pasting
 * You can code them in your favorite editor
-* You can use running server values and cached data in your rules, such as `process.env` and vars like `maintanceMode`
+* You can use running server values and cached data in your rules, such as `process.env` and vars like `maintenanceMode`
 * Rules become debuggable!
 
 To add a rule in your code, use the following syntax:
