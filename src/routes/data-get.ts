@@ -2,7 +2,7 @@ import { Transport } from 'acebase-core';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendUnauthorizedError } from '../shared/error';
 
-export type RequestQuery = { include?: string; exclude?: string; child_objects?: boolean };
+export type RequestQuery = { include?: string; exclude?: string; child_objects?: 'true' | 'false' };
 export type RequestBody = null;
 export type ResponseBody = Transport.SerializedValue & { exists: boolean };
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
@@ -19,15 +19,16 @@ export const addRoute = (env: RouteInitEnvironment) => {
             return sendUnauthorizedError(res, access.code, access.message);
         }
 
-        const options: { include?: string[]; exclude?: string[]; child_objects?: boolean } = {};
+        // const options: { include?: string[]; exclude?: string[]; child_objects?: boolean } = {};
+        const options: Parameters<typeof env.db.api.get>[1] = {};
         if (req.query.include) {
             options.include = req.query.include.split(',');
         }
         if (req.query.exclude) {
             options.exclude = req.query.exclude.split(',');
         }
-        if (typeof req.query.child_objects === 'boolean') {
-            options.child_objects = req.query.child_objects;
+        if (['true','false'].includes(req.query.child_objects)) {
+            options.child_objects = req.query.child_objects === 'true';
         }
 
         if (path === '') {
