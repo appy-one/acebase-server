@@ -19,6 +19,24 @@
         schema:
           type: string
           example: collection/child/property
+      - name: include
+        in: query
+        description: comma-separated list of child properties to include 
+        required: false
+        schema:
+          type: string
+      - name: exclude
+        in: query
+        description: comma-separated list of child properties to exclude
+        required: false
+        schema:
+          type: string
+      - name: child_objects
+        in: query
+        description: whether to include child objects
+        required: false
+        schema:
+          type: boolean
     responses:
       200:
         description: Returns the serialized value of the target path, and whether it exists in the database
