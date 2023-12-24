@@ -1,6 +1,5 @@
 // Executed by npm "version" hook
 const { readFileSync, writeFileSync } = require('fs');
-const { execSync } = require('child_process');
 const packageInfo = require('./package.json');
 
 const sources = ['routes/meta-info', 'routes/docs'];
@@ -13,5 +12,3 @@ files.forEach(file => {
         console.log(`Replaced variable %SERVER_VERSION% with ${packageInfo.version} in ${file}`);
     }
 });
-
-execSync(`git add dist`);
