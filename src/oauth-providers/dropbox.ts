@@ -70,7 +70,7 @@ export class DropboxAuthProvider extends OAuth2Provider {
     async init(info: OAuth2ProviderInitInfo) {
         // Return url to get authorization code with
         const options = info.options || {};
-        const authUrl = `https://www.dropbox.com/oauth2/authorize?response_type=code&token_access_type=offline&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}&locale=${options.locale || ''}&require_role=${options.require_role || ''}&force_reauthentication=${options.force_reauthentication === true}&force_reapprove=${options.force_reapprove === true}&disable_signup=${options.disable_signup === true}&state=${encodeURIComponent(info.state)}`;
+        const authUrl = `https://www.dropbox.com/oauth2/authorize?response_type=code&token_access_type=offline&client_id=${this.settings.client_id}&scope=${encodeURIComponent(this.settings.scopes.join(' '))}&redirect_uri=${encodeURIComponent(info.redirect_url)}${options.locale ? `&locale=${options.locale}` : ''}${options.require_role ? `&require_role=${options.require_role}` : ''}&force_reauthentication=${options.force_reauthentication === true}&force_reapprove=${options.force_reapprove === true}&disable_signup=${options.disable_signup === true}&state=${encodeURIComponent(info.state)}`;
         return authUrl;
     }
 
