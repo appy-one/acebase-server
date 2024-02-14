@@ -265,7 +265,7 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             finish: undefined,
             timeout: setTimeout(() => {
                 delete client.transactions[tx.id];
-                tx.finish(); // Finish without value cancels the transaction
+                tx.finish?.(); // Finish without value cancels the transaction
                 env.log.error(LOG_ACTION, 'timeout', LOG_DETAILS);
                 serverManager.send(event.socket, 'tx_error', { id: tx.id, reason: 'timeout' });
             }, TRANSACTION_TIMEOUT_MS),
