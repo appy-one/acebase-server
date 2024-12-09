@@ -1,5 +1,4 @@
 import { RouteInitEnvironment } from '../shared/env';
-import { addMiddleware as addBearerAuthMiddleware } from '../middleware/user';
 import { addRoute as addStateRoute } from './auth-state';
 import { addRoute as addSignInRoute } from './auth-signin';
 import { addRoute as addSignOutRoute } from './auth-signout';
@@ -18,9 +17,6 @@ export const addAuthenticionRoutes = (env: RouteInitEnvironment) => {
     if (!env.config.auth.enabled) {
         throw new Error('Authentication not enabled in the server settings');
     }
-
-    // Bearer authentication middleware
-    addBearerAuthMiddleware(env);
 
     // Auth state endpoint
     addStateRoute(env);

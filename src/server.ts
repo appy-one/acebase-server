@@ -13,7 +13,8 @@ import { PathBasedRules, PathRuleFunction, PathRuleType } from './rules';
 import { DbUserAccountDetails } from './schema/user';
 import addConnectionMiddleware from './middleware/connection';
 import addCorsMiddleware from './middleware/cors';
-import addAuthenticionRoutes from './routes/auth';
+import addBearerAuthMiddleware from './middleware/user';
+import addAuthenticationRoutes from './routes/auth';
 import setupAuthentication from './auth';
 import addDataRoutes from './routes/data';
 import addWebManagerRoutes from './routes/webmanager';
@@ -194,8 +195,11 @@ export class AceBaseServer extends SimpleEventEmitter {
             instance: this,
         };
 
-        // Add connection middleware
+        // Add connection middleware (http server middleware, not express)
         const killConnections = addConnectionMiddleware(routeEnv);
+
+        // Run preMiddleware callback to allow user code to add own express middleware to the server
+        await this.config.preMiddleware?.(this);
 
         // Add CORS middleware
         addCorsMiddleware(routeEnv);
@@ -204,11 +208,19 @@ export class AceBaseServer extends SimpleEventEmitter {
         addCacheMiddleware(routeEnv);
 
         if (config.auth.enabled) {
+            // Setup auth middleware
+            addBearerAuthMiddleware(routeEnv);
+        }
+
+        // Run postMiddleware callback to allow user code to add own express middleware to the server
+        await this.config.postMiddleware?.(this);
+
+        if (config.auth.enabled) {
             // Setup auth database
             await setupAuthentication(routeEnv);
 
             // Add auth endpoints
-            const { resetPassword, verifyEmailAddress } = addAuthenticionRoutes(routeEnv);
+            const { resetPassword, verifyEmailAddress } = addAuthenticationRoutes(routeEnv);
             this.resetPassword = resetPassword;
             this.verifyEmailAddress = verifyEmailAddress;
         }
