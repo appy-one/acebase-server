@@ -1,3 +1,4 @@
+import { isAdmin } from '../shared/admin';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import * as os from 'os';
 const SERVER_VERSION = '%SERVER_VERSION%'; // Loaded from package.json by npm scripts
@@ -20,7 +21,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             time: Date.now(),
             process: process.pid,
         };
-        if (req.user && req.user.uid === 'admin') {
+        if (isAdmin(req.user)) {
             const numberToByteSize = number => {
                 return Math.round((number / 1024 / 1024) * 100) / 100 + 'MB';
             };

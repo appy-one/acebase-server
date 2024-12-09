@@ -1,3 +1,4 @@
+import { isAdmin } from '../shared/admin';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
 
@@ -23,7 +24,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             return sendNotAuthenticatedError(res, 'unauthenticated_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
 
-        if (req.user.uid !== 'admin' && details.uid !== req.user.uid) {
+        if (!isAdmin(req.user) && details.uid !== req.user.uid) {
             env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
             return sendUnauthorizedError(res, 'unauthorized_delete', 'You are not authorized to perform this operation, your attempt has been logged');
         }
@@ -31,7 +32,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const uid = details.uid ?? req.user.uid;
         if (uid === 'admin') {
             env.log.error(LOG_ACTION, 'unauthorized_delete', LOG_DETAILS);
-            return sendUnauthorizedError(res, 'unauthorized_delete', 'The admin account cannot be deleted, your attempt has been logged');
+            return sendUnauthorizedError(res, 'unauthorized_delete', 'The default admin account cannot be deleted, your attempt has been logged');
         }
 
         try {

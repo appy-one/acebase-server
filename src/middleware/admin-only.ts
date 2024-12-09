@@ -2,6 +2,7 @@ import { NextFunction } from 'express';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendUnauthorizedError } from '../shared/error';
 import type { Response } from '../shared/http';
+import { isAdmin } from '../shared/admin';
 
 /**
  * Middleware function that checks if the current user is `admin`. An 403 Forbidden error will be sent in the response if
@@ -19,7 +20,7 @@ import type { Response } from '../shared/http';
  */
 export const adminOnly = (env: RouteInitEnvironment, errorMessage = 'only admin can perform this operation') => {
     return (req: RouteRequest, res: Response, next: NextFunction) => {
-        if (env.config.auth.enabled && (!req.user || req.user.uid !== 'admin')) {
+        if (env.config.auth.enabled && !isAdmin(req.user)) {
             return sendUnauthorizedError(res, 'admin_only', errorMessage);
         }
         next();

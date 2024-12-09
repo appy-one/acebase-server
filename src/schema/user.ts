@@ -27,6 +27,8 @@ export type AceBaseUser = ({ username: string } | { email: string }) & {
     /** ISO date string */
     changePasswordBefore: string;
     settings: UserSettings;
+    /** Roles the user has */
+    roles: string[];
 };
 
 export type DbUserAccountDetails = ({ username: string } | { email: string }) & {
@@ -76,6 +78,8 @@ export type DbUserAccountDetails = ({ username: string } | { email: string }) & 
     access_token_created?: Date;
     /** additional settings for this user */
     settings: UserSettings;
+    /** roles this user has */
+    roles?: string[];
 };
 
 export const getPublicAccountDetails = (account: DbUserAccountDetails): AceBaseUser => {
@@ -95,5 +99,6 @@ export const getPublicAccountDetails = (account: DbUserAccountDetails): AceBaseU
         changePasswordRequested: account.change_password_requested?.toISOString(),
         changePasswordBefore: account.change_password_before?.toISOString(),
         settings: account.settings,
+        roles: account.roles ?? [],
     };
 };

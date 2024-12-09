@@ -3,6 +3,7 @@ import { Transport } from 'acebase-core';
 import { AccessRuleValidationError, RuleValidationFailCode } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError } from '../shared/error';
+import { isAdmin } from '../shared/admin';
 
 export class UpdateDataError extends Error {
     constructor(public code: 'invalid_serialized_value', message: string) {
@@ -41,7 +42,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             }
             const val = Transport.deserialize(data);
 
-            if (path === '' && req.user?.uid !== 'admin' && val !== null && typeof val === 'object') {
+            if (path === '' && !isAdmin(req.user) && val !== null && typeof val === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(val).filter(key => key.startsWith('__')).forEach(key => delete val[key]);
             }
