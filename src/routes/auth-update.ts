@@ -2,6 +2,7 @@ import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { AceBaseUser, DbUserAccountDetails, getPublicAccountDetails, UserProfilePicture } from '../schema/user';
 import { emailExistsError, invalidDisplayNameError, invalidEmailError, invalidPictureError, invalidSettingsError, invalidUsernameError, isValidDisplayName, isValidEmail, isValidNewEmailAddress, isValidNewUsername, isValidPicture, isValidSettings, isValidUsername, usernameExistsError } from '../shared/validate';
 import { sendNotAuthenticatedError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
+import { isAdmin } from '../shared/admin';
 
 export class UpdateError extends Error {
     constructor(public code: 'unauthenticated_update'|'unauthorized_update'|'user_not_found'|'invalid_email'|'email_conflict'|'invalid_username'|'username_conflict'|'invalid_display_name'|'invalid_picture'|'invalid_settings', message: string) {
@@ -23,6 +24,8 @@ export type RequestBody = {
     settings?: {
         [name: string]: string|number|boolean
     };
+    /** Admin only: what roles the user has */
+    roles?: string[];
 } & (
     // Allow both spellings of display name. display_name is used in the db, displayName in public user detail server responses.
     // displayName is preferred and documented in the OpenAPI docs
@@ -46,7 +49,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
         const uid = details.uid || req.user.uid;
 
-        if (req.user.uid !== 'admin' && (uid !== req.user.uid || typeof details.is_disabled === 'boolean')) {
+        if (!isAdmin(req.user) && (uid !== req.user.uid || typeof details.is_disabled === 'boolean' || details.roles)) {
             env.log.error(LOG_ACTION, 'unauthorized_update', LOG_DETAILS);
             return sendUnauthorizedError(res, 'unauthorized_update', 'You are not authorized to perform this update. This attempt has been logged.');
         }

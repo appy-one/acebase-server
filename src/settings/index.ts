@@ -232,7 +232,19 @@ export type AceBaseServerSettings = Partial<{
     logColors: boolean;
 
     /**
-     * Init callback that runs before the server adds 404 middleware and starts listening to incoming calls.
+     * Callback that runs before the server adds middleware and routes.
+     * Use this callback to add custom middleware for logging purposes, header processing etc before the server's own.
+     */
+    preMiddleware?: (server: AceBaseServer) => Promise<void>;
+
+    /**
+     * Callback that runs after the server has added its middleware, before any routes are added.
+     * Use this callback to add custom middleware for logging purposes, header processing etc before the server's own.
+     */
+    postMiddleware?: (server: AceBaseServer) => Promise<void>;
+
+    /**
+     * Init callback that runs after all middleware (except 404 handler) has been added, before the server starts listening to incoming calls.
      * Use this callback to extend the server with custom routes, add data validation rules, wait for external events, etc.
      * @param server Instance of the `AceBaseServer`
      */
@@ -257,7 +269,9 @@ export class AceBaseServerConfig {
     readonly storage?: AceBaseStorageSettings;
     readonly sponsor: boolean = false;
     readonly logColors: boolean = true;
-    readonly init?: (server: AceBaseServer) => Promise<void>;
+    readonly preMiddleware?: AceBaseServerSettings['preMiddleware'];
+    readonly postMiddleware?: AceBaseServerSettings['postMiddleware'];
+    readonly init?: AceBaseServerSettings['init'];
 
     constructor(settings: AceBaseServerSettings) {
         if (typeof settings !== 'object') { settings = {}; }
@@ -279,6 +293,8 @@ export class AceBaseServerConfig {
         if (typeof settings.storage === 'object') { this.storage = settings.storage; }
         if (typeof settings.sponsor === 'boolean') { this.sponsor = settings.sponsor; }
         if (typeof settings.logColors === 'boolean') { this.logColors = settings.logColors; }
+        if (typeof settings.preMiddleware === 'function') { this.preMiddleware = settings.preMiddleware; }
+        if (typeof settings.postMiddleware === 'function') { this.postMiddleware = settings.postMiddleware; }
         if (typeof settings.init === 'function') { this.init = settings.init; }
     }
 }

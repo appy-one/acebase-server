@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { executeSandboxed } from './sandbox';
 import { DbUserAccountDetails } from './schema/user';
 import { AUTH_ACCESS_DEFAULT, AuthAccessDefault } from './settings';
+import { isAdmin } from './shared/admin';
 
 type PathRuleFunctionEnvironment = {
     now: number;
@@ -193,7 +194,7 @@ export class PathBasedRules {
         this.accessRules = accessRules;
     }
 
-    async isOperationAllowed(user: Pick<DbUserAccountDetails, 'uid'>, path: string, operation: AccessCheckOperation, data?: Record<string, any>): Promise<HasAccessResult> {
+    async isOperationAllowed(user: Pick<DbUserAccountDetails, 'uid' | 'roles'>, path: string, operation: AccessCheckOperation, data?: Record<string, any>): Promise<HasAccessResult> {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
@@ -203,7 +204,7 @@ export class PathBasedRules {
             // Authentication is disabled, anyone can do anything. Not really a smart thing to do!
             return allow;
         }
-        else if (user?.uid === 'admin') {
+        else if (isAdmin(user)) {
             // Always allow admin access
             // TODO: implement user.is_admin, so the default admin account can be disabled
             return allow;

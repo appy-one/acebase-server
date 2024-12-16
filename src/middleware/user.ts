@@ -49,3 +49,5 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
         next();
     });
 };
+
+export default addMiddleware;

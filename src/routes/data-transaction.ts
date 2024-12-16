@@ -3,6 +3,7 @@ import { ID, Transport, Api } from 'acebase-core';
 import { AccessRuleValidationError } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendBadRequestError, sendError, sendUnauthorizedError, sendUnexpectedError } from '../shared/error';
+import { isAdmin } from '../shared/admin';
 
 export const TRANSACTION_TIMEOUT_MS = 10000; // 10s to finish a started transaction
 
@@ -139,7 +140,7 @@ export const addRoutes = (env: RouteInitEnvironment) => {
             }
             const newValue = cancel ? undefined : Transport.deserialize(data.value);
 
-            if (tx.path === '' && req.user?.uid !== 'admin' && newValue !== null && typeof newValue === 'object') {
+            if (tx.path === '' && !isAdmin(req.user) && newValue !== null && typeof newValue === 'object') {
                 // Non-admin user: remove any private properties from the update object
                 Object.keys(newValue).filter(key => key.startsWith('__')).forEach(key => delete newValue[key]);
             }

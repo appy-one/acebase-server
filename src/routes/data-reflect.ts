@@ -2,6 +2,7 @@ import { IReflectionChildrenInfo, IReflectionNodeInfo, PathInfo } from 'acebase-
 import { AccessCheckOperation, HasAccessResult } from '../rules';
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { sendUnauthorizedError } from '../shared/error';
+import { isAdmin } from '../shared/admin';
 
 export type RequestQuery = { type: 'info'|'children'; impersonate?: string };
 export type RequestBody = null;
@@ -28,7 +29,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             return sendUnauthorizedError(res, access.code, access.message);
         }
         const impersonatedAccess = {
-            uid: req.user?.uid !== 'admin' ? null : req.query.impersonate,
+            uid: !isAdmin(req.user) ? null : req.query.impersonate,
             /**
              * NEW, check all possible operations
              */
