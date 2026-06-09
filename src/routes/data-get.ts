@@ -27,7 +27,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
         if (req.query.exclude) {
             options.exclude = req.query.exclude.split(',');
         }
-        if (['true','false'].includes(req.query.child_objects)) {
+        if (['true','false'].includes(req.query.child_objects as string)) {
             options.child_objects = req.query.child_objects === 'true';
         }
 
@@ -65,7 +65,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             });
         }
         catch (err: any) {
-            res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
+            res.status(500).send(`${err?.stack ?? err?.message ?? err}` as any);
         }
     });
 

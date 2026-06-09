@@ -21,7 +21,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             res.send({ exists });
         }
         catch(err: any) {
-            res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
+            res.status(500).send(`${err?.stack ?? err?.message ?? err}` as any);
         }
     });
 
