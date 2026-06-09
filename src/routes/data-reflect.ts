@@ -93,9 +93,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
             }
             res.send(result);
         }
-        catch (err) {
-            res.statusCode = 500;
-            res.send(err);
+        catch (err: any) {
+            res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
         }
     });
 

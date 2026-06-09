@@ -20,9 +20,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
             const exists = await env.db.ref(path).exists();
             res.send({ exists });
         }
-        catch(err) {
-            res.statusCode = 500;
-            res.send(err);
+        catch(err: any) {
+            res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
         }
     });
 

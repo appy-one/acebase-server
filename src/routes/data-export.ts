@@ -34,11 +34,10 @@ export const addRoute = (env: RouteInitEnvironment) => {
         try {
             await ref.export(write, { format, type_safe });
         }
-        catch (err) {
+        catch (err: any) {
             env.debug.error(`Error exporting data for path "/${path}": `, err);
             if (!res.headersSent) {
-                res.statusCode = 500;
-                res.send(err);
+                res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
             }
         }
         finally {

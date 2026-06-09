@@ -64,8 +64,8 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 map: serialized.map,
             });
         }
-        catch (err) {
-            res.status(500).send(err);
+        catch (err: any) {
+            res.status(500).send(`${err?.stack ?? err?.message ?? err}`);
         }
     });
 
