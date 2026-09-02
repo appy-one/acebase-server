@@ -65,7 +65,7 @@
   "dependencies": {
     "acebase": "file:../acebase",
     "acebase-core": "file:../acebase-core",
-    "express": "^4.17.1",
+    "express": "^5.2.1",
     "socket.io": "^4.5.0",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.3.0"
