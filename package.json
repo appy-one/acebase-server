@@ -72,12 +72,12 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
-    "@types/node": "^10.17.60",
+    "@types/node": "^20.19.43",
     "@types/socket.io": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^5.46.1",
     "@typescript-eslint/parser": "^5.46.1",
     "eslint": "^8.30.0",
     "tsc-esm-fix": "^2.12.4",
-    "typescript": "^5.0.4"
+    "typescript": "^5.9.3"
   }
 }
