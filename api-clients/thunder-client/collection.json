@@ -1,0 +1,1069 @@
+{
+  "clientName": "Thunder Client",
+  "collectionName": "AceBase Server API",
+  "collectionId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+  "dateExported": "2026-11-16T00:00:00.000Z",
+  "version": "1.4",
+  "ref": "collection.json",
+  "settings": {
+    "options": {
+      "baseUrl": "{{base_url}}"
+    },
+    "auth": {
+      "type": "bearer",
+      "bearer": "{{access_token}}"
+    }
+  },
+  "folders": [
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Auth",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Data",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-333333333333",
+      "name": "Indexes",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-444444444444",
+      "name": "Schemas",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-555555555555",
+      "name": "Sync",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-666666666666",
+      "name": "Transactions",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-777777777777",
+      "name": "Metadata",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    },
+    {
+      "_id": "1a2b3c4d-5e6f-7890-abcd-888888888888",
+      "name": "OAuth2",
+      "containerId": "",
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z"
+    }
+  ],
+  "requests": [
+    {
+      "_id": "req-auth-signin-00000001",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Sign In",
+      "url": "/auth/{{dbname}}/signin",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"method\": \"email\",\n  \"email\": \"user@example.com\",\n  \"password\": \"sup3rs3cr3t\"\n}"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-signup-00000002",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Sign Up",
+      "url": "/auth/{{dbname}}/signup",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"user@example.com\",\n  \"displayName\": \"Real Name\",\n  \"password\": \"sup3rs3cr3t\"\n}"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-signout-0000003",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Sign Out",
+      "url": "/auth/{{dbname}}/signout",
+      "method": "POST",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"everywhere\": false\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-state-00000004",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Auth State",
+      "url": "/auth/{{dbname}}/state",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-changepw-00000005",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Change Password",
+      "url": "/auth/{{dbname}}/change_password",
+      "method": "POST",
+      "sortNum": 50000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"uid\": \"mbwosl8h0z77i9jxhxht3uyq\",\n  \"password\": \"OldPassword1#\",\n  \"new_password\": \"NewPassword2$\",\n  \"sign_out\": false\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-update-00000006",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Update User",
+      "url": "/auth/{{dbname}}/update",
+      "method": "POST",
+      "sortNum": 60000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"displayName\": \"Updated Name\",\n  \"email\": \"newemail@example.com\"\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-delete-00000007",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Delete User",
+      "url": "/auth/{{dbname}}/delete",
+      "method": "POST",
+      "sortNum": 70000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"uid\": \"jpx0k53u0002ecr7s354c51l\"\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-forgotpw-0000008",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Forgot Password",
+      "url": "/auth/{{dbname}}/forgot_password",
+      "method": "POST",
+      "sortNum": 80000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"user@example.com\"\n}"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-resetpw-00000009",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Reset Password",
+      "url": "/auth/{{dbname}}/reset_password",
+      "method": "POST",
+      "sortNum": 90000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"code\": \"reset_code_from_email\",\n  \"password\": \"NewPassword2$\"\n}"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-auth-verifyemail-000010",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-111111111111",
+      "name": "Verify Email",
+      "url": "/auth/{{dbname}}/verify_email",
+      "method": "POST",
+      "sortNum": 100000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"code\": \"verification_code_from_email\"\n}"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-get-000000011",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Get Data",
+      "url": "/data/{{dbname}}/collection/child",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "include",
+          "value": "",
+          "isEnabled": false
+        },
+        {
+          "name": "exclude",
+          "value": "",
+          "isEnabled": false
+        },
+        {
+          "name": "child_objects",
+          "value": "true",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-set-000000012",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Set Data",
+      "url": "/data/{{dbname}}/collection/child",
+      "method": "PUT",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        },
+        {
+          "name": "AceBase-Context",
+          "value": "{}",
+          "isEnabled": false
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"val\": {\n    \"name\": \"My item\",\n    \"created\": \"2024-01-01T00:00:00Z\"\n  },\n  \"map\": { \"created\": \"date\" }\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-update-00000013",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Update Data",
+      "url": "/data/{{dbname}}/collection/child",
+      "method": "POST",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        },
+        {
+          "name": "AceBase-Context",
+          "value": "{}",
+          "isEnabled": false
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"val\": {\n    \"name\": \"Updated name\"\n  },\n  \"map\": {}\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-exists-00000014",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Data Exists",
+      "url": "/exists/{{dbname}}/collection/child",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-query-00000015",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Query Data",
+      "url": "/query/{{dbname}}/collection",
+      "method": "POST",
+      "sortNum": 50000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"val\": {\n    \"query\": {\n      \"filters\": [\n        { \"key\": \"title\", \"op\": \"like\", \"compare\": \"AceBase*\" }\n      ],\n      \"skip\": 0,\n      \"take\": 10,\n      \"order\": [\n        { \"key\": \"rating\", \"ascending\": false }\n      ]\n    },\n    \"options\": {\n      \"snapshots\": true,\n      \"include\": [\"title\", \"author\", \"rating\"]\n    }\n  },\n  \"map\": {}\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-reflect-00000016",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Reflect",
+      "url": "/reflect/{{dbname}}/collection/child",
+      "method": "GET",
+      "sortNum": 60000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "type",
+          "value": "info",
+          "isEnabled": true
+        },
+        {
+          "name": "include_child_count",
+          "value": "false",
+          "isEnabled": false
+        },
+        {
+          "name": "child_limit",
+          "value": "10",
+          "isEnabled": false
+        },
+        {
+          "name": "child_skip",
+          "value": "0",
+          "isEnabled": false
+        },
+        {
+          "name": "impersonate",
+          "value": "",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-export-00000017",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Export Data",
+      "url": "/export/{{dbname}}/collection",
+      "method": "GET",
+      "sortNum": 70000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "format",
+          "value": "json",
+          "isEnabled": true
+        },
+        {
+          "name": "type_safe",
+          "value": "1",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-data-import-00000018",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-222222222222",
+      "name": "Import Data",
+      "url": "/import/{{dbname}}/collection",
+      "method": "POST",
+      "sortNum": 80000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "text/plain",
+          "isEnabled": true
+        }
+      ],
+      "params": [
+        {
+          "name": "format",
+          "value": "json",
+          "isEnabled": true
+        },
+        {
+          "name": "suppress_events",
+          "value": "0",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "text",
+        "raw": "{\"key1\":{\"name\":\"Item 1\"},\"key2\":{\"name\":\"Item 2\"}}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-index-list-00000019",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-333333333333",
+      "name": "List Indexes",
+      "url": "/index/{{dbname}}",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-index-create-00000020",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-333333333333",
+      "name": "Create Index",
+      "url": "/index/{{dbname}}/create",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"path\": \"books\",\n  \"key\": \"title\",\n  \"options\": {\n    \"type\": \"normal\",\n    \"rebuild\": false\n  }\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-index-delete-00000021",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-333333333333",
+      "name": "Delete Index",
+      "url": "/index/{{dbname}}/delete",
+      "method": "POST",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"fileName\": \"index_books_title.idx\"\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-schema-list-00000022",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-444444444444",
+      "name": "List Schemas",
+      "url": "/schema/{{dbname}}",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-schema-set-000000023",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-444444444444",
+      "name": "Set Schema",
+      "url": "/schema/{{dbname}}",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"path\": \"collection/item\",\n  \"schema\": \"{ name: string, stats?: { size: number, created: Date, modified: Date } }\",\n  \"warnOnly\": false\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-schema-get-000000024",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-444444444444",
+      "name": "Get Schema",
+      "url": "/schema/{{dbname}}/collection/item",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-schema-test-00000025",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-444444444444",
+      "name": "Test Schema",
+      "url": "/schema/{{dbname}}/test",
+      "method": "POST",
+      "sortNum": 40000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"path\": \"collection/item\",\n  \"value\": { \"val\": { \"name\": \"Test item\" }, \"map\": {} },\n  \"partial\": false,\n  \"schema\": \"{ name: string }\"\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-sync-changes-00000026",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-555555555555",
+      "name": "Get Changes",
+      "url": "/sync/changes/{{dbname}}",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "path",
+          "value": "collection",
+          "isEnabled": true
+        },
+        {
+          "name": "cursor",
+          "value": "l2a37q55000008ll8dyngkny",
+          "isEnabled": false
+        },
+        {
+          "name": "timestamp",
+          "value": "",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-sync-mutations-0000027",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-555555555555",
+      "name": "Get Mutations",
+      "url": "/sync/mutations/{{dbname}}",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "path",
+          "value": "collection",
+          "isEnabled": true
+        },
+        {
+          "name": "cursor",
+          "value": "l2a37q55000008ll8dyngkny",
+          "isEnabled": false
+        },
+        {
+          "name": "timestamp",
+          "value": "",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-txn-start-000000028",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-666666666666",
+      "name": "Start Transaction",
+      "url": "/transaction/{{dbname}}/start",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        },
+        {
+          "name": "AceBase-Context",
+          "value": "{}",
+          "isEnabled": false
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"path\": \"collection/child/property\"\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-txn-finish-000000029",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-666666666666",
+      "name": "Finish Transaction",
+      "url": "/transaction/{{dbname}}/finish",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json",
+          "isEnabled": true
+        }
+      ],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"id\": \"jld2cjxh0000qzrmn831i7rn\",\n  \"path\": \"collection/child/property\",\n  \"value\": {\n    \"val\": { \"name\": \"Updated value\" },\n    \"map\": {}\n  }\n}"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-meta-ping-000000030",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-777777777777",
+      "name": "Ping",
+      "url": "/ping/{{dbname}}",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-meta-info-000000031",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-777777777777",
+      "name": "Server Info",
+      "url": "/info/{{dbname}}",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-meta-stats-000000032",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-777777777777",
+      "name": "Stats",
+      "url": "/stats/{{dbname}}",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-oauth2-init-00000033",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-888888888888",
+      "name": "OAuth2 Init",
+      "url": "/oauth2/{{dbname}}/init",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "provider",
+          "value": "facebook",
+          "isEnabled": true
+        },
+        {
+          "name": "callbackUrl",
+          "value": "https://my.website.com/oauth2/callback",
+          "isEnabled": true
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "inherit"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-oauth2-signin-0000034",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-888888888888",
+      "name": "OAuth2 Signin Callback",
+      "url": "/oauth2/{{dbname}}/signin",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "state",
+          "value": "sefwerg44tgwefvq3g4rbqewrgbqebwdfbwsergq34t",
+          "isEnabled": true
+        },
+        {
+          "name": "code",
+          "value": "erfuihqrf7g3rfgh3rifhwre8f73efuh3eifh",
+          "isEnabled": false
+        },
+        {
+          "name": "error",
+          "value": "canceled",
+          "isEnabled": false
+        },
+        {
+          "name": "error_reason",
+          "value": "user_canceled",
+          "isEnabled": false
+        },
+        {
+          "name": "error_description",
+          "value": "The user canceled the auth request",
+          "isEnabled": false
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    },
+    {
+      "_id": "req-oauth2-refresh-0000035",
+      "colId": "5a8f2b1c-3d4e-4f6a-b7c8-9d0e1f2a3b4c",
+      "containerId": "1a2b3c4d-5e6f-7890-abcd-888888888888",
+      "name": "OAuth2 Refresh Token",
+      "url": "/oauth2/{{dbname}}/refresh",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-11-12T00:00:00.000Z",
+      "modified": "2026-11-12T00:00:00.000Z",
+      "headers": [],
+      "params": [
+        {
+          "name": "provider",
+          "value": "facebook",
+          "isEnabled": true
+        },
+        {
+          "name": "refresh_token",
+          "value": "erfiyh3rfig3fuyb3rjfg3u7refc",
+          "isEnabled": true
+        }
+      ],
+      "body": {
+        "type": "none"
+      },
+      "auth": {
+        "type": "none"
+      },
+      "tests": []
+    }
+  ]
+}
