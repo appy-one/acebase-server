@@ -12,13 +12,13 @@ export class ChangePasswordError extends Error {
 }
 
 export type RequestQuery = never;
-export type RequestBody = { uid: string; password: string; new_password: string };
+export type RequestBody = { uid: string; password: string; new_password: string; sign_out?: boolean };
 export type ResponseBody = { access_token: string } | { code: string; message: string } | string;
 export type Request = RouteRequest<RequestQuery, RequestBody, ResponseBody>;
 
 export const addRoute = (env: RouteInitEnvironment) => {
     env.router.post(`/auth/${env.db.name}/change_password`, async (req: Request, res) => {
-        const access_token = req.user?.access_token;
+        let accessToken = req.user?.access_token;
         const details = req.body;
         const LOG_ACTION = 'auth.change_password';
         const LOG_DETAILS = { ip: req.ip, uid: details.uid ?? null };
@@ -36,12 +36,12 @@ export const addRoute = (env: RouteInitEnvironment) => {
         }
 
         try {
-            let publicAccessToken: string;
+            const signOutOtherClients = details.sign_out === true;
             await env.authRef.child(details.uid).transaction(snap => {
                 if (!snap.exists()) {
                     throw new ChangePasswordError('unknown_uid', `Unknown uid`);
                 }
-                const user: DbUserAccountDetails = snap.val();
+                const user = snap.val() as DbUserAccountDetails;
                 user.uid = snap.key as string;
 
                 const hash = user.password_salt ? getPasswordHash(details.password, user.password_salt) : getOldPasswordHash(details.password);
@@ -49,17 +49,21 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 if (user.password !== hash) {
                     throw new ChangePasswordError('wrong_password', `Wrong password`);
                 }
-                if (access_token && access_token !== user.access_token) {
+                if (accessToken && accessToken !== user.access_token) {
                     throw new ChangePasswordError('wrong_access_token', `Cannot change password while signed in as other user, or with an old token`);
                 }
 
                 const pwd = createPasswordHash(details.new_password);
                 const updates = {
-                    access_token: ID.generate(),
-                    access_token_created: new Date(),
                     password: pwd.hash,
                     password_salt: pwd.salt,
-                };
+                } as Partial<DbUserAccountDetails>;
+
+                if (signOutOtherClients || !accessToken) {
+                    accessToken = ID.generate();
+                    updates.access_token = accessToken;
+                    updates.access_token_created = new Date();
+                }
 
                 // Update user object
                 Object.assign(user, updates);
@@ -67,17 +71,17 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 // Set or update cache
                 env.authCache.set(user.uid, user);
 
-                // Create new public access token
-                publicAccessToken = createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt);
-
                 return user; // Update db
             });
+
+            // Create new public access token
+            const publicAccessToken = createPublicAccessToken(details.uid, req.ip, accessToken as string, env.tokenSalt);
 
             env.log.event(LOG_ACTION, LOG_DETAILS);
             res.send({ access_token: publicAccessToken }); // Client must use this new access token from now on
         }
-        catch(err) {
-            env.log.error(LOG_ACTION, err.code, LOG_DETAILS);
+        catch(err: any) {
+            env.log.error(LOG_ACTION, err?.code ?? 'unknown', LOG_DETAILS);
             if (err.code) {
                 sendBadRequestError(res, err);
             }
