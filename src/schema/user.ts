@@ -80,6 +80,10 @@ export type DbUserAccountDetails = ({ username: string } | { email: string }) & 
     settings: UserSettings;
     /** roles this user has */
     roles?: string[];
+    /** date/time of the last registered session */
+    last_session_start?: Date;
+    /** ip address of last registered session */
+    last_session_ip?: string;
 };
 
 export const getPublicAccountDetails = (account: DbUserAccountDetails): AceBaseUser => {
