@@ -3,6 +3,7 @@ import { AceBaseUser, getPublicAccountDetails } from '../schema/user';
 import { sendNotAuthenticatedError, sendUnexpectedError } from '../shared/error';
 import { createPublicAccessToken } from '../shared/tokens';
 import { signIn, SignInCredentials } from '../shared/signin';
+import { ConnectedClient } from '../shared/clients';
 
 export type RequestQuery = never;
 export type RequestBody = { client_id?: string } & (
@@ -28,19 +29,19 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const clientId = details.client_id || null;  // NEW in AceBaseClient v0.9.4
 
         try {
-            const user = await signIn(details as SignInCredentials, env, req);
+            const user = await signIn(details as SignInCredentials, env, req.ip);
             if (typeof clientId === 'string' && env.clients.has(clientId)) {
-                const client = env.clients.get(clientId);
+                const client = env.clients.get(clientId) as ConnectedClient;
                 client.user = user; // Bind user to client socket
             }
             res.send({
-                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
+                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token as string, env.tokenSalt),
                 user: getPublicAccountDetails(user),
             });
         }
-        catch (err) {
+        catch (err: any) {
 
-            if (typeof err.code === 'string') {
+            if (typeof err?.code === 'string') {
                 // Authentication error
                 return sendNotAuthenticatedError(res, err.code, err.message);
             }

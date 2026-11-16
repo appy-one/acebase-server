@@ -110,10 +110,11 @@
                   description: The exact error code
                   enum: 
                     - invalid_token
+                    - expired_token
                     - not_found
                     - duplicate
-                    - token_mismatch
                     - wrong_password
+                    - invalid_method
                   example: not_found
                 message:
                   type: string
