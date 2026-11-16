@@ -19,7 +19,7 @@
   "repository": "github:appy-one/acebase-server",
   "scripts": {
     "start": "node dist/esm/start.js DBNAME=default DBPATH=. HOST=localhost PORT=3000 TXLOG=1 AUTH=1",
-    "test": "set NODE_ENV=development && npm run start",
+    "test": "NODE_ENV=development npm run start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "build": "npm run build:clean && npm run build:esm && npm run build:cjs && npm run build:packages && npm run build:vars && echo Done!",
