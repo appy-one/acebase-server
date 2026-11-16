@@ -283,7 +283,11 @@ export class AceBaseServer extends SimpleEventEmitter {
         };
 
         // Handle SIGINT and shutdown requests
+        const sigintHandler = () => shutdown({ sigint: true });
         const shutdown = async (request: { sigint: boolean }) => {
+            // Don't keep listening for SIGINT once the server has been shut down
+            process.off('SIGINT', sigintHandler);
+
             this.debug.warn('shutting down server');
             routeEnv.rules.stop();
 
@@ -377,7 +381,7 @@ export class AceBaseServer extends SimpleEventEmitter {
                 this.emitOnce(`ready`);
             });
 
-            process.on('SIGINT', () => shutdown({ sigint: true }));
+            process.on('SIGINT', sigintHandler);
         }
     }
 
