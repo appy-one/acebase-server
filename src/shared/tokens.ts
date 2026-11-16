@@ -15,7 +15,7 @@ export const createPublicAccessToken = (uid: string, ip: string, dbToken: string
 
 export type PublicAccessToken = { access_token: string; uid: string; created: number; ip: string };
 export const decodePublicAccessToken = (accessToken: string, password: string) : PublicAccessToken => {
-    let details: PublicAccessToken;
+    let details: PublicAccessToken | undefined;
     if (accessToken[0] === 'b') {
         // New signed version
         const obj = parseSignedPublicToken(accessToken.slice(1), password);
@@ -37,14 +37,14 @@ export const decodePublicAccessToken = (accessToken: string, password: string) :
 };
 
 
-const getSignature = (content, salt) => {
+const getSignature = (content: string, salt: string) => {
     // Use fast md5 with salt to sign with. Large salt recommended!!
     return crypto.createHash('md5').update(salt + content).digest('hex');
 };
 
 /**
  * Sign objects with an md5 hash. An attacker might base4 decode it and see the content and generated checksum hash,
- * but will need to guess the password used to generate the hash to manipulate it. This is  not impossible but will take
+ * but will need to guess the password used to generate the hash to manipulate it. This is not impossible but will take
  * a very long time when using a large password
  * @param obj data object to sign
  * @param password password to use as salt for the generated md5 hash

@@ -28,15 +28,15 @@ export const addRoute = (env: RouteInitEnvironment) => {
             try {
                 return parseSignedPublicToken(code, env.tokenSalt);
             }
-            catch(err) {
-                throw new ResetPasswordError('invalid_code', err.message);
+            catch(err: any) {
+                throw new ResetPasswordError('invalid_code', err?.message ?? '');
             }
         })();
         const snap = await env.authRef.child(verification.uid).get();
         if (!snap.exists()) {
             throw new ResetPasswordError('unknown_user', 'Uknown user');
         }
-        const user: DbUserAccountDetails = snap.val();
+        const user = snap.val() as DbUserAccountDetails;
         user.uid = snap.key as string;
 
         if (user.password_reset_code !== verification.code) {
@@ -60,7 +60,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             ip: clientIp,
             user: {
                 uid: user.uid,
-                email: user.email,
+                email: user.email as string,
                 username: user.username,
                 displayName: user.display_name,
                 settings: user.settings,
@@ -81,9 +81,9 @@ export const addRoute = (env: RouteInitEnvironment) => {
             env.log.event(LOG_ACTION, { ...LOG_DETAILS, reset_uid: user.uid });
             res.send('OK');
         }
-        catch (err) {
-            env.log.error(LOG_ACTION, err.code ?? 'unexpected', { ...LOG_DETAILS, message: (err instanceof Error && err.message) ?? err.toString() });
-            if (err.code) {
+        catch (err: any) {
+            env.log.error(LOG_ACTION, err?.code ?? 'unexpected', { ...LOG_DETAILS, message: err?.message ?? err?.toString() ?? 'Unexpected error' });
+            if (err?.code) {
                 sendBadRequestError(res, err);
             }
             else {

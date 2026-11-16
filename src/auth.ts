@@ -5,14 +5,15 @@ import { RouteInitEnvironment } from './shared/env';
 import { createPasswordHash, generatePassword, getOldPasswordHash, getPasswordHash } from './shared/password';
 
 export const setupAuthentication = async (env: RouteInitEnvironment) => {
-
     // Setup auth cache
     env.authCache = new SimpleCache<string, DbUserAccountDetails>({ expirySeconds: 300, cloneValues: false, maxEntries: 1000 });
 
     // Get or generate a salt to hash public tokens with
-    await env.securityRef.child('token_salt').transaction(snap => {
-        env.tokenSalt = snap.val();
-        if (!env.tokenSalt) {
+    await env.securityRef.child('token_salt').transaction((snap) => {
+        if (snap.exists()) {
+            env.tokenSalt = snap.val() as string;
+        } else {
+            // Generate new salt and store it
             const length = 256;
             env.tokenSalt = randomBytes(Math.ceil(length/2)).toString('hex').slice(0,length);
             return env.tokenSalt;
@@ -20,9 +21,8 @@ export const setupAuthentication = async (env: RouteInitEnvironment) => {
     });
 
     // Setup admin account
-    await env.authRef.child('admin').transaction(snap => {
-
-        let adminAccount: DbUserAccountDetails = snap.val();
+    await env.authRef.child('admin').transaction((snap) => {
+        let adminAccount = snap.val() as DbUserAccountDetails | null;
         if (adminAccount === null) {
             // Use provided default password, or generate one:
             const adminPassword = env.config.auth.defaultAdminPassword || generatePassword();

@@ -1,7 +1,7 @@
 import { request } from 'https';
 export interface SimpleFetchResponse {
-    readonly status: number;
-    readonly headers: { get(name: string): string }
+    readonly status?: number;
+    readonly headers: { get(name: string): string | undefined }
     text(): Promise<string>
     json(): Promise<any>
     arrayBuffer(): Promise<ArrayBuffer>
@@ -19,7 +19,7 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
 
             // res.setEncoding('binary'); // will result in strings!!!!
             const ready = new Promise<Buffer>((resolve, reject) => {
-                const chunks = [];
+                const chunks = [] as any[];
                 res.on('data', data => {
                     chunks.push(data);
                 });
@@ -52,7 +52,7 @@ export function fetch(url: string, options?: { method?: 'GET'|'POST'|'PUT'|'DELE
                 async arrayBuffer() {
                     const data = await ready;
                     const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-                    return arrayBuffer;
+                    return arrayBuffer as ArrayBuffer;
                 },
             };
 
