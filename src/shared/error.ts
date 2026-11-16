@@ -33,5 +33,5 @@ export const sendBadRequestError = (res: Response, err: { code: string, message:
 };
 
 export const sendUnexpectedError = (res: Response, err: Error) => {
-    res.status(500).contentType('application/json').send({ code: 'unexpected', message: 'server error', details: err.message }); // Internal server error
+    res.status(500).contentType('application/json').send({ code: 'unexpected', message: 'server error', details: err?.message ?? 'Unknown error' }); // Internal server error
 };
