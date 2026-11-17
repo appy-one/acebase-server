@@ -93,7 +93,7 @@
       "params": [],
       "body": {
         "type": "json",
-        "raw": "{\n  \"method\": \"email\",\n  \"email\": \"user@example.com\",\n  \"password\": \"sup3rs3cr3t\"\n}"
+        "raw": "{\n  \"method\": \"email\",\n  \"email\": \"user@example.com\",\n  \"password\": \"...\"\n}"
       },
       "auth": {
         "type": "none"
@@ -120,7 +120,7 @@
       "params": [],
       "body": {
         "type": "json",
-        "raw": "{\n  \"email\": \"user@example.com\",\n  \"displayName\": \"Real Name\",\n  \"password\": \"sup3rs3cr3t\"\n}"
+        "raw": "{\n  \"email\": \"user@example.com\",\n  \"displayName\": \"Real Name\",\n  \"password\": \"...\"\n}"
       },
       "auth": {
         "type": "none"
@@ -194,7 +194,7 @@
       "params": [],
       "body": {
         "type": "json",
-        "raw": "{\n  \"uid\": \"mbwosl8h0z77i9jxhxht3uyq\",\n  \"password\": \"OldPassword1#\",\n  \"new_password\": \"NewPassword2$\",\n  \"sign_out\": false\n}"
+        "raw": "{\n  \"uid\": \"mbwosl8h0z77i9jxhxht3uyq\",\n  \"password\": \"...\",\n  \"new_password\": \"...\",\n  \"sign_out\": false\n}"
       },
       "auth": {
         "type": "inherit"
@@ -302,7 +302,7 @@
       "params": [],
       "body": {
         "type": "json",
-        "raw": "{\n  \"code\": \"reset_code_from_email\",\n  \"password\": \"NewPassword2$\"\n}"
+        "raw": "{\n  \"code\": \"reset_code_from_email\",\n  \"password\": \"...\"\n}"
       },
       "auth": {
         "type": "none"
