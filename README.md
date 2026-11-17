@@ -497,20 +497,16 @@ server.configAuthProvider('facebook', { client_id: '[your fb app_id]', client_se
 ```javascript
 // In your login.js:
 const callbackUrl = 'http://your.app.url/authenticated';
-client.auth.startAuthProviderSignIn('facebook', callbackUrl)
-.then(redirectUrl => {
-    window.location = redirectUrl; // Send user to auth provider's login screen
-});
+const redirectUrl = await client.auth.startAuthProviderSignIn('facebook', callbackUrl);
+window.location = redirectUrl; // Send user to auth provider's login screen
 ```
 
 * Once the user authenticated your request, they are redirected back to your website (your callbackUrl):
 ```javascript
 // In your authenticated.js: (executes from /authenticated?result=awefi873r4gqw...)
 const callbackResult = window.location.search.match(/[?&]result=(.*?)(?:&|$)/)[1]; // Or some other way you'd get the ?result from the url
-client.auth.finishAuthProviderSignIn(callbackResult)
-.then(result => {
-    console.log(`User ${result.user.email} signed in with ${result.provider.name}`);
-})
+const result = await client.auth.finishAuthProviderSignIn(callbackResult);
+console.log(`User ${result.user.email} signed in with ${result.provider.name}`);
 ```
 
 The `result` object will also contain the provider's `access_token` and `refresh_token` in case you want to make custom calls to the provider's API. If you want to keep the provider's access_token active, you will have to call `client.auth.refreshAuthProviderToken` before it expires:
@@ -519,19 +515,15 @@ The `result` object will also contain the provider's `access_token` and `refresh
 const keepAlive = (provider) => {
     // Schedule token refresh 1 minute before it expires
     const refreshMs = (provider.expires_in - 60) * 1000;
-    setTimeout(() => {
-        client.auth.refreshAuthProviderToken(provider.refresh_token)
-        .then(result => {
-            keepAlive(result.provider); // Schedule again
-        })
+    setTimeout(async () => {
+        const result = await client.auth.refreshAuthProviderToken(provider.refresh_token);
+        keepAlive(result.provider); // Schedule again
     }, refreshMs);
 };
 
-client.auth.finishAuthProviderSignIn(callbackResult)
-.then(result => {
-    // schedule a token refresh:
-    keepAlive(result.provider);
-});
+const result = await client.auth.finishAuthProviderSignIn(callbackResult);
+// schedule a token refresh:
+keepAlive(result.provider);
 ```
 
 Currently implemented auth providers are:
@@ -551,7 +543,7 @@ const server = new AceBaseServer(dbname, settings);
 await server.ready();
 
 // Monitor images being added by users, resize them to multiple sizes:
-server.db.ref('uploads/images').on('child_added', async snap => {
+server.db.ref('uploads/images').on('child_added', async (snap) => {
     const image = snap.val();
     const resizedImages = await createImageSizes(image); // Some function that creates multiple image sizes in a worker thread
     const targetRef = await db.ref('images').push(resizedImages); // Store them somewhere else
@@ -567,7 +559,7 @@ await db.ready();
 await db.auth.signIn('admin', 'thepassword');
 
 // Monitor images being added by users, resize them to multiple sizes:
-db.ref('uploads/images').on('child_added', async snap => {
+db.ref('uploads/images').on('child_added', async (snap) => {
     const image = snap.val();
     const resizedImages = createImageSizes(image); // Some function that creates multiple image sizes
     const targetRef = await db.ref('images').push(resizedImages); // Store them somewhere else
@@ -633,24 +625,18 @@ server.extend('post', 'quotes/add', (req, res) => {
 You can then call your API methods on the client side as follows:
 ```javascript
 // Get random quote:
-client.callExtension('get', 'quotes/random')
-.then(quote => {
-    console.log(`Got random quote: `, quote);
-});
+const quote = await client.callExtension('get', 'quotes/random');
+console.log(`Got random quote: `, quote);
 
 // Get specific quote:
-client.callExtension('get', 'quotes/specific', { index: 15 })
-.then(quote => {
-    console.log(`Got quotes[15]: `, quote);
-});
+const quote = await client.callExtension('get', 'quotes/specific', { index: 15 });
+console.log(`Got quotes[15]: `, quote);
 
 // Add a quote
-client.callExtension('post', 'quotes/add', { 
+const result = await client.callExtension('post', 'quotes/add', { 
     text: 'The greatest glory in living lies not in never falling, but in rising every time we fall', 
-    author: 'Nelson Mandela' })
-.then(result => {
-    // "thanks!"
-});
+    author: 'Nelson Mandela' });
+// "thanks!"
 ```
 
 ## Running in a cluster
