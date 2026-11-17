@@ -185,10 +185,12 @@ export class PathBasedRules {
             }
         };
         fs.watchFile(rulesFilePath, watchFileListener);
-        this.stop = () => {
+        const stop = () => {
             fs.unwatchFile(rulesFilePath, watchFileListener);
+            process.off('SIGINT', stop);
         };
-        process.on('SIGINT', this.stop);
+        this.stop = stop;
+        process.on('SIGINT', stop);
 
         this.authEnabled = env.authEnabled;
         this.accessRules = accessRules;
