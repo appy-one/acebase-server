@@ -73,7 +73,7 @@ const queryUser = async (credentials: SignInCredentials, env: RouteInitEnvironme
  * @param req current http request
  * @returns
  */
-export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, ip: string): Promise<DbUserAccountDetails> => {
+export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, ip: string, isNewSession: boolean): Promise<DbUserAccountDetails> => {
     const LOG_ACTION = 'auth.signin';
     const LOG_DETAILS = {
         ip,
@@ -103,7 +103,7 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
             }
         }
 
-        if (!isCached) {
+        if (isNewSession) {
             // Keep track of properties to update, both in db and cached details
             const updates: Partial<DbUserAccountDetails> = {
                 last_session_start: new Date(),

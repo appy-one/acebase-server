@@ -34,6 +34,7 @@ export const addMiddleware = (env: RouteInitEnvironment) => {
                     { method: 'token', uid: tokenDetails.uid, access_token: tokenDetails.access_token },
                     env,
                     req.ip,
+                    false,
                 );
             }
             catch (err: any) {

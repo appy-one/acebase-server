@@ -43,7 +43,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
                 return details as SignInCredentials;
             })();
 
-            const user = await signIn(credentials, env, req.ip);
+            const user = await signIn(credentials, env, req.ip, true);
             if (typeof clientId === 'string' && env.clients.has(clientId)) {
                 const client = env.clients.get(clientId) as ConnectedClient;
                 client.user = user; // Bind user to client socket
