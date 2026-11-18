@@ -23,6 +23,24 @@ export const createApp = (settings: { trustProxy: boolean; maxPayloadSize: strin
     // Parse json request bodies
     app.use(express.json({ limit: settings.maxPayloadSize })); // , extended: true ?
 
+    // Handle body parsing errors ourselves, preventing Express' default error handler from
+    // sending detailed error info (including stack trace) to the client
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (typeof err?.type !== 'string' || typeof err?.status !== 'number') {
+            // Not a body-parser error
+            return next(err);
+        }
+        const code = err.type === 'entity.parse.failed' ? 'invalid_json'
+            : err.type === 'entity.too.large' ? 'payload_too_large'
+                : 'invalid_body';
+        const message = err.type === 'entity.parse.failed' ? 'Request body is not valid JSON'
+            : err.type === 'entity.too.large' ? 'Request body is too large'
+                : 'Request body could not be read';
+        res.status(err.status >= 400 && err.status < 500 ? err.status : 400)
+            .contentType('application/json')
+            .send({ code, message });
+    });
+
     return app as HttpApp;
 };
 
