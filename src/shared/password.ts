@@ -4,7 +4,7 @@ export const generatePassword = () => {
     return Array.prototype.reduce.call('abcedefghijkmnopqrstuvwxyzABCDEFGHIJKLMNPQRSTUVWXYZ012345789!@#$%&', (password, c, i, chars) => {
         if (i > 15) { return password; }
         return password + chars[Math.floor(Math.random() * chars.length)];
-    }, '');
+    }, '') as string;
 };
 
 /**

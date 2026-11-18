@@ -1,8 +1,9 @@
 import { RouteInitEnvironment, RouteRequest } from '../shared/env';
 import { AceBaseUser, getPublicAccountDetails } from '../schema/user';
 import { sendNotAuthenticatedError, sendUnexpectedError } from '../shared/error';
-import { createPublicAccessToken } from '../shared/tokens';
-import { signIn, SignInCredentials } from '../shared/signin';
+import { createPublicAccessToken, decodePublicAccessToken } from '../shared/tokens';
+import { signIn, SignInCredentials, SignInError } from '../shared/signin';
+import { ConnectedClient } from '../shared/clients';
 
 export type RequestQuery = never;
 export type RequestBody = { client_id?: string } & (
@@ -28,19 +29,33 @@ export const addRoute = (env: RouteInitEnvironment) => {
         const clientId = details.client_id || null;  // NEW in AceBaseClient v0.9.4
 
         try {
-            const user = await signIn(details as SignInCredentials, env, req);
+            const credentials = ((): SignInCredentials => {
+                if (details.method === 'token') {
+                    // This is a public access token, convert to a private token that contains the user's uid and actual access token
+                    try {
+                        const tokenDetails = decodePublicAccessToken(details.access_token, env.tokenSalt);
+                        return { method: 'token', uid: tokenDetails.uid, access_token: tokenDetails.access_token };
+                    }
+                    catch (err) {
+                        throw new SignInError('invalid_token', `Access token is invalid. Sign in again`);
+                    }
+                }
+                return details as SignInCredentials;
+            })();
+
+            const user = await signIn(credentials, env, req.ip, true);
             if (typeof clientId === 'string' && env.clients.has(clientId)) {
-                const client = env.clients.get(clientId);
+                const client = env.clients.get(clientId) as ConnectedClient;
                 client.user = user; // Bind user to client socket
             }
             res.send({
-                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token, env.tokenSalt),
+                access_token: createPublicAccessToken(user.uid, req.ip, user.access_token as string, env.tokenSalt),
                 user: getPublicAccountDetails(user),
             });
         }
-        catch (err) {
+        catch (err: any) {
 
-            if (typeof err.code === 'string') {
+            if (typeof err?.code === 'string') {
                 // Authentication error
                 return sendNotAuthenticatedError(res, err.code, err.message);
             }

@@ -1,12 +1,10 @@
 import { ID } from 'acebase-core';
 import { DbUserAccountDetails } from '../schema/user';
-import { RouteInitEnvironment, RouteRequest } from './env';
+import { RouteInitEnvironment } from './env';
 import { createPasswordHash, getOldPasswordHash, getPasswordHash } from './password';
-import { decodePublicAccessToken, PublicAccessToken } from './tokens';
 
 export type SignInCredentials =
-    { method: 'token'; access_token: string } |
-    { method: 'internal'; access_token: string } |
+    { method: 'token'; uid: string; access_token: string } |
     { method: 'email'; email: string; password: string } |
     { method: 'account', username: string, password: string };
 
@@ -16,44 +14,22 @@ export class SignInError extends Error {
     }
 }
 
-/**
- * Signs in a user and logs the request. If successful, adds the user to authCache, binds the user to the http request and returns the user details.
- * Throws a `SignInError` if sign in fails for a known reason.
- * @param credentials credentials to sign in the user with
- * @param env environment state
- * @param req current http request
- * @returns
- */
-export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, req: RouteRequest) => {
-
-    const LOG_ACTION = 'auth.signin';
-    const LOG_DETAILS = { ip: req.ip, method: credentials.method };
-
-    try {
+const queryUser = async (credentials: SignInCredentials, env: RouteInitEnvironment): Promise<DbUserAccountDetails> => {
+    let user: DbUserAccountDetails | undefined;
+    if (credentials.method === 'token') {
+        // Uses the uid and access token extracted from a public access token
+        if (typeof credentials.access_token !== 'string') {
+            throw new SignInError('invalid_details', 'sign in request has invalid arguments');
+        }
+        const snap = await env.authRef.child(credentials.uid).get();
+        if (snap.exists()) {
+            user = snap.val() as DbUserAccountDetails;
+            user.uid = snap.key;
+        }
+    }
+    else {
         const query = env.authRef.query();
-        let tokenDetails: PublicAccessToken;
         switch (credentials.method) {
-            case 'token': {
-                if (typeof credentials.access_token !== 'string') {
-                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
-                }
-                try {
-                    tokenDetails = decodePublicAccessToken(credentials.access_token, env.tokenSalt);
-                    query.filter('access_token', '==', tokenDetails.access_token);
-                }
-                catch (err) {
-                    throw new SignInError('invalid_token', err.message);
-                }
-                break;
-            }
-            case 'internal': {
-                // Method used internally: uses the access token extracted from a public access token (see tokenDetails.access_token in above 'token' case)
-                if (typeof credentials.access_token !== 'string') {
-                    throw new SignInError('invalid_details', 'sign in request has invalid arguments');
-                }
-                query.filter('access_token', '==', credentials.access_token);
-                break;
-            }
             case 'email': {
                 if (typeof credentials.email !== 'string' || typeof credentials.password !== 'string') {
                     throw new SignInError('invalid_details', 'sign in request has invalid arguments');
@@ -74,22 +50,50 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
         }
 
         const snaps = await query.get();
-        if (snaps.length === 0) {
-            throw new SignInError('not_found', `account not found`);
-        }
-        else if (snaps.length > 1) {
+        if (snaps.length > 1) {
             throw new SignInError('duplicate', `${snaps.length} users found with the same ${credentials.method}. Contact your database administrator`, { count: snaps.length });
         }
+        else if (snaps.length === 1) {
+            const snap = snaps[0];
+            user = snap.val() as DbUserAccountDetails;
+            user.uid = snap.key;
+        }
+    }
+    if (!user) {
+        throw new SignInError('not_found', `account not found`);
+    }
+    return user;
+};
 
-        const snap = snaps[0];
-        const user: DbUserAccountDetails = snap.val();
-        user.uid = snap.key as string;
+/**
+ * Signs in a user and logs the request. Uses cache for token sign-in method. If successful, adds the user to cache and returns the user details.
+ * Throws a `SignInError` if sign in fails for a known reason.
+ * @param credentials credentials to sign in the user with
+ * @param env environment state
+ * @param req current http request
+ * @returns
+ */
+export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvironment, ip: string, isNewSession: boolean): Promise<DbUserAccountDetails> => {
+    const LOG_ACTION = 'auth.signin';
+    const LOG_DETAILS = {
+        ip,
+        method: credentials.method,
+        ...('uid' in credentials && { uid: credentials.uid }),
+        ...('username' in credentials && { username: credentials.username }),
+        ...('email' in credentials && { email: credentials.email }),
+    };
 
+    try {
+        const isCached = credentials.method === 'token' && env.authCache.has(credentials.uid);
+        const user = isCached
+            ? env.authCache.get(credentials.uid)
+            : await queryUser(credentials, env);
+
+        if (credentials.method === 'token' && credentials.access_token !== user.access_token) {
+            throw new SignInError('expired_token', `Access token has expired. Sign in again`);
+        }
         if (user.is_disabled === true) {
             throw new SignInError('account_disabled', 'Your account has been disabled. Contact your database administrator');
-        }
-        if (credentials.method === 'token' && tokenDetails.uid !== user.uid) {
-            throw new SignInError('token_mismatch', 'Sign in again');
         }
         if (credentials.method === 'account' || credentials.method === 'email') {
             // Check password
@@ -99,51 +103,56 @@ export const signIn = async (credentials: SignInCredentials, env: RouteInitEnvir
             }
         }
 
-        // Keep track of properties to update, both in db and in our object
-        const updates: Partial<DbUserAccountDetails> = {
-            // Update prev / last sign in stats
-            prev_signin: user.last_signin,
-            prev_signin_ip: user.last_signin_ip,
-            last_signin: new Date(),
-            last_signin_ip: req.ip,
-        };
+        if (isNewSession) {
+            // Keep track of properties to update, both in db and cached details
+            const updates: Partial<DbUserAccountDetails> = {
+                last_session_start: new Date(),
+                last_session_ip: ip,
+                ...(credentials.method !== 'token' && {
+                    // Update prev / last sign in stats
+                    ...(user.last_signin && { prev_signin: user.last_signin }),
+                    ...(user.last_signin_ip && { prev_signin_ip: user.last_signin_ip }),
+                    last_signin: new Date(),
+                    last_signin_ip: ip,
+                }),
+            };
 
-        if ('password' in credentials) {
-            if (!user.password_salt) {
-                // OLD md5 password hash, convert to new salted hash
-                const pwd = createPasswordHash(credentials.password);
-                updates.password = pwd.hash;
-                updates.password_salt = pwd.salt;
+            if ('password' in credentials) {
+                if (!user.password_salt) {
+                    // OLD md5 password hash, convert to new salted hash
+                    const pwd = createPasswordHash(credentials.password);
+                    updates.password = pwd.hash;
+                    updates.password_salt = pwd.salt;
+                }
+                if (!user.access_token) {
+                    // Generate access token
+                    updates.access_token = ID.generate();
+                    updates.access_token_created = new Date();
+                }
             }
-            if (!user.access_token) {
-                // Generate access token
-                updates.access_token = ID.generate();
-                updates.access_token_created = new Date();
+
+            // Update user object
+            Object.assign(user, updates);
+
+            // Update db
+            await env.authRef.child(user.uid).update(updates);
+
+            // Log history item
+            if (!LOG_DETAILS.uid) {
+                LOG_DETAILS.uid = user.uid;
             }
+            env.log.event(LOG_ACTION, LOG_DETAILS).catch((err) => env.debug.fatal(`Failed to log successful sign in to db`, err));
         }
 
-        // Update user object
-        Object.assign(user, updates);
-
-        // Update db
-        await snap.ref.update(updates);
-
-        // Log history item
-        if (credentials.method !== 'internal') {
-            env.log.event(LOG_ACTION, LOG_DETAILS);
-        }
-
-        // Add to cache
+        // Update cache
         env.authCache.set(user.uid, user);
-
-        // Bind user to current request
-        req.user = user;
 
         return user;
     }
-    catch (err) {
+    catch (err: any) {
         // Log error
-        env.log.error(LOG_ACTION, err.code ?? 'unexpected', LOG_DETAILS, typeof err.code === 'undefined' ? err : null);
+        env.log.error(LOG_ACTION, err?.code ?? 'unexpected', LOG_DETAILS, err?.code ?? err ?? null)
+            .catch((err) => env.debug.fatal(`Failed to log failed sign in to db`, err));
         throw err;
     }
 };

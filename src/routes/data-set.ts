@@ -54,7 +54,7 @@ export const addRoute = (env: RouteInitEnvironment) => {
             // Schema validation moved to storage, no need to check here but an early check won't do no harm!
             const validation = await env.db.schema.check(path, val, false);
             if (!validation.ok) {
-                throw new SchemaValidationError(validation.reason);
+                throw new SchemaValidationError(validation.reason as string);
             }
 
             await env.db.ref(path)
@@ -67,11 +67,11 @@ export const addRoute = (env: RouteInitEnvironment) => {
 
             res.send({ success: true });
         }
-        catch (err) {
+        catch (err: any) {
             if (err instanceof AccessRuleValidationError) {
                 const access = err.result;
                 env.log.error(LOG_ACTION, 'unauthorized', { ...LOG_DETAILS, rule_code: access.code, rule_path: access.rulePath ?? null, rule_error: access.details?.message ?? null });
-                return sendUnauthorizedError(res, access.code, access.message);
+                return sendUnauthorizedError(res, access.code as string, access.message as string);
             }
             else if (err instanceof SchemaValidationError) {
                 env.log.error(LOG_ACTION, 'schema_validation_failed', { ...LOG_DETAILS, reason: err.reason });

@@ -1,0 +1,25 @@
+{
+  "clientName": "Thunder Client",
+  "environmentName": "AceBase Server",
+  "environmentId": "6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e",
+  "dateExported": "2026-11-16T00:00:00.000Z",
+  "version": "1.2",
+  "ref": "environment.json",
+  "variables": [
+    {
+      "name": "base_url",
+      "value": "http://localhost:3000",
+      "isEnabled": true
+    },
+    {
+      "name": "dbname",
+      "value": "default",
+      "isEnabled": true
+    },
+    {
+      "name": "access_token",
+      "value": "",
+      "isEnabled": true
+    }
+  ]
+}

@@ -31,12 +31,17 @@ export interface RouteInitEnvironment {
     instance: AceBaseServer;
 }
 
-export interface RouteRequestEnvironment {
-    /** If the request has an Authentication: bearer token, the user will be bound to the incoming request */
-    user?: DbUserAccountDetails;
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Express {
+      interface Request {
+        /** If the request has an Authentication: bearer token, the user will be bound to the incoming request */
+        user?: DbUserAccountDetails;
 
-    /** If context is sent through AceBase-Context header, it will be bound to the incoming request */
-    context: { [key: string]: any };
+        /** If context is sent through AceBase-Context header, it will be bound to the incoming request */
+        context: { [key: string]: any };
+    }
+  }
 }
 
-export type RouteRequest<ReqQuery = any, ReqBody = any, ResBody = any> = Request<any, ResBody, ReqBody, ReqQuery> & RouteRequestEnvironment;
+export type RouteRequest<ReqQuery = any, ReqBody = any, ResBody = any> = Request<any, ResBody, ReqBody, ReqQuery>;

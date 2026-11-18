@@ -185,16 +185,18 @@ export class PathBasedRules {
             }
         };
         fs.watchFile(rulesFilePath, watchFileListener);
-        this.stop = () => {
+        const stop = () => {
             fs.unwatchFile(rulesFilePath, watchFileListener);
+            process.off('SIGINT', stop);
         };
-        process.on('SIGINT', this.stop);
+        this.stop = stop;
+        process.on('SIGINT', stop);
 
         this.authEnabled = env.authEnabled;
         this.accessRules = accessRules;
     }
 
-    async isOperationAllowed(user: Pick<DbUserAccountDetails, 'uid' | 'roles'>, path: string, operation: AccessCheckOperation, data?: Record<string, any>): Promise<HasAccessResult> {
+    async isOperationAllowed(user: Pick<DbUserAccountDetails, 'uid' | 'roles'> | undefined, path: string, operation: AccessCheckOperation, data?: Record<string, any>): Promise<HasAccessResult> {
         // Process rules, find out if signed in user is allowed to read/write
         // Defaults to false unless a rule is found that tells us otherwise
 
@@ -248,7 +250,7 @@ export class PathBasedRules {
         while (rule) {
             // Check read/write access or validate operation
             const checkRules = [] as PathRule[];
-            const applyRule = (rule: PathRule) => {
+            const applyRule = (rule?: PathRule) => {
                 if (rule && !checkRules.includes(rule)) {
                     checkRules.push(rule);
                 }
@@ -308,7 +310,7 @@ export class PathBasedRules {
             if (pathKeys.length === 0) {
                 break;
             }
-            let nextKey = pathKeys.shift();
+            let nextKey = pathKeys.shift() as typeof pathKeys[0];
             currentPath = PathInfo.get(currentPath).childPath(nextKey);
             // if nextKey is '*' or '$something', rule[nextKey] will be undefined (or match a variable) so there is no
             // need to change things here for usage of wildcard paths in subscriptions
