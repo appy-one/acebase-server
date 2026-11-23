@@ -144,7 +144,8 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
         // Get client
         // const client = clients.get(socket.id);
 
-        if (!await env.rules.isOperationAllowed(client.user, subscriptionPath, 'get')) {
+        const access = await env.rules.isOperationAllowed(client.user, subscriptionPath, 'get');
+        if (!access.allow) {
             env.log.error('event.subscribe', 'access_denied', { uid: client.user?.uid ?? 'anonymous', path: subscriptionPath });
             return failRequest(event.socket, event.data.req_id, 'access_denied');
         }
@@ -157,7 +158,8 @@ export const addWebsocketServer = (env: RouteInitEnvironment) => {
             if (err) {
                 return;
             }
-            if (!await env.rules.isOperationAllowed(client.user, path, 'get', { value: currentValue, context })) { // 'event', { eventName, subscriptionPath, currentValue, previousValue, context })
+            const access = await env.rules.isOperationAllowed(client.user, path, 'get', { value: currentValue, context });
+            if (!access.allow) { // 'event', { eventName, subscriptionPath, currentValue, previousValue, context })
                 if (!subscriptionPath.includes('*') && !subscriptionPath.includes('$')) {
                     // Could potentially be very many callbacks, so
                     // DISABLED: logRef.push({ action: `access_revoked`, uid: client.user ? client.user.uid : '-', path: subscriptionPath });
